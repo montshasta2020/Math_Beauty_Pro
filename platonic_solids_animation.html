@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第二章：柏拉图立体</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700&family=Cinzel:wght@400;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --gold: #c9a84c;
+    --gold-light: #e8cc7a;
+    --gold-dim: #7a5f2a;
+    --ink: #060507;
+    --cream: #e8dfc8;
+    --white: #fffef8;
+    --blue-dim: #1a1a2e;
+  }
+  body {
+    background: var(--ink);
+    font-family: 'Noto Serif SC', serif;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    cursor: default;
+  }
+  #bg-canvas { position: fixed; inset: 0; z-index: 0; }
+  #vignette {
+    position: fixed; inset: 0; z-index: 5;
+    background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.6) 75%, rgba(0,0,0,0.92) 100%);
+    pointer-events: none;
+  }
+  .ornament-line {
+    position: fixed; top: 32px; left: 50%; transform: translateX(-50%);
+    z-index: 20; display: flex; align-items: center; gap: 14px;
+    opacity: 0; transition: opacity 1.2s;
+  }
+  .ornament-line.visible { opacity: 1; }
+  .ornament-line span {
+    font-family: 'Cinzel', serif; font-size: 10px;
+    letter-spacing: 5px; color: var(--gold-dim); text-transform: uppercase;
+  }
+  .ornament-line::before, .ornament-line::after {
+    content: ''; width: 70px; height: 1px;
+    background: linear-gradient(to right, transparent, var(--gold-dim));
+  }
+  .ornament-line::after { background: linear-gradient(to left, transparent, var(--gold-dim)); }
+
+  #progress {
+    position: fixed; bottom: 0; left: 0; height: 2px;
+    background: linear-gradient(to right, var(--gold-dim), var(--gold), var(--gold-light));
+    z-index: 100; transition: width 0.4s linear; width: 0%;
+  }
+
+  .scene {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 1.4s ease;
+    z-index: 10;
+  }
+  .scene.active { opacity: 1; pointer-events: auto; }
+
+  .chapter-badge {
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 5px;
+    color: var(--gold-dim); text-transform: uppercase;
+    display: flex; align-items: center; gap: 12px; margin-bottom: 18px;
+  }
+  .chapter-badge::before, .chapter-badge::after {
+    content: ''; width: 28px; height: 1px; background: var(--gold-dim);
+  }
+
+  .scene-title {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(26px, 4.5vw, 58px);
+    color: var(--gold-light); text-align: center;
+    line-height: 1.2; letter-spacing: 2px;
+    text-shadow: 0 0 50px rgba(201,168,76,0.35);
+  }
+  .scene-body {
+    font-family: 'Noto Serif SC', serif;
+    font-size: clamp(13px, 1.5vw, 18px);
+    color: var(--cream); text-align: center;
+    line-height: 1.95; max-width: 660px;
+    margin-top: 22px; padding: 0 24px; font-weight: 300;
+  }
+  .scene-body strong { color: var(--gold-light); font-weight: 400; }
+
+  .divider {
+    width: 180px; height: 1px;
+    background: linear-gradient(to right, transparent, var(--gold-dim), transparent);
+    margin: 20px auto;
+  }
+
+  /* ── SOLIDS GALLERY ── */
+  #gallery {
+    display: flex; align-items: center; justify-content: center;
+    gap: clamp(10px, 2.5vw, 36px);
+    margin-top: 28px; flex-wrap: wrap;
+  
+    max-width: 94vw;
+  }
+  .solid-card {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    opacity: 0; transform: translateY(24px) scale(0.92);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+  .solid-card.show { opacity: 1; transform: translateY(0) scale(1); }
+  .solid-canvas-wrap canvas { width: 100%; height: 100%; }
+  .solid-glow {
+    position: absolute; inset: -8px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .solid-name {
+    font-family: 'Cinzel', serif; font-size: clamp(9px,1vw,12px);
+    letter-spacing: 2px; color: var(--gold-dim); text-align: center;
+  }
+  .solid-element {
+    font-family: 'IM Fell English', serif; font-style: italic;
+    font-size: clamp(11px,1.2vw,14px); color: var(--gold);
+  }
+
+  /* ── EULER FORMULA ── */
+  .euler-wrap {
+    margin-top: 32px; padding: 18px 44px;
+    border: 1px solid rgba(122,95,42,0.5);
+    position: relative; opacity: 0; transition: opacity 1s 0.3s;
+  }
+  .euler-wrap.show { opacity: 1; }
+  .euler-wrap::before, .euler-wrap::after {
+    content: ''; position: absolute;
+    width: 9px; height: 9px; border: 1px solid var(--gold);
+  }
+  .euler-wrap::before { top:-4px; left:-4px; border-right:none; border-bottom:none; }
+  .euler-wrap::after { bottom:-4px; right:-4px; border-left:none; border-top:none; }
+  .euler-formula {
+    font-family: 'IM Fell English', serif;
+    font-size: clamp(20px,2.8vw,36px);
+    color: var(--gold-light); text-align: center; letter-spacing: 8px;
+  }
+  .euler-label {
+    font-size: 10px; color: var(--gold-dim); text-align: center;
+    margin-top: 8px; letter-spacing: 3px; font-family: 'Cinzel', serif;
+  }
+
+  /* ── FIVE SOLIDS TABLE ── */
+  .solids-table {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0; margin-top: 28px; border: 1px solid rgba(122,95,42,0.4);
+    max-width: 680px;
+  }
+  .tbl-header {
+    font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 2px;
+    color: var(--gold-dim); text-align: center; padding: 8px 4px;
+    border-bottom: 1px solid rgba(122,95,42,0.4);
+    border-right: 1px solid rgba(122,95,42,0.2);
+  }
+  .tbl-header:last-child { border-right: none; }
+  .tbl-cell {
+    font-family: 'Noto Serif SC', serif; font-size: clamp(10px,1.1vw,13px);
+    color: var(--cream); text-align: center; padding: 10px 4px;
+    border-right: 1px solid rgba(122,95,42,0.2);
+    opacity: 0; transition: opacity 0.5s;
+    font-weight: 300;
+  }
+  .tbl-cell:last-child { border-right: none; }
+  .tbl-cell.show { opacity: 1; }
+  .tbl-cell.highlight { color: var(--gold); }
+
+  /* ── WHY ONLY FIVE ── */
+  .vertex-rule {
+    margin-top: 20px; display: flex; flex-direction: column;
+    align-items: center; gap: 12px; max-width: 580px;
+  }
+  .rule-item {
+    display: flex; align-items: center; gap: 16px;
+    opacity: 0; transform: translateX(-16px); transition: all 0.6s ease;
+    font-size: clamp(13px,1.4vw,16px); color: var(--cream); font-weight: 300;
+    padding: 0 20px;
+  }
+  .rule-item.show { opacity: 1; transform: translateX(0); }
+  .rule-icon {
+    width: 28px; height: 28px; border: 1px solid var(--gold-dim);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Cinzel', serif; font-size: 11px; color: var(--gold); flex-shrink: 0;
+  }
+
+  /* ── ENDING ── */
+  .ending-quote {
+    font-family: 'IM Fell English', serif; font-style: italic;
+    font-size: clamp(15px,2vw,26px); color: var(--cream);
+    text-align: center; max-width: 580px; line-height: 1.75; padding: 0 24px;
+  }
+  .ending-author {
+    font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 3px;
+    color: var(--gold-dim); margin-top: 18px; text-align: center;
+  }
+
+  /* ── NAV ── */
+  #nav {
+    position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%);
+    z-index: 200; display: flex; gap: 10px; align-items: center;
+  }
+  .nav-btn {
+    width: 34px; height: 34px; border: 1px solid var(--gold-dim);
+    background: transparent; color: var(--gold); cursor: pointer;
+    font-size: 16px; display: flex; align-items: center; justify-content: center;
+    transition: all 0.3s;
+  }
+  .nav-btn:hover { background: rgba(201,168,76,0.1); border-color: var(--gold); }
+  .nav-dots { display: flex; gap: 6px; align-items: center; }
+  .nav-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--gold-dim); cursor: pointer; transition: all 0.3s;
+  }
+  .nav-dot.active { background: var(--gold); width: 20px; border-radius: 3px; }
+
+  #hint {
+    position: fixed; bottom: 22px; right: 28px; z-index: 100;
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 2px;
+    color: var(--gold-dim); display: flex; align-items: center; gap: 8px;
+    opacity: 0; transition: opacity 1s;
+  }
+  #hint.visible { opacity: 1; }
+  #hint-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--gold-dim); animation: blink 1.6s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1}50%{opacity:0.15} }
+
+  .fade-up { opacity: 0; transform: translateY(18px); transition: all 0.8s ease; }
+  .fade-up.show { opacity: 1; transform: translateY(0); }
+
+  #home-btn {
+    position: fixed; top: 26px; left: 36px; z-index: 9000;
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 3px;
+    color: var(--gold); text-decoration: none;
+    border: 1px solid var(--gold-dim); padding: 8px 16px;
+    background: rgba(6,5,7,0.7); cursor: pointer !important;
+    transition: background .3s, color .3s, border-color .3s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  #home-btn:hover { background: rgba(201,168,76,.15); border-color: var(--gold-light); color: var(--gold-light); }
+</style>
+
+<style id="bilingual-css">
+#ch-lang-bar{position:fixed;top:26px;right:36px;z-index:9000;display:flex;align-items:stretch;border:1px solid rgba(122,95,42,.5);overflow:hidden;}
+.ch-lb{font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;padding:8px 16px;background:transparent;border:none;outline:none;color:#7a5f2a;cursor:pointer;transition:background .3s,color .3s;}
+.ch-lb:hover{background:rgba(201,168,76,.1);}
+.ch-lb.on{background:rgba(201,168,76,.2);color:#e8cc7a;}
+.ch-lb-sep{width:1px;background:rgba(122,95,42,.4);flex-shrink:0;}
+</style>
+
+<style id="mobile-responsive">
+@media (max-width: 700px) {
+  /* 5 solids gallery - wrap into 2 rows on mobile */
+  #gallery {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    justify-content: center !important;
+    margin-top: 16px !important;
+  }
+  .solid-card {
+    width: calc(33% - 8px) !important;
+    min-width: 0 !important;
+  }
+  .solid-name { font-size: 9px !important; letter-spacing: 1px !important; }
+  .solid-sub { font-size: 8px !important; display: none; }
+  /* Core layout - keep centered, handle overflow with scroll wrapper */
+  .scene {
+    padding: 55px 14px 90px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  /* Typography */
+  .scene-title { font-size: clamp(17px, 5.5vw, 28px) !important; letter-spacing: 1px; }
+  .scene-subtitle { font-size: clamp(11px, 3vw, 15px) !important; }
+  .scene-body { font-size: clamp(12px, 3.2vw, 15px) !important; padding: 0 8px; max-width: 96vw; line-height: 1.75 !important; }
+  .chapter-badge { font-size: 7px; letter-spacing: 3px; }
+  .ornament-line span { font-size: 7px; letter-spacing: 1px; max-width: 55vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* UI controls */
+  #home-btn { top: 10px; left: 10px; padding: 5px 10px; font-size: 9px; }
+  #ch-lang-bar { top: 10px; right: 10px; }
+  .ch-lb { padding: 5px 9px; font-size: 8px; letter-spacing: 1px; }
+  #hint { display: none; }
+  .ornament-line { top: 14px; }
+
+  /* Nav - larger touch targets */
+  #nav { bottom: 8px; }
+  .nav-btn { width: 44px; height: 44px; font-size: 22px; }
+
+  /* Force ALL flex row containers to stack */
+  .split-layout,
+  .split-text,
+  .info-row,
+  .sym-row,
+  .law-row,
+  .tl-row,
+  .card-row,
+  .geo-row {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  /* Info panels */
+  .split-info, [id$="-info"], [id$="-text"], [id$="-panel"] {
+    max-width: 94vw !important; width: 94vw !important;
+  }
+  .split-info p, [id$="-info"] p { font-size: clamp(11px, 2.8vw, 14px) !important; }
+
+  /* Only limit standalone full-width canvases, not gallery 3D canvases */
+  canvas#bg-
+
+  /* Grids → two columns, small screens one column */
+  .law-grid, .var-grid, .sym-grid, .const-grid, .card-grid,
+  [class*="grid"] { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+
+  /* Epilogue / poem */
+  .big-quote, #e-q, #fin-q, .poem { 
+    font-size: clamp(13px, 3.5vw, 18px) !important; 
+    padding: 0 16px; 
+    line-height: 1.9 !important;
+  }
+  .ending-quote { font-size: clamp(14px, 3.8vw, 19px) !important; }
+
+  /* Tables */
+  table { font-size: 10px; width: 100%; }
+  td, th { padding: 4px 6px !important; }
+
+  /* Axiom boxes */
+  .axiom-item { padding: 8px 10px !important; }
+  .axiom-body { font-size: 11px !important; }
+
+  /* Divider spacing */
+  .divider { margin: 12px auto !important; }
+}
+
+@media (max-width: 420px) {
+  .scene-title { font-size: clamp(15px, 5vw, 22px) !important; 
+  .solid-canvas-wrap { width: 60px !important; height: 60px !important; }
+}
+
+  [class*="grid"] { grid-template-columns: 1fr !important; }
+}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div id="vignette"></div>
+<a id="home-btn" href="index.html">&#8962;&nbsp;HOME</a>
+<div class="ornament-line" id="ornament"><span>Plato · 公元前 360</span></div>
+<div id="progress"></div>
+<div id="nav">
+  <button class="nav-btn" id="btn-prev">&#8249;</button>
+  <div class="nav-dots" id="nav-dots"></div>
+  <button class="nav-btn" id="btn-next">&#8250;</button>
+</div>
+<div id="hint"><div id="hint-dot"></div>CLICK TO ADVANCE</div>
+
+<!-- ══════════ SCENES ══════════ -->
+
+<!-- Scene 0: Chapter Title -->
+<div class="scene active" id="scene-0">
+  <div class="chapter-badge fade-up" id="s0-badge">第二章</div>
+  <div class="scene-title fade-up" id="s0-t1">柏拉图立体</div>
+  <div style="font-family:'IM Fell English',serif;font-style:italic;font-size:clamp(14px,2vw,24px);color:var(--gold-dim);text-align:center;margin-top:10px;" class="fade-up" id="s0-t2">矿物中的宇宙秩序</div>
+  <div class="divider" style="margin:24px auto;"></div>
+  <div class="scene-body fade-up" id="s0-body" style="max-width:500px;font-size:clamp(13px,1.4vw,17px);">
+    拿一个正多面体——每个面完全相同，每个顶角完全相同。<br>
+    你能做出几种这样的形状？答案让所有人惊讶：<br>
+    <strong>恰好5种，多一种都不存在。</strong>宇宙在这里做了最严格的筛选。
+  </div>
+  <canvas id="c0" style="margin-top:22px;opacity:0;transition:opacity 1.5s 0.6s;width:min(680px,96vw);height:min(320px,40vh);"></canvas>
+</div>
+
+<!-- Scene 1: The Five Solids Gallery -->
+<div class="scene" id="scene-1">
+  <div class="chapter-badge">§ 2.1 · 五种神圣形状</div>
+  <div class="scene-title" style="font-size:clamp(22px,3.5vw,46px);">只有5种——这是空间本身的限制</div>
+  <div class="scene-body" style="margin-top:12px;margin-bottom:4px;">
+    三维空间里，满足"<strong>每面相同、每顶点连接面数相同</strong>"的正多面体，<br>
+    仅有且恰好只有 <strong>五种</strong>。这是宇宙的基本吝啬。
+  </div>
+  <div id="gallery">
+    <!-- canvases injected by JS -->
+  </div>
+</div>
+
+<!-- Scene 2: Data Table -->
+<div class="scene" id="scene-2">
+  <div class="chapter-badge">§ 2.1 · 拓扑不等式</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">欧拉公式的守门人</div>
+  <div class="scene-body" style="margin-top:12px;">
+    每一个正多面体，都精确地满足欧拉公式——<br>
+    顶点数 <strong>V</strong>、边数 <strong>E</strong>、面数 <strong>F</strong> 之间，存在永恒等式：
+  </div>
+  <div class="euler-wrap" id="euler-box">
+    <div class="euler-formula">V − E + F = 2</div>
+    <div class="euler-label">Euler's Polyhedron Formula · 1752</div>
+  </div>
+  <div class="solids-table" id="solids-table">
+    <div class="tbl-header">多面体</div>
+    <div class="tbl-header">面数 F</div>
+    <div class="tbl-header">顶点 V</div>
+    <div class="tbl-header">边数 E</div>
+    <div class="tbl-header">元素</div>
+  </div>
+  <canvas id="c2" style="margin-top:18px;opacity:0;transition:opacity 1.2s 0.4s;width:min(640px,94vw);height:min(120px,16vh);"></canvas>
+</div>
+
+<!-- Scene 3: Why only five -->
+<div class="scene" id="scene-3">
+  <div class="chapter-badge">§ 2.1 · 为何只有五种</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">空间对角之约束</div>
+  <div class="scene-body" style="margin-top:14px;margin-bottom:8px;">
+    在一个顶点处，至少需要 <strong>3个面</strong> 才能形成立体；<br>
+    但各面的内角之和，必须<strong>严格小于 360°</strong>，否则会展平成平面。<br>
+    这一简单条件，将无数种可能性，锁死为仅仅五种。
+  </div>
+  <div class="vertex-rule" id="vertex-rules">
+    <div class="rule-item"><div class="rule-icon">△</div><span>正三角形内角 60° → 可拼 3/4/5 个 → 正四面体、正八面体、正二十面体</span></div>
+    <div class="rule-item"><div class="rule-icon">□</div><span>正方形内角 90° → 只能拼 3 个 → 正六面体（立方体）</span></div>
+    <div class="rule-item"><div class="rule-icon">⬠</div><span>正五边形内角 108° → 只能拼 3 个 → 正十二面体</span></div>
+    <div class="rule-item" style="color:var(--gold-dim);font-style:italic;"><div class="rule-icon" style="font-size:9px;">✗</div><span>正六边形内角 120° → 3个恰好 360°，展开成平面，无法围合 → 被宇宙禁止</span></div>
+  </div>
+  <canvas id="c3" style="margin-top:16px;opacity:0;transition:opacity 1.2s 0.4s;width:min(580px,94vw);height:min(180px,24vh);"></canvas>
+</div>
+
+<!-- Scene 4: Ending -->
+<div class="scene" id="scene-4">
+  <div class="chapter-badge">尾声</div>
+  <div class="scene-title fade-up" id="e-t" style="font-size:clamp(20px,3vw,42px);">简约即真理</div>
+  <div class="divider" style="margin:26px auto;"></div>
+  <div class="ending-quote fade-up" id="e-q">
+    宇宙之所以只给了我们五种完美的形状，<br>
+    不是因为它没有想象力，<br>
+    而是因为空间本身就是最严格的立法者。
+  </div>
+  <div class="ending-author fade-up" id="e-a">— 几何的沉默语言</div>
+  <div class="divider" style="margin:26px auto;"></div>
+  <div class="scene-body fade-up" id="e-b" style="margin-top:0;font-size:clamp(12px,1.3vw,16px);color:var(--gold-dim);">
+    柏拉图多面体：不是人类发明的，而是被人类<strong>发现</strong>的。<br>
+    它们在宇宙诞生之初就已存在，静候着几何学家的目光。
+  </div>
+  <canvas id="c4" style="margin-top:22px;opacity:0;transition:opacity 2s;width:min(660px,94vw);height:min(280px,34vh);"></canvas>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// 3D MATH UTILITIES
+// ══════════════════════════════════════════
+function rotX(p, a) { return [p[0], p[1]*Math.cos(a)-p[2]*Math.sin(a), p[1]*Math.sin(a)+p[2]*Math.cos(a)]; }
+function rotY(p, a) { return [p[0]*Math.cos(a)+p[2]*Math.sin(a), p[1], -p[0]*Math.sin(a)+p[2]*Math.cos(a)]; }
+function rotZ(p, a) { return [p[0]*Math.cos(a)-p[1]*Math.sin(a), p[0]*Math.sin(a)+p[1]*Math.cos(a), p[2]]; }
+function project(p, fov, cx, cy) {
+  const z = p[2] + fov;
+  const scale = fov / z;
+  return [p[0]*scale + cx, p[1]*scale + cy];
+}
+function faceNormal(pts, face) {
+  const a = pts[face[0]], b = pts[face[1]], c = pts[face[2]];
+  const u = [b[0]-a[0],b[1]-a[1],b[2]-a[2]];
+  const v = [c[0]-a[0],c[1]-a[1],c[2]-a[2]];
+  return [u[1]*v[2]-u[2]*v[1], u[2]*v[0]-u[0]*v[2], u[0]*v[1]-u[1]*v[0]];
+}
+function dot(a,b){ return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
+function faceCenter(pts, face) {
+  const n = face.length;
+  let cx=0,cy=0,cz=0;
+  face.forEach(i=>{ cx+=pts[i][0]; cy+=pts[i][1]; cz+=pts[i][2]; });
+  return [cx/n, cy/n, cz/n];
+}
+
+// ══════════════════════════════════════════
+// SOLID GEOMETRY DEFINITIONS
+// ══════════════════════════════════════════
+function makeSolids() {
+  const phi = (1 + Math.sqrt(5)) / 2;
+  return {
+    tetra: {
+      verts: [[1,1,1],[1,-1,-1],[-1,1,-1],[-1,-1,1]],
+      faces: [[0,1,2],[0,1,3],[0,2,3],[1,2,3]],
+      element: '火', color: '#e85c30'
+    },
+    cube: {
+      verts: [[1,1,1],[1,1,-1],[1,-1,1],[1,-1,-1],[-1,1,1],[-1,1,-1],[-1,-1,1],[-1,-1,-1]],
+      faces: [[0,1,3,2],[4,5,7,6],[0,4,6,2],[1,5,7,3],[0,1,5,4],[2,3,7,6]],
+      element: '土', color: '#c9a84c'
+    },
+    octa: {
+      verts: [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]],
+      faces: [[0,2,4],[0,4,3],[0,3,5],[0,5,2],[1,4,2],[1,2,5],[1,5,3],[1,3,4]],
+      element: '气', color: '#5bc4c4'
+    },
+    dodeca: {
+      verts: [
+        [1,1,1],[1,1,-1],[1,-1,1],[1,-1,-1],[-1,1,1],[-1,1,-1],[-1,-1,1],[-1,-1,-1],
+        [0,1/phi,phi],[0,1/phi,-phi],[0,-1/phi,phi],[0,-1/phi,-phi],
+        [1/phi,phi,0],[1/phi,-phi,0],[-1/phi,phi,0],[-1/phi,-phi,0],
+        [phi,0,1/phi],[phi,0,-1/phi],[-phi,0,1/phi],[-phi,0,-1/phi]
+      ],
+      faces: [
+        [0,8,10,2,16],[0,16,17,1,12],[0,12,14,4,8],[4,8,10,6,18],
+        [2,10,6,15,13],[2,13,3,17,16],[1,17,3,11,9],[1,9,5,14,12],
+        [5,9,11,7,19],[5,19,18,4,14],[6,18,19,7,15],[3,13,15,7,11]
+      ],
+      element: '宇宙', color: '#a370c9'
+    },
+    icosa: {
+      verts: [
+        [0,1,phi],[0,1,-phi],[0,-1,phi],[0,-1,-phi],
+        [1,phi,0],[1,-phi,0],[-1,phi,0],[-1,-phi,0],
+        [phi,0,1],[phi,0,-1],[-phi,0,1],[-phi,0,-1]
+      ],
+      faces: [
+        [0,2,8],[0,8,4],[0,4,6],[0,6,10],[0,10,2],
+        [3,9,1],[3,1,11],[3,11,7],[3,7,5],[3,5,9],
+        [2,5,8],[8,9,4],[4,1,6],[6,11,10],[10,7,2],
+        [5,2,7],[9,8,5],[1,4,9],[11,6,1],[7,10,11]
+      ],
+      element: '水', color: '#4a9eda'
+    }
+  };
+}
+
+// ══════════════════════════════════════════
+// DRAW ROTATING SOLID ON CANVAS
+// ══════════════════════════════════════════
+function createSolidRenderer(canvas, solidKey, solids, scale=0.55, speedMult=1) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const solid = solids[solidKey];
+  let ax = 0.3, ay = 0, az = 0;
+  let rafId, tick = 0;
+
+  // Parse color once
+  const hexColor = solid.color;
+  const cr = parseInt(hexColor.slice(1,3),16);
+  const cg = parseInt(hexColor.slice(3,5),16);
+  const cb = parseInt(hexColor.slice(5,7),16);
+
+  function render() {
+    ctx.clearRect(0,0,W,H);
+    tick++;
+    ay += 0.013 * speedMult;
+    ax += 0.005 * speedMult;
+
+    const scaledVerts = solid.verts.map(v => {
+      let p = [...v];
+      p = rotX(p, ax); p = rotY(p, ay); p = rotZ(p, az);
+      return p.map(x => x * scale * Math.min(W,H) * 0.42);
+    });
+
+    const fov = Math.min(W,H) * 1.2;
+    const projected = scaledVerts.map(v => project(v, fov, W/2, H/2));
+
+    // Painter's sort
+    const sortedFaces = solid.faces.map(face => ({
+      face, z: faceCenter(scaledVerts, face)[2]
+    })).sort((a,b) => a.z - b.z);
+
+    // ── Draw back faces (filled) ──
+    const lightDir = [0.4, -0.6, 1.0];
+    const lLen = Math.sqrt(lightDir.reduce((s,v)=>s+v*v,0));
+
+    sortedFaces.forEach(({ face }) => {
+      const norm = faceNormal(scaledVerts, face);
+      const nLen = Math.sqrt(dot(norm,norm)) || 1;
+      const d = dot(norm, lightDir) / (nLen * lLen);
+      const brightness = Math.max(0.05, d);
+      const ambient = 0.12;
+      const b2 = Math.min(1, brightness + ambient);
+
+      // Face fill
+      ctx.beginPath();
+      face.forEach((vi, i) => {
+        const p = projected[vi];
+        i===0 ? ctx.moveTo(p[0],p[1]) : ctx.lineTo(p[0],p[1]);
+      });
+      ctx.closePath();
+      ctx.fillStyle = `rgba(${Math.floor(cr*b2)},${Math.floor(cg*b2)},${Math.floor(cb*b2)},0.88)`;
+      ctx.fill();
+
+      // Edge glow — bright edges
+      const edgeAlpha = Math.max(0.15, brightness * 0.6);
+      ctx.strokeStyle = `rgba(${cr},${cg},${cb},${edgeAlpha})`;
+      ctx.lineWidth = 1.1;
+      ctx.stroke();
+    });
+
+    // ── Glowing wireframe overlay (front faces) ──
+    sortedFaces.slice(Math.floor(sortedFaces.length/2)).forEach(({ face }) => {
+      ctx.beginPath();
+      face.forEach((vi,i) => {
+        const p = projected[vi];
+        i===0 ? ctx.moveTo(p[0],p[1]) : ctx.lineTo(p[0],p[1]);
+      });
+      ctx.closePath();
+      ctx.strokeStyle = `rgba(${cr},${cg},${cb},0.55)`;
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+    });
+
+    // ── Subtle glow halo around whole solid ──
+    const pulse = 0.7 + 0.3*Math.sin(tick*0.06);
+    const cx2=W/2, cy2=H/2;
+    const haloR = scale * Math.min(W,H) * 0.50;
+    const glow = ctx.createRadialGradient(cx2,cy2,haloR*0.3,cx2,cy2,haloR*1.3);
+    glow.addColorStop(0, `rgba(${cr},${cg},${cb},0)`);
+    glow.addColorStop(0.7, `rgba(${cr},${cg},${cb},${0.04*pulse})`);
+    glow.addColorStop(1, 'transparent');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0,0,W,H);
+
+    rafId = requestAnimationFrame(render);
+  }
+
+  return {
+    start() { render(); },
+    stop() { cancelAnimationFrame(rafId); }
+  };
+}
+
+// ══════════════════════════════════════════
+// BACKGROUND
+// ══════════════════════════════════════════
+const bgC = document.getElementById('bg-canvas');
+const bgX = bgC.getContext('2d');
+let W, H, bgTick = 0;
+function resizeBg() { W = bgC.width = window.innerWidth; H = bgC.height = window.innerHeight; }
+resizeBg();
+window.addEventListener('resize', resizeBg);
+
+const stars = Array.from({length:180}, () => ({
+  x: Math.random(), y: Math.random(),
+  r: Math.random()*1.1+0.2, a: Math.random(), speed: Math.random()*0.004+0.001
+}));
+
+function drawBg() {
+  bgX.clearRect(0,0,W,H);
+  const g = bgX.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*0.75);
+  g.addColorStop(0,'#0e0b14'); g.addColorStop(1,'#030205');
+  bgX.fillStyle=g; bgX.fillRect(0,0,W,H);
+  stars.forEach(s=>{
+    s.a+=s.speed;
+    const al=(Math.sin(s.a)+1)/2*0.65+0.08;
+    bgX.beginPath();
+    bgX.arc(s.x*W, s.y*H, s.r, 0, Math.PI*2);
+    bgX.fillStyle=`rgba(200,180,120,${al})`; bgX.fill();
+  });
+  // Subtle dodecahedron grid in bg
+  bgX.save();
+  bgX.translate(W/2, H/2);
+  bgX.rotate(bgTick*0.0002);
+  bgX.beginPath();
+  bgX.arc(0,0,Math.min(W,H)*0.42,0,Math.PI*2);
+  bgX.strokeStyle='rgba(100,70,160,0.05)'; bgX.lineWidth=1; bgX.stroke();
+  for(let i=0;i<12;i++) {
+    const a=(i/12)*Math.PI*2;
+    bgX.beginPath();
+    bgX.moveTo(0,0);
+    bgX.lineTo(Math.cos(a)*Math.min(W,H)*0.42, Math.sin(a)*Math.min(W,H)*0.42);
+    bgX.strokeStyle='rgba(100,70,160,0.04)'; bgX.stroke();
+  }
+  bgX.restore();
+  bgTick++;
+  requestAnimationFrame(drawBg);
+}
+drawBg();
+
+// ══════════════════════════════════════════
+// SCENE 0 — Five Solids Grand Orbit
+// ══════════════════════════════════════════
+const c0 = document.getElementById('c0');
+let t0=0, c0Raf;
+function resizeC0(){ const r=c0.getBoundingClientRect(); c0.width=r.width||680; c0.height=r.height||320; }
+function drawC0() {
+  resizeC0();
+  const CW=c0.width, CH=c0.height, ctx=c0.getContext('2d');
+  ctx.fillStyle='rgba(4,2,10,0.90)'; ctx.fillRect(0,0,CW,CH);
+  const t=t0, cx=CW/2, cy=CH/2;
+
+  const SOLIDS2 = makeSolids();
+  const keys=['tetra','cube','octa','dodeca','icosa'];
+  const orbitR = Math.min(CW,CH)*0.35;
+  const solidScale = Math.min(CW,CH)*0.065;
+
+  // ── Orbit ring ──
+  ctx.beginPath(); ctx.arc(cx,cy,orbitR,0,Math.PI*2);
+  ctx.strokeStyle='rgba(201,168,76,0.08)'; ctx.lineWidth=1; ctx.stroke();
+
+  // ── Central glow ──
+  const cg=ctx.createRadialGradient(cx,cy,0,cx,cy,orbitR*0.35);
+  cg.addColorStop(0,'rgba(201,168,76,0.10)'); cg.addColorStop(1,'transparent');
+  ctx.fillStyle=cg; ctx.fillRect(cx-orbitR*0.36,cy-orbitR*0.36,orbitR*0.72,orbitR*0.72);
+
+  // ── Draw each solid as a small 3D shape ──
+  keys.forEach((key,i) => {
+    const baseAngle=(i/keys.length)*Math.PI*2;
+    const orbitAngle=baseAngle+t*0.010;
+    const sx=cx+Math.cos(orbitAngle)*orbitR;
+    const sy=cy+Math.sin(orbitAngle)*orbitR*0.45; // elliptical orbit
+
+    const solid=SOLIDS2[key];
+    const hexColor=solid.color;
+    const sr=parseInt(hexColor.slice(1,3),16);
+    const sg2=parseInt(hexColor.slice(3,5),16);
+    const sb=parseInt(hexColor.slice(5,7),16);
+
+    // Per-solid rotation (each spins differently)
+    const ax=0.3+t*0.004+i*0.5;
+    const ay=t*0.012+i*1.2;
+
+    const verts2=solid.verts.map(v=>{
+      let p=[...v];
+      p=rotX(p,ax); p=rotY(p,ay);
+      return p.map(x=>x*solidScale);
+    });
+    const fov2=solidScale*8;
+    const proj2=verts2.map(v=>project(v,fov2,sx,sy));
+
+    // Depth sort
+    const sorted2=solid.faces.map(face=>({face,z:faceCenter(verts2,face)[2]})).sort((a,b)=>a.z-b.z);
+    const lightDir=[0.4,-0.6,1]; const lLen=Math.sqrt(1.0+0.36+0.16);
+
+    sorted2.forEach(({face})=>{
+      const norm=faceNormal(verts2,face);
+      const nLen=Math.sqrt(dot(norm,norm))||1;
+      const d=dot(norm,lightDir)/(nLen*lLen);
+      const b2=Math.max(0.08,d)+0.12;
+      ctx.beginPath();
+      face.forEach((vi,fi)=>{
+        const p=proj2[vi];
+        fi===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]);
+      });
+      ctx.closePath();
+      ctx.fillStyle=`rgba(${Math.floor(sr*b2)},${Math.floor(sg2*b2)},${Math.floor(sb*b2)},0.88)`;
+      ctx.fill();
+      ctx.strokeStyle=`rgba(${sr},${sg2},${sb},0.40)`; ctx.lineWidth=0.8; ctx.stroke();
+    });
+
+    // Glow under solid
+    const gg=ctx.createRadialGradient(sx,sy+solidScale*0.4,0,sx,sy+solidScale*0.4,solidScale*1.5);
+    gg.addColorStop(0,`rgba(${sr},${sg2},${sb},0.18)`); gg.addColorStop(1,'transparent');
+    ctx.fillStyle=gg; ctx.fillRect(sx-solidScale*1.6,sy-solidScale*0.4,solidScale*3.2,solidScale*3.2);
+
+    // Orbit trail dots
+    for(let tj=1;tj<=4;tj++){
+      const ta=orbitAngle-tj*0.09;
+      const tx=cx+Math.cos(ta)*orbitR, ty=cy+Math.sin(ta)*orbitR*0.45;
+      ctx.beginPath(); ctx.arc(tx,ty,1.5*(1-tj/5),0,Math.PI*2);
+      ctx.fillStyle=`rgba(${sr},${sg2},${sb},${0.25-tj*0.05})`; ctx.fill();
+    }
+  });
+
+  // ── Connection pentagon ──
+  ctx.beginPath();
+  keys.forEach((_,i)=>{
+    const a=(i/keys.length)*Math.PI*2+t*0.010;
+    const px=cx+Math.cos(a)*orbitR, py=cy+Math.sin(a)*orbitR*0.45;
+    i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+  });
+  ctx.closePath();
+  ctx.strokeStyle='rgba(201,168,76,0.10)'; ctx.lineWidth=0.7; ctx.stroke();
+
+  t0++; c0Raf=requestAnimationFrame(drawC0);
+}
+
+// ══════════════════════════════════════════
+// SCENE 4 FINALE — All five solids in constellation
+// ══════════════════════════════════════════
+const c4 = document.getElementById('c4');
+let t4=0, c4Active=false, c4Raf;
+function resizeC4(){ const r=c4.getBoundingClientRect(); c4.width=r.width||660; c4.height=r.height||280; }
+function drawC4() {
+  if(!c4Active) return;
+  resizeC4();
+  const CW=c4.width, CH=c4.height, ctx=c4.getContext('2d');
+  ctx.fillStyle='rgba(4,2,10,0.90)'; ctx.fillRect(0,0,CW,CH);
+  const t=t4;
+
+  const SOLIDS4=makeSolids();
+  const keys4=['tetra','cube','octa','dodeca','icosa'];
+  const n=keys4.length;
+  const unitW=CW/n;
+  const solidScale4=Math.min(unitW,CH)*0.26;
+
+  keys4.forEach((key,i)=>{
+    const solid=SOLIDS4[key];
+    const hex=solid.color;
+    const sr=parseInt(hex.slice(1,3),16);
+    const sg=parseInt(hex.slice(3,5),16);
+    const sb=parseInt(hex.slice(5,7),16);
+
+    const sx=unitW*(i+0.5), sy=CH*0.46;
+    const ax=0.3+t*0.005+i*0.7;
+    const ay=t*0.014+i*1.3;
+
+    // Background vertical dividers
+    if(i>0){
+      const dg=ctx.createLinearGradient(unitW*i,0,unitW*i,CH);
+      dg.addColorStop(0,'transparent'); dg.addColorStop(0.5,'rgba(122,95,42,0.15)'); dg.addColorStop(1,'transparent');
+      ctx.fillStyle=dg; ctx.fillRect(unitW*i-1,0,2,CH);
+    }
+
+    const verts4=solid.verts.map(v=>{
+      let p=[...v]; p=rotX(p,ax); p=rotY(p,ay);
+      return p.map(x=>x*solidScale4);
+    });
+    const fov4=solidScale4*9;
+    const proj4=verts4.map(v=>project(v,fov4,sx,sy));
+
+    const sorted4=solid.faces.map(face=>({face,z:faceCenter(verts4,face)[2]})).sort((a,b)=>a.z-b.z);
+    const lDir=[0.4,-0.6,1]; const lL=Math.sqrt(0.16+0.36+1);
+
+    sorted4.forEach(({face})=>{
+      const norm=faceNormal(verts4,face);
+      const nL=Math.sqrt(dot(norm,norm))||1;
+      const d=dot(norm,lDir)/(nL*lL);
+      const b2=Math.max(0.06,d)+0.14;
+      ctx.beginPath();
+      face.forEach((vi,fi)=>{ const p=proj4[vi]; fi===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]); });
+      ctx.closePath();
+      ctx.fillStyle=`rgba(${Math.floor(sr*b2)},${Math.floor(sg*b2)},${Math.floor(sb*b2)},0.90)`;
+      ctx.fill();
+      ctx.strokeStyle=`rgba(${sr},${sg},${sb},0.45)`; ctx.lineWidth=1; ctx.stroke();
+    });
+    // Front edge glow
+    sorted4.slice(Math.floor(sorted4.length/2)).forEach(({face})=>{
+      ctx.beginPath();
+      face.forEach((vi,fi)=>{ const p=proj4[vi]; fi===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]); });
+      ctx.closePath(); ctx.strokeStyle=`rgba(${sr},${sg},${sb},0.55)`; ctx.lineWidth=1.3; ctx.stroke();
+    });
+
+    // Glow
+    const pulse=0.7+0.3*Math.sin(t*0.05+i*1.2);
+    const gg=ctx.createRadialGradient(sx,sy,0,sx,sy,solidScale4*1.8);
+    gg.addColorStop(0,`rgba(${sr},${sg},${sb},${pulse*0.12})`); gg.addColorStop(1,'transparent');
+    ctx.fillStyle=gg; ctx.fillRect(sx-solidScale4*2,sy-solidScale4*2,solidScale4*4,solidScale4*4);
+
+    // Element name
+    const elemNames={tetra:'火 Fire',cube:'土 Earth',octa:'气 Air',dodeca:'宇宙',icosa:'水 Water'};
+    ctx.font=`${Math.round(CH*0.07)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle=`rgba(${sr},${sg},${sb},0.65)`;
+    ctx.fillText(elemNames[key], sx, sy+solidScale4*1.5+CH*0.05);
+  });
+
+  t4++; c4Raf=requestAnimationFrame(drawC4);
+}
+
+// ══════════════════════════════════════════
+// BUILD GALLERY (Scene 1)
+// ══════════════════════════════════════════
+const SOLIDS = makeSolids();
+const solidKeys = ['tetra','cube','octa','dodeca','icosa'];
+const solidNames = ['正四面体','正六面体','正八面体','正十二面体','正二十面体'];
+const solidNamesEn = ['Tetrahedron','Hexahedron','Octahedron','Dodecahedron','Icosahedron'];
+const solidElementsZh = ['火','土','气','宇宙','水'];
+const solidElementsEn = ['Fire','Earth','Air','Cosmos','Water'];
+const solidRenderers = {};
+
+function buildGallery() {
+  const isEn = window.__currentLang === 'en';
+  const gallery = document.getElementById('gallery');
+  gallery.innerHTML = '';
+  solidKeys.forEach((key, idx) => {
+    const card = document.createElement('div');
+    card.className = 'solid-card'; card.id = `card-${key}`;
+    const size = window.innerWidth<=500?120:window.innerWidth<=900?160:Math.min(Math.max(160,window.innerWidth*0.13),220);
+    card.innerHTML = `
+      <div class="solid-canvas-wrap" style="width:${size}px;height:${size}px;">
+        <canvas id="sc-${key}" width="${size}" height="${size}"></canvas>
+        <div class="solid-glow"></div>
+      </div>
+      <div class="solid-name">${isEn ? solidNamesEn[idx] : solidNames[idx]}</div>
+      <div class="solid-element">${isEn ? solidElementsEn[idx] : solidElementsZh[idx]}</div>
+    `;
+    gallery.appendChild(card);
+  });
+}
+buildGallery();
+
+function startGalleryRenderers() {
+  solidKeys.forEach(key => {
+    const canvas = document.getElementById(`sc-${key}`);
+    if(!canvas) return;
+    if(solidRenderers[key]) solidRenderers[key].stop();
+    const renderer = createSolidRenderer(canvas, key, SOLIDS);
+    solidRenderers[key] = renderer;
+    renderer.start();
+  });
+}
+function stopGalleryRenderers() {
+  Object.values(solidRenderers).forEach(r => r.stop());
+}
+
+// ══════════════════════════════════════════
+// SCENE 2 MINI CANVAS — Euler V-E+F=2 visualizer
+// ══════════════════════════════════════════
+const c2el = document.getElementById('c2');
+let t2=0, c2Active=false, c2Raf;
+function drawC2() {
+  if(!c2Active||!c2el) return;
+  const r2=c2el.getBoundingClientRect();
+  c2el.width=r2.width||640; c2el.height=r2.height||120;
+  const CW=c2el.width, CH=c2el.height, ctx=c2el.getContext('2d');
+  ctx.fillStyle='rgba(4,2,10,0.90)'; ctx.fillRect(0,0,CW,CH);
+  const t=t2;
+
+  const SOLIDS2=makeSolids();
+  const keys2=['tetra','cube','octa','dodeca','icosa'];
+  const eData={tetra:[4,4,6],cube:[6,8,12],octa:[8,6,12],dodeca:[12,20,30],icosa:[20,12,30]};
+  const n=keys2.length, unitW=CW/n;
+  const sScale=Math.min(unitW,CH)*0.28;
+
+  keys2.forEach((key,i)=>{
+    const solid=SOLIDS2[key];
+    const hex=solid.color;
+    const sr=parseInt(hex.slice(1,3),16);
+    const sg=parseInt(hex.slice(3,5),16);
+    const sb=parseInt(hex.slice(5,7),16);
+    const sx=unitW*(i+0.5), sy=CH*0.40;
+    const ay=t*0.016+i*1.1, ax=0.28+i*0.6;
+
+    const verts2=solid.verts.map(v=>{
+      let p=[...v]; p=rotX(p,ax); p=rotY(p,ay);
+      return p.map(x=>x*sScale);
+    });
+    const fov2=sScale*9;
+    const proj2=verts2.map(v=>project(v,fov2,sx,sy));
+    const sorted2=solid.faces.map(face=>({face,z:faceCenter(verts2,face)[2]})).sort((a,b)=>a.z-b.z);
+    const ld=[0.4,-0.5,1],ll=Math.sqrt(0.16+0.25+1);
+
+    sorted2.forEach(({face})=>{
+      const nm=faceNormal(verts2,face); const nL=Math.sqrt(dot(nm,nm))||1;
+      const d2=dot(nm,ld)/(nL*ll); const b2=Math.max(0.07,d2)+0.10;
+      ctx.beginPath();
+      face.forEach((vi,fi)=>{ const p=proj2[vi]; fi===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]); });
+      ctx.closePath();
+      ctx.fillStyle=`rgba(${Math.floor(sr*b2)},${Math.floor(sg*b2)},${Math.floor(sb*b2)},0.88)`;
+      ctx.fill();
+      ctx.strokeStyle=`rgba(${sr},${sg},${sb},0.38)`; ctx.lineWidth=0.8; ctx.stroke();
+    });
+    // Euler annotation
+    const [F,V,E]=eData[key];
+    ctx.font=`${Math.round(CH*0.095)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle=`rgba(${sr},${sg},${sb},0.70)`;
+    ctx.fillText(`${V}−${E}+${F}=2`, sx, CH*0.88);
+  });
+
+  t2++; c2Raf=requestAnimationFrame(drawC2);
+}
+function stopC2(){ c2Active=false; cancelAnimationFrame(c2Raf); }
+
+// ══════════════════════════════════════════
+// SCENE 3 CANVAS — Vertex angle constraint visualizer
+// ══════════════════════════════════════════
+const c3el = document.getElementById('c3');
+let t3=0, c3Active=false, c3Raf;
+function drawC3() {
+  if(!c3Active||!c3el) return;
+  const r3=c3el.getBoundingClientRect();
+  c3el.width=r3.width||580; c3el.height=r3.height||180;
+  const CW=c3el.width, CH=c3el.height, ctx=c3el.getContext('2d');
+  ctx.fillStyle='rgba(4,2,10,0.90)'; ctx.fillRect(0,0,CW,CH);
+  const t=t3;
+
+  // Show 6 cases: 3×60, 4×60, 5×60, 3×90, 3×108, 3×120(fail)
+  const cases=[
+    {n:3,angle:60,col:'#e85c30',label:'3×60°=180°',ok:true,name:'四面体'},
+    {n:4,angle:60,col:'#5bc4c4',label:'4×60°=240°',ok:true,name:'八面体'},
+    {n:5,angle:60,col:'#4a9eda',label:'5×60°=300°',ok:true,name:'廿面体'},
+    {n:3,angle:90,col:'#c9a84c',label:'3×90°=270°',ok:true,name:'六面体'},
+    {n:3,angle:108,col:'#a370c9',label:'3×108°=324°',ok:true,name:'十二面体'},
+    {n:3,angle:120,col:'#666',label:'3×120°=360°',ok:false,name:'❌ 展平'},
+  ];
+  const unitW=CW/cases.length;
+
+  cases.forEach((cas,i)=>{
+    const sx=unitW*(i+0.5), sy=CH*0.44;
+    const R=Math.min(unitW,CH)*0.28;
+    const hex=cas.col;
+    const cr2=parseInt(hex.slice(1,3),16)||100;
+    const cg2=parseInt(hex.slice(3,5),16)||100;
+    const cb2=parseInt(hex.slice(5,7),16)||100;
+    const pulse=cas.ok?0.7+0.3*Math.sin(t*0.05+i*1.1):0.35;
+    const alphaStr=`rgba(${cr2},${cg2},${cb2},`;
+
+    // Draw n polygon faces arranged around center (fan)
+    const totalAngle=cas.n*cas.angle*Math.PI/180;
+    const startA=-totalAngle/2-Math.PI/2+t*0.006*(cas.ok?1:0);
+    for(let fi=0;fi<cas.n;fi++){
+      const faceAngle=cas.angle*Math.PI/180;
+      const a0=startA+fi*faceAngle;
+      const a1=a0+faceAngle;
+      ctx.beginPath(); ctx.moveTo(sx,sy);
+      ctx.arc(sx,sy,R,a0,a1); ctx.closePath();
+      ctx.fillStyle=alphaStr+(cas.ok?0.12+pulse*0.10:0.05)+')';
+      ctx.fill();
+      ctx.strokeStyle=alphaStr+(cas.ok?pulse*0.70:0.25)+')';
+      ctx.lineWidth=1.2; ctx.stroke();
+    }
+
+    // Fail: show flat = 360° arc
+    if(!cas.ok){
+      ctx.beginPath(); ctx.arc(sx,sy,R*0.35,0,Math.PI*2);
+      ctx.strokeStyle='rgba(180,50,50,0.50)'; ctx.lineWidth=1.5;
+      ctx.setLineDash([4,5]); ctx.stroke(); ctx.setLineDash([]);
+    }
+
+    // Labels
+    ctx.font=`${Math.round(CH*0.085)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle=alphaStr+(cas.ok?0.72:0.35)+')';
+    ctx.fillText(cas.label, sx, sy+R*1.3+CH*0.06);
+    ctx.font=`${Math.round(CH*0.068)}px Noto Serif SC,serif`;
+    ctx.fillStyle=alphaStr+(cas.ok?0.55:0.28)+')';
+    ctx.fillText(cas.name, sx, CH*0.96);
+
+    // Divider
+    if(i>0){
+      const dg=ctx.createLinearGradient(unitW*i,0,unitW*i,CH);
+      dg.addColorStop(0,'transparent'); dg.addColorStop(0.5,'rgba(122,95,42,0.12)'); dg.addColorStop(1,'transparent');
+      ctx.fillStyle=dg; ctx.fillRect(unitW*i-1,0,2,CH);
+    }
+  });
+
+  t3++; c3Raf=requestAnimationFrame(drawC3);
+}
+function stopC3(){ c3Active=false; cancelAnimationFrame(c3Raf); }
+
+// ══════════════════════════════════════════
+// BUILD TABLE (Scene 2)
+// ══════════════════════════════════════════
+const tableDataZh = [
+  ['正四面体', '4', '4', '6', '🔥 火'],
+  ['正六面体', '6', '8', '12', '🌍 土'],
+  ['正八面体', '8', '6', '12', '💨 气'],
+  ['正十二面体', '12', '20', '30', '✨ 宇宙'],
+  ['正二十面体', '20', '12', '30', '💧 水'],
+];
+const tableDataEn = [
+  ['Tetrahedron', '4', '4', '6', '🔥 Fire'],
+  ['Hexahedron', '6', '8', '12', '🌍 Earth'],
+  ['Octahedron', '8', '6', '12', '💨 Air'],
+  ['Dodecahedron', '12', '20', '30', '✨ Cosmos'],
+  ['Icosahedron', '20', '12', '30', '💧 Water'],
+];
+
+function buildTable() {
+  const isEn = window.__currentLang === 'en';
+  const tableData = isEn ? tableDataEn : tableDataZh;
+  const tbl = document.getElementById('solids-table');
+  // Remove old data cells
+  tbl.querySelectorAll('.tbl-cell').forEach(e=>e.remove());
+  tableData.forEach((row, ri) => {
+    row.forEach((cell, ci) => {
+      const d = document.createElement('div');
+      d.className = 'tbl-cell' + (ci===0?' highlight':'');
+      d.textContent = cell;
+      d.id = `tc-${ri}-${ci}`;
+      tbl.appendChild(d);
+    });
+  });
+}
+buildTable();
+
+// ══════════════════════════════════════════
+// SCENE MANAGER
+// ══════════════════════════════════════════
+const scenes = document.querySelectorAll('.scene');
+const totalScenes = scenes.length;
+let current = 0, isTransitioning = false;
+
+const dotsEl = document.getElementById('nav-dots');
+for(let i=0;i<totalScenes;i++){
+  const d=document.createElement('div');
+  d.className='nav-dot'+(i===0?' active':'');
+  d.addEventListener('click',()=>goTo(i));
+  dotsEl.appendChild(d);
+}
+function updateDots() {
+  document.querySelectorAll('.nav-dot').forEach((d,i)=>d.classList.toggle('active',i===current));
+}
+function updateProgress() {
+  document.getElementById('progress').style.width=(current/(totalScenes-1)*100)+'%';
+}
+
+function onEnterScene(idx) {
+  if(idx===0) {
+    ['s0-badge','s0-t1','s0-t2','s0-body'].forEach((id,i)=>{
+      setTimeout(()=>{ const el=document.getElementById(id); if(el)el.classList.add('show'); }, 200+i*300);
+    });
+    c0.style.opacity='1';
+    setTimeout(()=>{ t0=0; if(c0Raf)cancelAnimationFrame(c0Raf); drawC0(); }, 380);
+  }
+  if(idx===1) {
+    buildGallery();
+    setTimeout(startGalleryRenderers, 200);
+    solidKeys.forEach((key,i)=>{
+      setTimeout(()=>{ const cd=document.getElementById(`card-${key}`); if(cd)cd.classList.add('show'); }, 400+i*200);
+    });
+  }
+  if(idx===2) {
+    setTimeout(()=>{ document.getElementById('euler-box').classList.add('show'); },400);
+    const activeTableData = window.__currentLang === 'en' ? tableDataEn : tableDataZh;
+    activeTableData.forEach((_,ri)=>{
+      [0,1,2,3,4].forEach(ci=>{
+        setTimeout(()=>{ const el=document.getElementById(`tc-${ri}-${ci}`); if(el)el.classList.add('show'); }, 600+ri*180+ci*60);
+      });
+    });
+    if(c2el){ c2el.style.opacity='1'; setTimeout(()=>{ t2=0; c2Active=true; drawC2(); }, 380); }
+  }
+  if(idx===3) {
+    document.querySelectorAll('.rule-item').forEach((el,i)=>{
+      setTimeout(()=>el.classList.add('show'), 350+i*400);
+    });
+    if(c3el){ c3el.style.opacity='1'; setTimeout(()=>{ t3=0; c3Active=true; drawC3(); }, 380); }
+  }
+  if(idx===4) {
+    ['e-t','e-q','e-a','e-b'].forEach((id,i)=>{
+      setTimeout(()=>{ const el=document.getElementById(id); if(el)el.classList.add('show'); },300+i*500);
+    });
+    c4.style.opacity='1';
+    setTimeout(()=>{ t4=0; c4Active=true; if(c4Raf)cancelAnimationFrame(c4Raf); drawC4(); }, 380);
+  }
+}
+
+function onLeaveScene(idx) {
+  if(idx===0){ if(c0Raf)cancelAnimationFrame(c0Raf); }
+  if(idx===1) stopGalleryRenderers();
+  if(idx===2) {
+    stopC2();
+    document.querySelectorAll('.tbl-cell').forEach(e=>e.classList.remove('show'));
+    document.getElementById('euler-box').classList.remove('show');
+  }
+  if(idx===3){ stopC3(); document.querySelectorAll('.rule-item').forEach(e=>e.classList.remove('show')); }
+  if(idx===4) { c4Active=false; if(c4Raf)cancelAnimationFrame(c4Raf); }
+  if(idx===0) {
+    ['s0-badge','s0-t1','s0-t2','s0-body'].forEach(id=>{ const el=document.getElementById(id); if(el)el.classList.remove('show'); });
+  }
+}
+
+function goTo(idx) {
+  if(isTransitioning||idx===current) return;
+  isTransitioning=true;
+  onLeaveScene(current);
+  scenes[current].classList.remove('active');
+  current=idx;
+  scenes[current].classList.add('active');
+  updateDots(); updateProgress();
+  setTimeout(()=>{ onEnterScene(current); isTransitioning=false; },600);
+}
+function next(){ if(current<totalScenes-1)goTo(current+1); }
+function prev(){ if(current>0)goTo(current-1); }
+
+document.getElementById('btn-next').addEventListener('click',next);
+document.getElementById('btn-prev').addEventListener('click',prev);
+// Click anywhere to advance (document-level for reliability)
+document.addEventListener('click', (e) => {
+  if(e.target.closest('#nav')) return;
+  if(e.target.closest('a')) return;
+  if(e.target.closest('button')) return;
+  if(e.target.closest('#home-btn')) return;
+  if(e.target.closest('#ch-lang-bar')) return;
+  next();
+});
+// click on scene area
+document.querySelectorAll('.scene').forEach(s=>{
+  s.addEventListener('click',e=>{ if(!e.target.closest('#nav'))next(); });
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key===' ')next();
+  if(e.key==='ArrowLeft')prev();
+});
+
+setTimeout(()=>{
+  document.getElementById('ornament').classList.add('visible');
+  document.getElementById('hint').classList.add('visible');
+},1500);
+
+updateProgress();
+onEnterScene(0);
+</script>
+
+<div id="ch-lang-bar">
+  <button class="ch-lb" id="ch-btn-zh" onclick="chLang('zh')">中文</button>
+  <div class="ch-lb-sep"></div>
+  <button class="ch-lb on" id="ch-btn-en" onclick="chLang('en')">EN</button>
+</div>
+<script id="bilingual-js">
+(function(){
+  var D={"ornament": "Chapter II · Platonic Solids · The Cosmic Geometry", "badges": ["Chapter II", "§ 2.1 · Five Perfect Solids", "§ 2.1 · Euler's Formula", "§ 2.1 · Why Only Five?", "Epilogue"], "titles": ["Platonic Solids", "The Geometric Prohibition of Space", "Euler's Formula: The Gatekeeper", "The Constraint of Solid Angles", "Simplicity is Truth"], "bodies": ["The ancient Greeks believed the universe was built from geometry.<br>Five perfect solids — and no more — underlie all of creation.", "In 3D space, polyhedra where <strong>every face is identical and every vertex connects the same number of faces</strong> number exactly <strong>five</strong>. This is the universe's fundamental parsimony.", "Every Platonic solid satisfies Euler's formula exactly —<br>between vertex count <strong>V</strong>, edge count <strong>E</strong>, and face count <strong>F</strong>, there is an eternal identity:", "At each vertex, at least <strong>3 faces</strong> must meet to form a solid angle;<br>but the sum of face angles must be <strong>strictly less than 360°</strong>, or it flattens into a plane.<br>This simple condition locks infinity of possibilities into exactly five.", "Platonic solids: not invented by humanity, but <strong>discovered</strong> by it.<br>They existed from the birth of the universe, awaiting the gaze of the geometer."]};
+  var orig=null;
+  function save(){
+    if(orig)return;
+    var os=document.querySelector('.ornament-line span');
+    orig={
+      ornament:os?os.textContent:'',
+      badges:[].map.call(document.querySelectorAll('.chapter-badge'),function(e){return e.innerHTML;}),
+      titles:[].map.call(document.querySelectorAll('.scene-title'),function(e){return e.innerHTML;}),
+      bodies:[].map.call(document.querySelectorAll('.scene-body'),function(e){return e.innerHTML;}),
+    };
+  }
+  function applyEn(){
+    save();
+    applyPatchEn();
+    var os=document.querySelector('.ornament-line span');
+    if(os&&D.ornament)os.textContent=D.ornament;
+    [].forEach.call(document.querySelectorAll('.chapter-badge'),function(el,i){if(D.badges[i]!=null)el.innerHTML=D.badges[i];});
+    [].forEach.call(document.querySelectorAll('.scene-title'),function(el,i){if(D.titles[i]!=null)el.innerHTML=D.titles[i];});
+    [].forEach.call(document.querySelectorAll('.scene-body'),function(el,i){if(D.bodies[i]!=null)el.innerHTML=D.bodies[i];});
+  
+  
+
+    /* zwOrig save */
+    if(!window._zwOrig){
+      window._zwOrig={};
+      ['e-q','e-a','e-t'].forEach(function(id){var e=document.getElementById(id);if(e)window._zwOrig[id]=e.innerHTML;});
+    }
+    /* __direct_wires__ */
+    var _w=document.getElementById('e-t');if(_w)_w.innerHTML='Simplicity is truth';
+    var _w=document.getElementById('e-a');if(_w)_w.innerHTML='— Chapter II · End';
+    var _w=document.getElementById('e-q');if(_w)_w.innerHTML='The reason the universe gave us only five perfect shapes<br>is not a lack of imagination &mdash;<br>it is because <strong style="color:var(--gold-light);">space itself is the strictest lawmaker.</strong>';
+  }
+  function applyZh(){
+    if(!orig)return;
+    /* zwOrig restore */
+    if(window._zwOrig){['e-q','e-a','e-t'].forEach(function(id){var e=document.getElementById(id);if(e&&window._zwOrig[id]!==undefined)e.innerHTML=window._zwOrig[id];});}
+    applyPatchZh();
+    var os=document.querySelector('.ornament-line span');
+    if(os)os.textContent=orig.ornament;
+    [].forEach.call(document.querySelectorAll('.chapter-badge'),function(el,i){if(orig.badges[i]!=null)el.innerHTML=orig.badges[i];});
+    [].forEach.call(document.querySelectorAll('.scene-title'),function(el,i){if(orig.titles[i]!=null)el.innerHTML=orig.titles[i];});
+    [].forEach.call(document.querySelectorAll('.scene-body'),function(el,i){if(orig.bodies[i]!=null)el.innerHTML=orig.bodies[i];});
+  }
+  
+  // Extended EN patches for elements not covered by D.badges/titles/bodies
+  var enPatches=[["#s0-t2", 0, "Cosmic Order within Minerals"], [".tbl-header", 0, "Solid"], [".tbl-header", 1, "Faces F"], [".tbl-header", 2, "Vertices V"], [".tbl-header", 3, "Edges E"], [".tbl-header", 4, "Element"], [".rule-item", 0, "<div class=\"rule-icon\">△</div><span>Triangle interior angle 60° → can share 3/4/5 → Tetrahedron, Octahedron, Icosahedron</span>"], [".rule-item", 1, "<div class=\"rule-icon\">□</div><span>Square interior angle 90° → can only share 3 → Hexahedron (Cube)</span>"], [".rule-item", 2, "<div class=\"rule-icon\">⬠</div><span>Pentagon interior angle 108° → can only share 3 → Dodecahedron</span>"], [".rule-item", 3, "<div class=\"rule-icon\" style=\"font-size:9px;\">✗</div><span>Hexagon interior angle 120° → 3 faces = 360°, flattens into a plane, cannot close → forbidden by the universe</span>"], [".ending-quote", 0, "The universe gave us only five perfect shapes —<br>not for lack of imagination,<br>but because space itself is the strictest legislator."], [".ending-author", 0, "— The Silent Language of Geometry"], [".solid-name", 0, "Tetrahedron"], [".solid-name", 1, "Hexahedron"], [".solid-name", 2, "Octahedron"], [".solid-name", 3, "Dodecahedron"], [".solid-name", 4, "Icosahedron"], [".solid-element", 0, "Fire"], [".solid-element", 1, "Earth"], [".solid-element", 2, "Air"], [".solid-element", 3, "Cosmos"], [".solid-element", 4, "Water"], [".tbl-cell", 0, "Tetrahedron"], [".tbl-cell", 4, "🔥 Fire"], [".tbl-cell", 5, "Hexahedron"], [".tbl-cell", 9, "🌍 Earth"], [".tbl-cell", 10, "Octahedron"], [".tbl-cell", 14, "💨 Air"], [".tbl-cell", 15, "Dodecahedron"], [".tbl-cell", 19, "✨ Cosmos"], [".tbl-cell", 20, "Icosahedron"], [".tbl-cell", 24, "💧 Water"], ["#e-q", 0, "The reason the universe gave us only five perfect shapes<br>is not a lack of imagination —<br>it is because <strong style='color:var(--gold-light);'>space itself is the strictest lawmaker.</strong>"], ['.solid-sub', 0, '4 faces, 4 vertices, 6 edges'], ['.solid-sub', 1, '6 faces, 8 vertices, 12 edges'], ['.solid-sub', 2, '8 faces, 6 vertices, 12 edges'], ['.solid-sub', 3, '12 faces, 20 vertices, 30 edges'], ['.solid-sub', 4, '20 faces, 12 vertices, 30 edges']];
+  var patchOrig=null;
+  function savePatch(){
+    if(patchOrig)return;
+    patchOrig=enPatches.map(function(p){
+      var els=document.querySelectorAll(p[0]);
+      return els[p[1]]?els[p[1]].innerHTML:null;
+    });
+  }
+  function applyPatchEn(){
+    savePatch();
+    enPatches.forEach(function(p){
+      var els=document.querySelectorAll(p[0]);
+      if(els[p[1]]!=null)els[p[1]].innerHTML=p[2];
+    });
+  }
+  function applyPatchZh(){
+    if(!patchOrig)return;
+    enPatches.forEach(function(p,i){
+      var els=document.querySelectorAll(p[0]);
+      if(els[p[1]]!=null&&patchOrig[i]!=null)els[p[1]].innerHTML=patchOrig[i];
+    });
+  }
+  window.chLang=function(l){
+    window.__currentLang=l;
+    try{localStorage.setItem('mathsite_lang',l);}catch(e){}
+    document.getElementById('ch-btn-zh').classList.toggle('on',l==='zh');
+    document.getElementById('ch-btn-en').classList.toggle('on',l==='en');
+    if(l==='en')applyEn();else applyZh();
+  };
+  // Auto-switch based on ?lang=en in URL
+  window.addEventListener('DOMContentLoaded',function(){
+    // Read language from localStorage or ?lang URL param, default English
+    var _lp=(new URLSearchParams(location.search)).get('lang');
+    var _ls=null;try{_ls=localStorage.getItem('mathsite_lang');}catch(e){}
+    var _l=_lp||_ls||'en';
+    window.__currentLang=_l;
+    document.getElementById('ch-btn-zh').classList.toggle('on',_l==='zh');
+    document.getElementById('ch-btn-en').classList.toggle('on',_l==='en');
+    // Always run applyEn first to populate orig/patchOrig caches,
+    // then switch to Chinese if needed
+    applyEn();
+    if(_l==='zh')applyZh();
+  });
+})();
+
+/* Mobile touch swipe */
+(function(){
+  var ts=null,tx=null;
+  document.addEventListener('touchstart',function(e){ts=e.touches[0].clientX;tx=e.touches[0].clientY;},{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(ts===null)return;
+    var dx=e.changedTouches[0].clientX-ts, dy=e.changedTouches[0].clientY-tx;
+    if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>40){
+      if(dx<0&&typeof next==='function')next();
+      else if(dx>0&&typeof prev==='function')prev();
+    }
+    ts=null;tx=null;
+  },{passive:true});
+})();
+
+/* Mobile: add stack class to inline-flex children on narrow screens */
+(function(){
+  function applyMobileLayout(){
+    var isMobile = window.innerWidth <= 700;
+    document.querySelectorAll('.scene > div, .scene > section').forEach(function(el){
+      var s = el.getAttribute('style') || '';
+      if(s.includes('display:flex') || s.includes('display: flex')){
+        if(isMobile){ el.style.flexDirection='column'; el.style.alignItems='center'; }
+        else { el.style.flexDirection=''; el.style.alignItems=''; }
+      }
+    });
+  }
+  applyMobileLayout();
+  window.addEventListener('resize', applyMobileLayout);
+})();
+</script>
+</body>
+</html>

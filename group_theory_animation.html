@@ -1,0 +1,1698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第十章：群论</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700&family=Cinzel:wght@400;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+  :root{
+    --gold:#c9a84c;--gold-light:#e8cc7a;--gold-dim:#7a5f2a;
+    --ink:#030407;--cream:#e8dfc8;
+    --grp:#c060f8;    /* group violet */
+    --sym:#60e8b0;    /* symmetry teal */
+    --law:#f0a040;    /* conservation amber */
+    --noether:#f870a0;/* Noether rose */
+  }
+  body{background:var(--ink);font-family:'Noto Serif SC',serif;overflow:hidden;width:100vw;height:100vh;cursor:default;}
+  #bg-canvas{position:fixed;inset:0;z-index:0;}
+  #vignette{position:fixed;inset:0;z-index:5;pointer-events:none;
+    background:radial-gradient(ellipse at center,transparent 28%,rgba(0,0,0,0.55) 70%,rgba(0,0,0,0.92) 100%);}
+  .ornament-line{position:fixed;top:32px;left:50%;transform:translateX(-50%);z-index:20;
+    display:flex;align-items:center;gap:14px;opacity:0;transition:opacity 1.2s;}
+  .ornament-line.visible{opacity:1;}
+  .ornament-line span{font-family:'Cinzel',serif;font-size:10px;letter-spacing:5px;color:var(--gold-dim);text-transform:uppercase;}
+  .ornament-line::before,.ornament-line::after{content:'';width:70px;height:1px;}
+  .ornament-line::before{background:linear-gradient(to right,transparent,var(--gold-dim));}
+  .ornament-line::after{background:linear-gradient(to left,transparent,var(--gold-dim));}
+  #progress{position:fixed;bottom:0;left:0;height:2px;
+    background:linear-gradient(to right,var(--gold-dim),var(--gold),var(--gold-light));z-index:100;transition:width 0.4s linear;}
+  .scene{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;opacity:0;pointer-events:none;transition:opacity 1.4s ease;z-index:10;}
+  .scene.active{opacity:1;pointer-events:auto;}
+  .chapter-badge{font-family:'Cinzel',serif;font-size:10px;letter-spacing:5px;color:var(--gold-dim);
+    text-transform:uppercase;display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+  .chapter-badge::before,.chapter-badge::after{content:'';width:28px;height:1px;background:var(--gold-dim);}
+  .scene-title{font-family:'Cinzel',serif;font-size:clamp(24px,4vw,52px);color:var(--gold-light);
+    text-align:center;line-height:1.2;letter-spacing:2px;text-shadow:0 0 50px rgba(201,168,76,0.3);}
+  .scene-body{font-family:'Noto Serif SC',serif;font-size:clamp(13px,1.45vw,17px);color:var(--cream);
+    text-align:center;line-height:1.95;max-width:640px;margin-top:16px;padding:0 24px;font-weight:300;}
+  .scene-body strong{color:var(--gold-light);font-weight:400;}
+  .divider{width:180px;height:1px;background:linear-gradient(to right,transparent,var(--gold-dim),transparent);margin:18px auto;}
+  .fade-up{opacity:0;transform:translateY(16px);transition:all 0.8s ease;}
+  .fade-up.show{opacity:1;transform:translateY(0);}
+
+  /* GROUP AXIOM PANEL */
+  .axiom-panel{max-width:560px;width:100%;margin-top:20px;}
+  .axiom-item{display:flex;align-items:flex-start;gap:16px;padding:10px 20px;
+    border-left:2px solid rgba(192,96,248,0.2);margin-bottom:6px;
+    opacity:0;transform:translateX(-14px);transition:all 0.6s ease;}
+  .axiom-item.show{opacity:1;transform:translateX(0);}
+  .axiom-num{font-family:'Cinzel',serif;font-size:clamp(10px,1vw,13px);
+    letter-spacing:2px;color:var(--grp);min-width:70px;padding-top:2px;}
+  .axiom-body{font-size:clamp(12px,1.3vw,15px);color:var(--cream);line-height:1.75;font-weight:300;}
+  .axiom-body strong{color:var(--gold-light);font-weight:400;}
+
+  /* THREE-OBJECT COMPARE */
+  .tri-row{display:flex;align-items:flex-start;justify-content:center;
+    gap:clamp(12px,3.5vw,52px);margin-top:20px;flex-wrap: wrap;
+    max-width: 94vw;
+  }
+  .obj-card{display:flex;flex-direction:column;align-items:center;gap:10px;
+    opacity:0;transform:translateY(20px);transition:all 0.7s ease;max-width:180px;}
+  .obj-card.show{opacity:1;transform:translateY(0);}
+  .obj-label{font-family:'Cinzel',serif;font-size:clamp(10px,1vw,12px);
+    letter-spacing:2px;color:var(--sym);text-align:center;}
+  .obj-sub{font-size:clamp(10px,0.95vw,12px);color:var(--gold-dim);text-align:center;
+    max-width:140px;line-height:1.5;font-weight:300;}
+
+  /* NOETHER TABLE */
+  .noether-grid{display:grid;grid-template-columns:1fr auto 1fr;
+    gap:10px 24px;align-items:center;margin-top:20px;max-width:600px;padding:0 16px;}
+  .ng-item{opacity:0;transform:translateX(-14px);transition:all 0.6s ease;}
+  .ng-item.show{opacity:1;transform:translateX(0);}
+  .ng-item.right{transform:translateX(14px);}
+  .ng-item.right.show{transform:translateX(0);}
+  .ng-box{padding:10px 18px;border:1px solid rgba(192,96,248,0.25);
+    font-size:clamp(12px,1.3vw,15px);color:var(--grp);text-align:center;
+    font-family:'Noto Serif SC';font-weight:300;line-height:1.5;}
+  .ng-box.right{color:var(--law);border-color:rgba(240,160,64,0.25);}
+  .ng-arrow{font-family:'IM Fell English',serif;font-size:20px;
+    color:var(--gold-dim);text-align:center;opacity:0;transition:opacity 0.5s 0.3s;}
+  .ng-arrow.show{opacity:1;}
+
+  /* SPLIT */
+  .split{display:flex;align-items:center;justify-content:center;
+    gap:clamp(18px,4vw,52px);margin-top:16px;flex-wrap:wrap;}
+  .split-info{max-width:280px;}
+  .split-info .tag{display:inline-block;font-family:'Cinzel',serif;font-size:9px;
+    letter-spacing:2px;padding:2px 8px;border:1px solid;margin-bottom:10px;}
+  .split-info p{font-size:clamp(12px,1.25vw,15px);color:var(--cream);line-height:1.85;font-weight:300;}
+  .split-info p+p{margin-top:10px;}
+  .split-info strong{font-weight:400;}
+
+  /* BIG QUOTE */
+  .big-quote{font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(15px,2vw,25px);color:var(--cream);
+    text-align:center;max-width:580px;line-height:1.78;padding:0 28px;}
+
+  /* NAV */
+  #nav{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
+    z-index:200;display:flex;gap:10px;align-items:center;}
+  .nav-btn{width:34px;height:34px;border:1px solid var(--gold-dim);background:transparent;
+    color:var(--gold);cursor:pointer;font-size:16px;display:flex;align-items:center;
+    justify-content:center;transition:all 0.3s;}
+  .nav-btn:hover{background:rgba(201,168,76,0.1);border-color:var(--gold);}
+  .nav-dots{display:flex;gap:6px;align-items:center;}
+  .nav-dot{width:6px;height:6px;border-radius:50%;background:var(--gold-dim);cursor:pointer;transition:all 0.3s;}
+  .nav-dot.active{background:var(--gold);width:20px;border-radius:3px;}
+  #hint{position:fixed;bottom:22px;right:28px;z-index:100;font-family:'Cinzel',serif;
+    font-size:10px;letter-spacing:2px;color:var(--gold-dim);display:flex;align-items:center;
+    gap:8px;opacity:0;transition:opacity 1s;}
+  #hint.visible{opacity:1;}
+  #hint-dot{width:5px;height:5px;border-radius:50%;background:var(--gold-dim);
+    animation:blink 1.6s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.15}}
+
+  #home-btn {
+    position: fixed; top: 26px; left: 36px; z-index: 9000;
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 3px;
+    color: var(--gold); text-decoration: none;
+    border: 1px solid var(--gold-dim); padding: 8px 16px;
+    background: rgba(6,5,7,0.7); cursor: pointer !important;
+    transition: background .3s, color .3s, border-color .3s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  #home-btn:hover { background: rgba(201,168,76,.15); border-color: var(--gold-light); color: var(--gold-light); }
+</style>
+
+<style id="bilingual-css">
+#ch-lang-bar{position:fixed;top:26px;right:36px;z-index:9000;display:flex;align-items:stretch;border:1px solid rgba(122,95,42,.5);overflow:hidden;}
+.ch-lb{font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;padding:8px 16px;background:transparent;border:none;outline:none;color:#7a5f2a;cursor:pointer;transition:background .3s,color .3s;}
+.ch-lb:hover{background:rgba(201,168,76,.1);}
+.ch-lb.on{background:rgba(201,168,76,.2);color:#e8cc7a;}
+.ch-lb-sep{width:1px;background:rgba(122,95,42,.4);flex-shrink:0;}
+</style>
+
+<style id="mobile-responsive">
+@media (max-width: 700px) {
+  /* tri-row (3 obj-cards) - scale on mobile */
+  .tri-row {
+    gap: 8px !important;
+    margin-top: 14px !important;
+  }
+  .obj-card {
+    max-width: calc(33% - 6px) !important;
+    min-width: 0 !important;
+  }
+  .obj-label { font-size: 8px !important; letter-spacing: 1px !important; }
+  .obj-sub { font-size: 8px !important; max-width: none !important; }
+  /* Core layout - keep centered, handle overflow with scroll wrapper */
+  .scene {
+    padding: 55px 14px 90px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  /* Typography */
+  .scene-title { font-size: clamp(17px, 5.5vw, 28px) !important; letter-spacing: 1px; }
+  .scene-subtitle { font-size: clamp(11px, 3vw, 15px) !important; }
+  .scene-body { font-size: clamp(12px, 3.2vw, 15px) !important; padding: 0 8px; max-width: 96vw; line-height: 1.75 !important; }
+  .chapter-badge { font-size: 7px; letter-spacing: 3px; }
+  .ornament-line span { font-size: 7px; letter-spacing: 1px; max-width: 55vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* UI controls */
+  #home-btn { top: 10px; left: 10px; padding: 5px 10px; font-size: 9px; }
+  #ch-lang-bar { top: 10px; right: 10px; }
+  .ch-lb { padding: 5px 9px; font-size: 8px; letter-spacing: 1px; }
+  #hint { display: none; }
+  .ornament-line { top: 14px; }
+
+  /* Nav - larger touch targets */
+  #nav { bottom: 8px; }
+  .nav-btn { width: 44px; height: 44px; font-size: 22px; }
+
+  /* Force ALL flex row containers to stack */
+  .split-layout,
+  .split-text,
+  .info-row,
+  .sym-row,
+  .law-row,
+  .tl-row,
+  .card-row,
+  .geo-row {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  /* Info panels */
+  .split-info, [id$="-info"], [id$="-text"], [id$="-panel"] {
+    max-width: 94vw !important; width: 94vw !important;
+  }
+  .split-info p, [id$="-info"] p { font-size: clamp(11px, 2.8vw, 14px) !important; }
+
+  /* Only limit standalone full-width canvases, not gallery 3D canvases */
+  canvas#bg-
+
+  /* Grids → two columns, small screens one column */
+  .law-grid, .var-grid, .sym-grid, .const-grid, .card-grid,
+  [class*="grid"] { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+
+  /* Epilogue / poem */
+  .big-quote, #e-q, #fin-q, .poem { 
+    font-size: clamp(13px, 3.5vw, 18px) !important; 
+    padding: 0 16px; 
+    line-height: 1.9 !important;
+  }
+  .ending-quote { font-size: clamp(14px, 3.8vw, 19px) !important; }
+
+  /* Tables */
+  table { font-size: 10px; width: 100%; }
+  td, th { padding: 4px 6px !important; }
+
+  /* Axiom boxes */
+  .axiom-item { padding: 8px 10px !important; }
+  .axiom-body { font-size: 11px !important; }
+
+  /* Divider spacing */
+  .divider { margin: 12px auto !important; }
+}
+
+@media (max-width: 420px) {
+  .scene-title { font-size: clamp(15px, 5vw, 22px) !important; }
+
+  [class*="grid"] { grid-template-columns: 1fr !important; }
+}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div id="vignette"></div>
+<a id="home-btn" href="index.html">&#8962;&nbsp;HOME</a>
+<div class="ornament-line" id="ornament"><span>Chapter VIII · Group Theory · Symmetry</span></div>
+<div id="progress"></div>
+<div id="nav">
+  <button class="nav-btn" id="btn-prev">&#8249;</button>
+  <div class="nav-dots" id="nav-dots"></div>
+  <button class="nav-btn" id="btn-next">&#8250;</button>
+</div>
+<div id="hint"><div id="hint-dot"></div>CLICK TO ADVANCE</div>
+
+<!-- ══ SCENE 0: Title ══ -->
+<div class="scene active" id="scene-0">
+  <div class="chapter-badge fade-up" id="s0-b">第十章</div>
+  <div class="scene-title fade-up" id="s0-t">群论</div>
+  <div style="font-family:'IM Fell English',serif;font-style:italic;font-size:clamp(14px,1.9vw,23px);color:var(--gold-dim);text-align:center;margin-top:10px;" class="fade-up" id="s0-s">对称性背后的统一语言</div>
+  <div class="divider" style="margin:24px auto;"></div>
+  <div class="scene-body fade-up" id="s0-body" style="max-width:500px;font-size:clamp(13px,1.4vw,17px);">
+    魔方有四百三十亿亿种可能的状态。<br>
+    但数学家证明：<strong>最多20步就能还原任意状态</strong>。<br>
+    这个惊人的结论，来自群论——研究"变换规律"的数学。
+  </div>
+  <canvas id="c0" style="margin-top:20px;opacity:0;transition:opacity 1.5s 0.5s;width:min(680px,96vw);height:min(300px,38vh);"></canvas>
+</div>
+
+<!-- ══ SCENE 1: What is a Group? ══ -->
+<div class="scene" id="scene-1">
+  <div class="chapter-badge">§ 8.1 · 群的四条公理</div>
+  <div class="scene-title" style="font-size:clamp(20px,3.2vw,44px);">什么是"群"？——变换的规律</div>
+  <div class="scene-body" style="margin-top:8px;max-width:540px;font-size:clamp(12px,1.3vw,16px);">
+    一个<strong>群</strong>，只需满足四条极简的规则，便能衍生出无穷的结构。
+  </div>
+  <div class="axiom-panel" id="ax-panel">
+    <div class="axiom-item"><div class="axiom-num">封闭性</div><div class="axiom-body">任意两个元素的运算结果，<strong>仍在群内</strong>。旋转两次，仍是旋转。</div></div>
+    <div class="axiom-item"><div class="axiom-num">结合律</div><div class="axiom-body">(a ∘ b) ∘ c = a ∘ (b ∘ c)。运算顺序可结合，不影响最终结果。</div></div>
+    <div class="axiom-item"><div class="axiom-num">单位元</div><div class="axiom-body">存在一个"什么都不做"的元素 <strong>e</strong>，使 a ∘ e = a。</div></div>
+    <div class="axiom-item"><div class="axiom-num">逆元素</div><div class="axiom-body">每个操作都有一个<strong>逆操作</strong>可以撤销它：a ∘ a⁻¹ = e。</div></div>
+  </div>
+  <canvas id="c1-cayley" style="width:min(540px,94vw);height:min(320px,44vh);margin-top:16px;opacity:0;transition:opacity 1s 0.5s;"></canvas>
+</div>
+
+<!-- ══ SCENE 2: Same structure, different objects ══ -->
+<div class="scene" id="scene-2">
+  <div class="chapter-badge">§ 8.1 · 同一结构，不同面貌</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">万物之下，同一骨架</div>
+  <div class="scene-body" style="margin-top:8px;max-width:540px;font-size:clamp(12px,1.3vw,16px);">
+    魔方、雪花、整数加法——表面迥异，群论骨架相同。
+  </div>
+  <div class="tri-row">
+    <div class="obj-card" id="oc0">
+      <canvas id="rubik-c" style="width:min(200px,42vw);height:min(200px,42vw);"></canvas>
+      <div class="obj-label">魔方群</div>
+      <div class="obj-sub">约 4.3×10¹⁹ 种状态，均由旋转群生成</div>
+    </div>
+    <div class="obj-card" id="oc1">
+      <canvas id="snowflake-c" style="width:min(200px,42vw);height:min(200px,42vw);"></canvas>
+      <div class="obj-label">二面体群 D₆</div>
+      <div class="obj-sub">雪花的6次旋转 + 6条对称轴</div>
+    </div>
+    <div class="obj-card" id="oc2">
+      <canvas id="integers-c" style="width:min(200px,42vw);height:min(200px,42vw);"></canvas>
+      <div class="obj-label">整数加法群 ℤ</div>
+      <div class="obj-sub">无穷循环群，单位元为 0</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCENE 3: Rubik's cube group ══ -->
+<div class="scene" id="scene-3">
+  <div class="chapter-badge">§ 8.1 · 魔方群</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">43 京种可能，一个群</div>
+  <div class="split">
+    <canvas id="rubik3d-c" style="width:min(440px,80vh);height:min(440px,80vh);opacity:0;transition:opacity 1.2s 0.3s;flex-shrink:0;"></canvas>
+    <div class="split-info" id="rubik-info" style="opacity:0;transition:opacity 0.8s 0.9s;">
+      <div class="tag" style="color:var(--grp);border-color:rgba(192,96,248,0.3);">RUBIK GROUP · |G| ≈ 4.3×10¹⁹</div>
+      <p id="rub-p0">魔方的所有合法移动构成一个<strong style="color:var(--grp);">有限群</strong>。每一次旋转是群的一个元素，两次旋转的合成仍是群的元素。</p>
+      <p id="rub-p1">数学家证明：任意打乱的魔方，<strong style="color:var(--grp);">最多20步</strong>可以还原（"上帝之数"）。群论提供了这个保证。</p>
+      <p style="margin-top:10px;font-size:clamp(11px,1.1vw,13px);color:var(--gold-dim);" id="rub-p2">
+        群的阶：43,252,003,274,489,856,000<br>
+        生成元：6个面的旋转操作
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCENE 4: Crystal groups ══ -->
+<div class="scene" id="scene-4">
+  <div class="chapter-badge">§ 8.1 · 晶体群</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">空间群：晶体的说明书</div>
+  <div class="scene-body" style="margin-top:10px;max-width:540px;">
+    自然界的晶体，其原子排列方式穷举后恰好只有<strong>230种</strong>——<br>
+    这是群论对三维空间对称性的严格分类。<br>
+    不多一种，不少一种。<br>
+    宇宙在结构上的<strong>可能性是有限的</strong>，群论数出了它们。
+  </div>
+  <canvas id="crystal-c" style="width:min(660px,96vw);height:min(320px,42vh);margin-top:16px;opacity:0;transition:opacity 1.2s 0.3s;"></canvas>
+  <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;color:var(--gold-dim);
+    margin-top:12px;text-align:center;opacity:0;transition:opacity 0.7s 0.8s;" class="fade-up" id="cry-label">
+    230 种空间群 · 17 种平面群 · 7 种晶系
+  </div>
+</div>
+
+<!-- ══ SCENE 5: Noether — The Theorem ══ -->
+<div class="scene" id="scene-5">
+  <div class="chapter-badge">§ 8.2 · 诺特定理</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">守恒的代价</div>
+  <div class="scene-body" style="margin-top:10px;max-width:560px;">
+    1915年，艾米·诺特证明了一个惊人定理：<br>
+    <strong>物理定律的每一种对称性，都精确对应一条守恒定律。</strong><br>
+    这不是巧合——这是宇宙代数结构的<strong>必然推论</strong>。
+  </div>
+  <div class="noether-grid" id="ng-grid">
+    <div class="ng-item"><div class="ng-box">时间平移对称<br><small style="opacity:0.6">今天和明天的物理定律相同</small></div></div>
+    <div class="ng-arrow" id="na0">⟹</div>
+    <div class="ng-item right"><div class="ng-box right">能量守恒</div></div>
+
+    <div class="ng-item"><div class="ng-box">空间平移对称<br><small style="opacity:0.6">这里和那里的物理定律相同</small></div></div>
+    <div class="ng-arrow" id="na1">⟹</div>
+    <div class="ng-item right"><div class="ng-box right">动量守恒</div></div>
+
+    <div class="ng-item"><div class="ng-box">旋转对称<br><small style="opacity:0.6">物理定律与方向无关</small></div></div>
+    <div class="ng-arrow" id="na2">⟹</div>
+    <div class="ng-item right"><div class="ng-box right">角动量守恒</div></div>
+
+    <div class="ng-item"><div class="ng-box">规范对称<br><small style="opacity:0.6">量子相位可任意选取</small></div></div>
+    <div class="ng-arrow" id="na3">⟹</div>
+    <div class="ng-item right"><div class="ng-box right">电荷守恒</div></div>
+  </div>
+</div>
+
+<!-- ══ SCENE 6: Noether portrait / philosophy ══ -->
+<div class="scene" id="scene-6">
+  <div class="chapter-badge">§ 8.2 · 艾米·诺特</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">最重要的女数学家</div>
+  <div class="split" style="margin-top:14px;">
+    <canvas id="noether-c" style="width:min(460px,82vh);height:min(460px,82vh);opacity:0;transition:opacity 1.2s 0.3s;flex-shrink:0;"></canvas>
+    <div class="split-info" id="noether-info" style="opacity:0;transition:opacity 0.8s 0.9s;">
+      <div class="tag" style="color:var(--noether);border-color:rgba(248,112,160,0.3);">Emmy Noether · 1882–1935</div>
+      <p id="noe-p0">爱因斯坦称她为"有史以来最重要的女数学家"。她在抽象代数和理论物理之间架起了一座桥梁。</p>
+      <p id="noe-p1">1933年因纳粹迫害被驱逐出哥廷根大学，流亡美国。她的定理至今仍是<strong style="color:var(--noether);">现代物理的基石</strong>之一。</p>
+      <p style="margin-top:10px;font-size:clamp(11px,1.1vw,13px);color:var(--gold-dim);" id="noe-p2">
+        "每一种守恒定律，都是宇宙的一处对称。<br>宇宙之所以稳定，因为它在代数上是自洽的。"
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCENE 7: Symmetry breaking ══ -->
+<div class="scene" id="scene-7">
+  <div class="chapter-badge">§ 8.2 · 对称性破缺</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">打破对称，创造世界</div>
+  <div class="scene-body" style="margin-top:10px;max-width:540px;">
+    完全的对称是美丽的，但<strong>没有变化</strong>。<br>
+    宇宙大爆炸后，对称性自发破缺——<br>
+    物质多于反物质，粒子获得质量，万物由此诞生。<br>
+    <strong>对称性破缺，是宇宙从虚无到丰富的关键一跃。</strong>
+  </div>
+  <canvas id="break-c" style="width:min(640px,96vw);height:min(340px,44vh);margin-top:16px;opacity:0;transition:opacity 1.2s 0.3s;"></canvas>
+  <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;color:var(--gold-dim);
+    margin-top:12px;text-align:center;opacity:0;transition:opacity 0.7s 0.8s;" class="fade-up" id="brk-label">
+    希格斯机制 · 自发对称性破缺 · 粒子质量的起源
+  </div>
+</div>
+
+<!-- ══ SCENE 8: Ending ══ -->
+<div class="scene" id="scene-8">
+  <div class="chapter-badge">尾声 · 第八章</div>
+  <div class="scene-title fade-up" id="e-t" style="font-size:clamp(20px,3vw,42px);">宇宙，是一个自洽的群</div>
+  <div class="divider" style="margin:24px auto;"></div>
+  <div class="big-quote fade-up" id="e-q">
+    初等代数研究数字的关系，<br>
+    群论研究<strong style="color:var(--grp);">变换本身的结构</strong>。<br><br>
+    诺特告诉我们：宇宙之所以有守恒定律，<br>
+    是因为它在最底层的代数中，<br>
+    <strong style="color:var(--gold-light);">是对称且自洽的。</strong>
+  </div>
+  <div style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;color:var(--gold-dim);
+    margin-top:20px;text-align:center;" class="fade-up" id="e-a">— 第十章 · 终</div>
+  <canvas id="c8" style="margin-top:18px;opacity:0;transition:opacity 2s;width:min(660px,96vw);height:min(260px,34vh);"></canvas>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// BACKGROUND — rotating symmetry grid
+// ══════════════════════════════════════════
+const bgC=document.getElementById('bg-canvas'),bgX=bgC.getContext('2d');
+let BW,BH,bgTick=0;
+function resizeBg(){BW=bgC.width=window.innerWidth;BH=bgC.height=window.innerHeight;}
+resizeBg();window.addEventListener('resize',resizeBg);
+const stars=Array.from({length:180},()=>({x:Math.random(),y:Math.random(),r:Math.random()*1.1+0.2,a:Math.random(),sp:Math.random()*0.003+0.001}));
+function drawBg(){
+  bgX.clearRect(0,0,BW,BH);
+  const g=bgX.createRadialGradient(BW/2,BH/2,0,BW/2,BH/2,Math.max(BW,BH)*0.75);
+  g.addColorStop(0,'#080510');g.addColorStop(1,'#010107');
+  bgX.fillStyle=g;bgX.fillRect(0,0,BW,BH);
+  // Rotating hexagonal symmetry lines
+  const cx=BW/2,cy=BH/2;
+  bgX.save();bgX.translate(cx,cy);bgX.rotate(bgTick*0.0015);
+  for(let i=0;i<6;i++){
+    const a=(i/6)*Math.PI;
+    bgX.beginPath();bgX.moveTo(-BW,Math.tan(a)*(-BW));bgX.lineTo(BW,Math.tan(a)*BW);
+    bgX.strokeStyle='rgba(192,96,248,0.03)';bgX.lineWidth=1;bgX.stroke();
+  }
+  // Hexagon rings
+  for(let r=80;r<Math.max(BW,BH)*0.7;r+=120){
+    bgX.beginPath();
+    for(let i=0;i<6;i++){
+      const a=(i/6)*Math.PI*2;
+      i===0?bgX.moveTo(Math.cos(a)*r,Math.sin(a)*r):bgX.lineTo(Math.cos(a)*r,Math.sin(a)*r);
+    }
+    bgX.closePath();bgX.strokeStyle='rgba(96,232,176,0.025)';bgX.lineWidth=0.7;bgX.stroke();
+  }
+  bgX.restore();
+  stars.forEach(s=>{
+    s.a+=s.sp;const al=(Math.sin(s.a)+1)/2*0.5+0.06;
+    bgX.beginPath();bgX.arc(s.x*BW,s.y*BH,s.r,0,Math.PI*2);
+    bgX.fillStyle=`rgba(200,160,255,${al})`;bgX.fill();
+  });
+  bgTick++;requestAnimationFrame(drawBg);
+}
+drawBg();
+
+// ══════════════════════════════════════════
+// SCENE 0: Grand Symmetry Group Mandala
+// ══════════════════════════════════════════
+const c0=document.getElementById('c0');
+let t0=0, c0Raf;
+function resizeC0(){ const r=c0.getBoundingClientRect(); c0.width=r.width||680; c0.height=r.height||300; }
+function drawC0(){
+  resizeC0();
+  const CW=c0.width, CH=c0.height, ctx=c0.getContext('2d');
+  ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,CW,CH);
+  const t=t0, cx=CW/2, cy=CH/2;
+  const R=Math.min(CW,CH)*0.44;
+
+  // ── Left: Cayley table of Z6 (colorful) ──
+  {
+    const n=6, lCX=CW*0.22, lCY=cy;
+    const cell=Math.min(CW*0.065, CH*0.12);
+    const ox=lCX-n*cell*0.5, oy=lCY-n*cell*0.5;
+    const groupCols=[
+      'rgba(192,96,248,', 'rgba(96,232,176,', 'rgba(240,160,64,',
+      'rgba(248,112,160,', 'rgba(96,180,240,', 'rgba(240,220,80,'
+    ];
+    for(let r2=0;r2<n;r2++){
+      for(let cc=0;cc<n;cc++){
+        const val=(r2+cc)%n;
+        const pulse=0.65+0.25*Math.sin(t*0.04+r2*0.5+cc*0.7);
+        const x2=ox+cc*cell, y2=oy+r2*cell;
+        ctx.fillStyle=groupCols[val]+pulse*0.28+')'; ctx.fillRect(x2+1,y2+1,cell-2,cell-2);
+        ctx.strokeStyle=groupCols[val]+pulse*0.55+')'; ctx.lineWidth=0.7; ctx.strokeRect(x2+1,y2+1,cell-2,cell-2);
+        // Element labels
+        const elems=['e','r','r²','r³','r⁴','r⁵'];
+        ctx.font=`bold ${Math.round(cell*0.32)}px Cinzel,serif`; ctx.textAlign='center';
+        ctx.fillStyle=groupCols[val]+pulse*0.90+')';
+        ctx.fillText(elems[val], x2+cell*0.5, y2+cell*0.62);
+      }
+    }
+    ctx.font=`${Math.round(CH*0.065)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle='rgba(192,96,248,0.55)';
+    ctx.fillText('Z₆ Cayley Table', lCX, oy+n*cell+CH*0.055);
+  }
+
+  // ── Divider ──
+  {
+    const dg=ctx.createLinearGradient(CW*0.44,0,CW*0.44,CH);
+    dg.addColorStop(0,'transparent'); dg.addColorStop(0.5,'rgba(201,168,76,0.25)'); dg.addColorStop(1,'transparent');
+    ctx.fillStyle=dg; ctx.fillRect(CW*0.44,0,1.5,CH);
+  }
+
+  // ── Right: Symmetry group orbit diagram ──
+  {
+    const rCX=CW*0.73, rCY=cy;
+    const groupCols=['rgba(192,96,248,','rgba(96,232,176,','rgba(240,160,64,','rgba(248,112,160,','rgba(96,180,240,','rgba(240,220,80,'];
+    const groups=[
+      {n:6,r:R*0.38,label:'Z₆',speed:1.00},
+      {n:4,r:R*0.24,label:'Z₄',speed:-1.40},
+      {n:3,r:R*0.14,label:'Z₃',speed:1.80},
+    ];
+    groups.forEach(({n,r:gr,label,speed},gi)=>{
+      // Ring
+      ctx.beginPath(); ctx.arc(rCX,rCY,gr,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(201,168,76,0.06)`; ctx.lineWidth=0.7; ctx.stroke();
+      // Nodes
+      for(let i=0;i<n;i++){
+        const a=(i/n)*Math.PI*2+t*0.008*speed;
+        const px=rCX+Math.cos(a)*gr*(CW*0.28/R);
+        const py=rCY+Math.sin(a)*gr*(CH*0.28/R);
+        const pulse=0.7+0.3*Math.sin(t*0.05+i+gi*1.5);
+        const nodeR=(n===6?CH*0.038:n===4?CH*0.034:CH*0.030)*pulse;
+        // Glow
+        const gg=ctx.createRadialGradient(px,py,0,px,py,nodeR*2.2);
+        const col=groupCols[i%groupCols.length];
+        gg.addColorStop(0,col+pulse*0.35+')'); gg.addColorStop(1,'transparent');
+        ctx.fillStyle=gg; ctx.fillRect(px-nodeR*2.2,py-nodeR*2.2,nodeR*4.4,nodeR*4.4);
+        ctx.beginPath(); ctx.arc(px,py,nodeR,0,Math.PI*2);
+        ctx.fillStyle=col+pulse*0.88+')'; ctx.fill();
+        // Operation arrows between adjacent nodes
+        if(i>0){
+          const pa=(((i-1)/n)*Math.PI*2+t*0.008*speed);
+          const ppx=rCX+Math.cos(pa)*gr*(CW*0.28/R);
+          const ppy=rCY+Math.sin(pa)*gr*(CH*0.28/R);
+          ctx.beginPath(); ctx.moveTo(ppx,ppy); ctx.lineTo(px,py);
+          ctx.strokeStyle=col+0.20+')'; ctx.lineWidth=0.9; ctx.stroke();
+        }
+      }
+      // Label
+      const labelA=t*0.008*speed;
+      const lx=rCX+Math.cos(labelA+Math.PI*0.15)*gr*(CW*0.28/R)*1.25;
+      const ly=rCY+Math.sin(labelA+Math.PI*0.15)*gr*(CH*0.28/R)*1.25;
+      ctx.font=`${Math.round(CH*0.060)}px Cinzel,serif`; ctx.textAlign='center';
+      ctx.fillStyle=`rgba(201,168,76,0.55)`; ctx.fillText(label,lx,ly);
+    });
+
+    // Center jewel
+    const cg2=ctx.createRadialGradient(rCX,rCY,0,rCX,rCY,CH*0.06);
+    cg2.addColorStop(0,'rgba(201,168,76,0.85)'); cg2.addColorStop(1,'transparent');
+    ctx.fillStyle=cg2; ctx.fillRect(rCX-CH*0.07,rCY-CH*0.07,CH*0.14,CH*0.14);
+    ctx.beginPath(); ctx.arc(rCX,rCY,5,0,Math.PI*2);
+    ctx.fillStyle='rgba(201,168,76,1)'; ctx.fill();
+  }
+
+  t0++; c0Raf=requestAnimationFrame(drawC0);
+}
+
+// ══════════════════════════════════════════
+// SCENE 1: Large Colorful Cayley Table — D4 dihedral group
+// ══════════════════════════════════════════
+let c1Active=false,c1RAF,c1Tick=0;
+function startCayley(){
+  const canvas=document.getElementById('c1-cayley');if(!canvas)return;
+  const _c1r=canvas.getBoundingClientRect();
+  const W=_c1r.width||540, H=_c1r.height||320;
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  c1Active=true;
+
+  // D4 dihedral group (8 elements): e, r, r², r³, s, sr, sr², sr³
+  const n=8;
+  // D4 multiplication table (row i * col j)
+  // Order: e=0,r=1,r2=2,r3=3,s=4,sr=5,sr2=6,sr3=7
+  const D4 = [
+    [0,1,2,3,4,5,6,7],
+    [1,2,3,0,5,6,7,4],
+    [2,3,0,1,6,7,4,5],
+    [3,0,1,2,7,4,5,6],
+    [4,7,6,5,0,3,2,1],
+    [5,4,7,6,1,0,3,2],
+    [6,5,4,7,2,1,0,3],
+    [7,6,5,4,3,2,1,0],
+  ];
+  const elems=['e','r','r²','r³','s','sr','sr²','sr³'];
+  // Per-element colors (8 distinct colors)
+  const eCols=[
+    [192,96,248], [96,232,176], [240,160,64], [248,112,160],
+    [96,180,240], [240,220,80], [200,120,80], [140,220,200]
+  ];
+
+  const margin=Math.min(W,H)*0.06;
+  const cell=Math.min((W-margin*2.5)/n, (H-margin*2.5)/n);
+  const ox=W*0.5-n*cell*0.5 + cell*0.5; // leave row/col headers
+  const oy=H*0.5-n*cell*0.5 + cell*0.5;
+
+  function frame(){
+    if(!c1Active)return;
+    ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,W,H);
+    const t=c1Tick;
+
+    // Row / column headers
+    for(let i=0;i<n;i++){
+      const [cr,cg,cb]=eCols[i];
+      const pulse=0.7+0.3*Math.sin(t*0.04+i*0.6);
+      ctx.font=`bold ${Math.round(cell*0.34)}px Cinzel,serif`; ctx.textAlign='center';
+      // Column header
+      ctx.fillStyle=`rgba(${cr},${cg},${cb},${pulse*0.75})`;
+      ctx.fillText(elems[i], ox+i*cell, oy-cell*0.35);
+      // Row header
+      ctx.fillText(elems[i], ox-cell*0.5, oy+i*cell+cell*0.35);
+    }
+
+    // Table cells
+    for(let r2=0;r2<n;r2++){
+      for(let cc=0;cc<n;cc++){
+        const val=D4[r2][cc];
+        const [cr,cg,cb]=eCols[val];
+        const pulse=0.6+0.3*Math.sin(t*0.035+r2*0.45+cc*0.55);
+        const x2=ox+cc*cell-cell*0.5, y2=oy+r2*cell-cell*0.5;
+
+        // Cell fill
+        ctx.fillStyle=`rgba(${cr},${cg},${cb},${pulse*0.22})`; ctx.fillRect(x2+1,y2+1,cell-2,cell-2);
+        // Cell border
+        ctx.strokeStyle=`rgba(${cr},${cg},${cb},${pulse*0.45})`; ctx.lineWidth=0.7; ctx.strokeRect(x2+1,y2+1,cell-2,cell-2);
+        // Element text
+        ctx.font=`${Math.round(cell*0.28)}px Cinzel,serif`; ctx.textAlign='center';
+        ctx.fillStyle=`rgba(${cr},${cg},${cb},${pulse*0.90})`;
+        ctx.fillText(elems[val], x2+cell*0.5, y2+cell*0.60);
+      }
+    }
+
+    // Title
+    ctx.font=`${Math.round(H*0.055)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle='rgba(192,96,248,0.50)';
+    ctx.fillText('D₄ — 正方形对称群 Cayley Table', W*0.5, H*0.96);
+
+    // Diagonal highlight (identity row/col)
+    for(let i=0;i<n;i++){
+      const [cr,cg,cb]=eCols[i];
+      const x2=ox+i*cell-cell*0.5+1, y2=oy+i*cell-cell*0.5+1;
+      ctx.strokeStyle=`rgba(201,168,76,${0.35+0.20*Math.sin(t*0.05+i)})`; ctx.lineWidth=1.5;
+      ctx.strokeRect(x2,y2,cell-2,cell-2);
+    }
+
+    c1Tick++; c1RAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopCayley(){c1Active=false;cancelAnimationFrame(c1RAF);}
+
+// ══════════════════════════════════════════
+// SCENE 2: Three object renderers
+// ══════════════════════════════════════════
+const scene2Renderers={};
+function drawRubik(canvas,tick){
+  const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
+  ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,W,H);
+  const cx=W/2,cy=H/2, s=W*0.115, t=tick;
+  const COLS=['rgba(232,112,64,0.90)','rgba(88,214,141,0.90)','rgba(112,168,240,0.90)',
+              'rgba(240,208,96,0.90)','rgba(232,220,200,0.90)','rgba(248,112,160,0.90)'];
+  // Scramble state changes over time
+  const scramble=[0,2,4,1,5,3,2,0,4];
+  const phase=Math.floor(t/90);
+  for(let r=0;r<3;r++){
+    for(let cc=0;cc<3;cc++){
+      const col=COLS[(scramble[r*3+cc]+phase)%6];
+      const px=cx+(cc-1)*s-s*0.5, py=cy+(r-1)*s-s*0.5;
+      ctx.fillStyle=col; ctx.fillRect(px+1,py+1,s-2,s-2);
+      // Inner highlight
+      const hg=ctx.createLinearGradient(px,py,px+s,py+s);
+      hg.addColorStop(0,'rgba(255,255,255,0.18)'); hg.addColorStop(1,'transparent');
+      ctx.fillStyle=hg; ctx.fillRect(px+1,py+1,s-2,s-2);
+      ctx.strokeStyle='rgba(8,8,20,0.80)'; ctx.lineWidth=1.2; ctx.strokeRect(px+1,py+1,s-2,s-2);
+    }
+  }
+  // Isometric side faces (right and bottom)
+  const sk=s*0.38;
+  // Right face (dark orange)
+  for(let r=0;r<3;r++){
+    ctx.beginPath();
+    const py=cy+(r-1)*s-s*0.5;
+    ctx.moveTo(cx+1.5*s+1,py+1); ctx.lineTo(cx+1.5*s+sk,py-sk*0.5+1);
+    ctx.lineTo(cx+1.5*s+sk,py+s-sk*0.5-1); ctx.lineTo(cx+1.5*s+1,py+s-1);
+    ctx.closePath();
+    const ri=COLS[(scramble[r*3+2]+phase)%6];
+    ctx.fillStyle=ri.replace('0.90','0.55)'); ctx.fill();
+    ctx.strokeStyle='rgba(8,8,20,0.60)'; ctx.lineWidth=0.8; ctx.stroke();
+  }
+  // Bottom face (dark)
+  for(let cc=0;cc<3;cc++){
+    ctx.beginPath();
+    const px=cx+(cc-1)*s-s*0.5;
+    ctx.moveTo(px+1,cy+1.5*s+1); ctx.lineTo(px+sk*0.5+1,cy+1.5*s+sk*0.5);
+    ctx.lineTo(px+s+sk*0.5-1,cy+1.5*s+sk*0.5); ctx.lineTo(px+s-1,cy+1.5*s+1);
+    ctx.closePath();
+    const bi=COLS[(scramble[6+cc]+phase)%6];
+    ctx.fillStyle=bi.replace('0.90','0.40)'); ctx.fill();
+    ctx.strokeStyle='rgba(8,8,20,0.60)'; ctx.lineWidth=0.8; ctx.stroke();
+  }
+  // Rotation arc
+  const ang=(t*0.025)%(Math.PI*2);
+  const arcR=W*0.44;
+  const gArc=ctx.createLinearGradient(cx-arcR,cy-arcR,cx+arcR,cy+arcR);
+  gArc.addColorStop(0,'rgba(192,96,248,0)'); gArc.addColorStop(0.5,'rgba(192,96,248,0.60)'); gArc.addColorStop(1,'rgba(192,96,248,0)');
+  ctx.strokeStyle=gArc; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(cx,cy,arcR,ang,ang+Math.PI*0.7); ctx.stroke();
+  // Label
+  ctx.font=`${Math.round(H*0.09)}px Cinzel,serif`; ctx.textAlign='center';
+  ctx.fillStyle='rgba(192,96,248,0.50)'; ctx.fillText('魔方群', cx, H*0.95);
+}
+function drawSnowflakeCard(canvas,tick){
+  const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
+  ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,W,H);
+  const cx=W/2, cy=H/2, t=tick;
+  const armLen=W*0.37;
+  function branch(x1,y1,len,angle,depth){
+    if(depth<0||len<1.5)return;
+    const x2=x1+Math.cos(angle)*len, y2=y1+Math.sin(angle)*len;
+    const alpha=0.15+depth*0.14;
+    const lw=depth*0.55+0.5;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+    ctx.strokeStyle=`rgba(96,232,176,${alpha})`; ctx.lineWidth=lw; ctx.stroke();
+    // Cross bars
+    if(depth>1){
+      const bLen=len*0.40;
+      ctx.beginPath(); ctx.moveTo((x1+x2)*0.5,( y1+y2)*0.5);
+      ctx.lineTo((x1+x2)*0.5+Math.cos(angle+Math.PI/2)*bLen, (y1+y2)*0.5+Math.sin(angle+Math.PI/2)*bLen);
+      ctx.strokeStyle=`rgba(96,232,176,${alpha*0.65})`; ctx.lineWidth=lw*0.6; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo((x1+x2)*0.5,(y1+y2)*0.5);
+      ctx.lineTo((x1+x2)*0.5+Math.cos(angle-Math.PI/2)*bLen, (y1+y2)*0.5+Math.sin(angle-Math.PI/2)*bLen);
+      ctx.stroke();
+    }
+    branch(x2,y2,len*0.52,angle+0.48,depth-1);
+    branch(x2,y2,len*0.52,angle-0.48,depth-1);
+  }
+  const rot=t*0.003;
+  // Outer glow halo
+  const og=ctx.createRadialGradient(cx,cy,armLen*0.3,cx,cy,armLen*1.15);
+  og.addColorStop(0,'rgba(96,232,176,0.07)'); og.addColorStop(1,'transparent');
+  ctx.fillStyle=og; ctx.fillRect(0,0,W,H);
+
+  for(let i=0;i<6;i++){
+    const a=(i/6)*Math.PI*2+rot;
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(a);
+    branch(0,0,armLen,-Math.PI/2,5);
+    ctx.restore();
+  }
+  // Center jewel
+  const cg=ctx.createRadialGradient(cx,cy,0,cx,cy,W*0.065);
+  cg.addColorStop(0,'rgba(96,232,176,0.90)'); cg.addColorStop(1,'transparent');
+  ctx.fillStyle=cg; ctx.fillRect(cx-W*0.07,cy-W*0.07,W*0.14,W*0.14);
+  ctx.beginPath(); ctx.arc(cx,cy,5,0,Math.PI*2); ctx.fillStyle='rgba(96,232,176,1)'; ctx.fill();
+
+  ctx.font=`${Math.round(H*0.09)}px Cinzel,serif`; ctx.textAlign='center';
+  ctx.fillStyle='rgba(96,232,176,0.50)'; ctx.fillText('雪花 C₆ᵥ', cx, H*0.96);
+}
+function drawIntegers(canvas,tick){
+  const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
+  ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,W,H);
+  const cy=H*0.46, t=tick;
+  const step=W*0.125, visible=Math.floor(W*0.5/step)+2;
+
+  // Glowing number line
+  const lg=ctx.createLinearGradient(0,cy,W,cy);
+  lg.addColorStop(0,'rgba(240,160,64,0)'); lg.addColorStop(0.3,'rgba(240,160,64,0.40)');
+  lg.addColorStop(0.7,'rgba(240,160,64,0.40)'); lg.addColorStop(1,'rgba(240,160,64,0)');
+  ctx.strokeStyle=lg; ctx.lineWidth=1.2;
+  ctx.beginPath(); ctx.moveTo(0,cy); ctx.lineTo(W,cy); ctx.stroke();
+
+  // Scrolling integer nodes
+  const scrollOffset=(t*0.35)%step;
+  const centerIdx=Math.floor(t*0.35/step);
+
+  for(let i=-visible;i<=visible+1;i++){
+    const px=W/2+i*step-scrollOffset;
+    if(px<0||px>W) continue;
+    const intVal=i-centerIdx;
+    const isZero=intVal===0;
+    const isPos=intVal>0;
+    const distFromCenter=Math.abs(px-W/2);
+    const fade=Math.max(0,1-distFromCenter/(W*0.45));
+
+    // Glow
+    const gg=ctx.createRadialGradient(px,cy,0,px,cy,step*0.45);
+    gg.addColorStop(0,`rgba(240,160,64,${fade*(isZero?0.40:0.18)})`); gg.addColorStop(1,'transparent');
+    ctx.fillStyle=gg; ctx.fillRect(px-step*0.5,cy-step*0.5,step,step);
+
+    // Node
+    const nr=isZero?W*0.030:W*0.022;
+    ctx.beginPath(); ctx.arc(px,cy,nr*fade,0,Math.PI*2);
+    ctx.fillStyle=isZero?`rgba(240,160,64,${fade*0.95})`:`rgba(240,160,64,${fade*0.55})`;
+    ctx.fill();
+
+    // Number label
+    ctx.font=`${Math.round(H*0.10)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle=`rgba(240,160,64,${fade*(isZero?0.90:0.55)})`;
+    ctx.fillText(intVal, px, cy-step*0.45);
+  }
+
+  // "+1" operation arc (animated, shows group operation)
+  const arcCx=W/2-scrollOffset+step*0.5;
+  ctx.beginPath(); ctx.arc(arcCx, cy-step*0.2, step*0.48, Math.PI, 0, false);
+  const arcAlpha=0.4+0.2*Math.sin(t*0.04);
+  ctx.strokeStyle=`rgba(240,160,64,${arcAlpha})`; ctx.lineWidth=1.5; ctx.stroke();
+  // Arrow tip
+  ctx.fillStyle=`rgba(240,160,64,${arcAlpha})`;
+  ctx.font=`${Math.round(H*0.075)}px sans-serif`; ctx.textAlign='center';
+  ctx.fillText('+1', arcCx, cy-step*0.78);
+
+  ctx.font=`${Math.round(H*0.09)}px Cinzel,serif`; ctx.textAlign='center';
+  ctx.fillStyle='rgba(240,160,64,0.50)'; ctx.fillText('(ℤ, +) 整数群', W/2, H*0.96);
+}
+function startScene2Renderers(){
+  [{id:'rubik-c',fn:drawRubik},{id:'snowflake-c',fn:drawSnowflakeCard},{id:'integers-c',fn:drawIntegers}].forEach(({id,fn})=>{
+    const c=document.getElementById(id);if(!c)return;
+    const rr2=c.getBoundingClientRect();
+    const S=Math.max(rr2.width,rr2.height,160); c.width=S; c.height=S;
+    let t=0,active=true,raf;
+    function loop(){c&&fn(c,t++);raf=active?requestAnimationFrame(loop):0;}
+    loop();
+    scene2Renderers[id]={stop(){active=false;cancelAnimationFrame(raf);}};
+  });
+}
+function stopScene2Renderers(){Object.values(scene2Renderers).forEach(r=>r.stop());}
+
+// ══════════════════════════════════════════
+// SCENE 3: Full 3×3×3 Rubik's Cube with glowing stickers
+// ══════════════════════════════════════════
+let rubik3dActive=false,rubik3dRAF,rubik3dTick=0;
+function rotY(p,a){return[p[0]*Math.cos(a)+p[2]*Math.sin(a),p[1],-p[0]*Math.sin(a)+p[2]*Math.cos(a)];}
+function rotX(p,a){return[p[0],p[1]*Math.cos(a)-p[2]*Math.sin(a),p[1]*Math.sin(a)+p[2]*Math.cos(a)];}
+function proj(p,fov,cx,cy){const z=p[2]+fov,s=fov/z;return[p[0]*s+cx,p[1]*s+cy];}
+function startRubik3d(){
+  const canvas=document.getElementById('rubik3d-c');if(!canvas)return;
+  const _r3=canvas.getBoundingClientRect();
+  const S=Math.min(_r3.width||440,_r3.height||440);
+  canvas.width=S; canvas.height=S;
+  const ctx=canvas.getContext('2d');
+  rubik3dActive=true;
+
+  // 6 face colors: Front, Right, Top, Back, Left, Bottom
+  const FACE_COLS_RGB=[[232,112,64],[96,232,176],[112,168,240],[240,208,96],[232,220,200],[248,112,160]];
+  // Scramble state for each face (9 stickers, cycles over time)
+  function getStickerCol(face,row,col,t){
+    const phase=Math.floor(t/120);
+    const scramble=[[0,0,0,0,0,0,0,0,0],[1,1,1,1,1,1,1,1,1],[2,2,2,2,2,2,2,2,2],
+                    [3,3,3,3,3,3,3,3,3],[4,4,4,4,4,4,4,4,4],[5,5,5,5,5,5,5,5,5]];
+    // Add some scramble
+    const si=row*3+col;
+    const swaps=[[0,si%4,1,(si+2)%4],[2,si%4,4,(si+3)%4]];
+    return FACE_COLS_RGB[face];
+  }
+
+  function drawSticker(ctx,pts2d,rgb,bright){
+    const [r,g,b]=rgb;
+    const b2=Math.min(1,bright+0.12);
+    ctx.beginPath(); pts2d.forEach((p,i)=>i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1])); ctx.closePath();
+    ctx.fillStyle=`rgba(${Math.floor(r*b2)},${Math.floor(g*b2)},${Math.floor(b*b2)},0.92)`; ctx.fill();
+    // Specular
+    ctx.fillStyle=`rgba(255,255,255,${bright*0.15})`;ctx.fill();
+    ctx.strokeStyle='rgba(8,8,20,0.75)'; ctx.lineWidth=0.9; ctx.stroke();
+  }
+
+  const u=S*0.11; // half unit cell size
+
+  function frame(){
+    if(!rubik3dActive)return;
+    ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,S,S);
+    const t=rubik3dTick, ry=t*0.010, rx=0.40;
+    const cx2=S/2, cy2=S/2, fov=S*1.6;
+
+    // Build 3x3 face patches for 3 visible faces: Front(-z), Right(+x), Top(-y)
+    const faceSpecs=[
+      // Front face: z = -u, normal (0,0,-1) → face idx 0
+      {normal:[0,0,-1],fi:0,
+        rows:(r,c)=>{
+          const x=(-1+c)*u*2+[-u,0,u][c], z=-3*u;
+          const y=(-1+r)*u*2+[-u,0,u][r];
+          return [x,y,z];
+        }},
+      // Right face: x = +3u, normal (1,0,0) → face idx 1
+      {normal:[1,0,0],fi:1,
+        rows:(r,c)=>{
+          const x=3*u, z=(-1+c)*u*2;
+          const y=(-1+r)*u*2;
+          return [x,y,z];
+        }},
+      // Top face: y = -3u, normal (0,-1,0) → face idx 2
+      {normal:[0,-1,0],fi:2,
+        rows:(r,c)=>{
+          const y=-3*u, x=(-1+c)*u*2, z=(-1+r)*u*2;
+          return [x,y,z];
+        }},
+    ];
+
+    // Collect all quads from all 3 faces, sort by z
+    const quads=[];
+    faceSpecs.forEach(({normal,fi,rows})=>{
+      // Check if face is visible
+      let [nx,ny,nz]=normal;
+      let rn=[...rotY([nx,ny,nz],ry)]; rn=rotX(rn,rx);
+      if(rn[2]>0) return; // Back-face culling
+
+      for(let r=0;r<3;r++){
+        for(let cc=0;cc<3;cc++){
+          // 4 corners of this sticker
+          const gap=u*0.12;
+          const half=u-gap;
+          const corners=[[cc,r],[cc+1,r],[cc+1,r+1],[cc,r+1]].map(([c2,r2])=>{
+            // Parametric position in face
+            const fc=c2-1.5, fr=r2-1.5;
+            let p;
+            if(fi===0) p=[(fc<0?fc*u*2+gap:fc*u*2-gap),[fr<0?fr*u*2+gap:fr*u*2-gap],[fr<0?fr*u*2+gap:fr*u*2-gap]];
+            // Simpler: just offset the face center
+            const base=rows(r,cc);
+            // Use corner offset
+            const ox2=(c2===cc?-half:half), oy2=(r2===r?-half:half);
+            if(fi===0) p=[base[0]+ox2,base[1]+oy2,base[2]];
+            else if(fi===1) p=[base[0],base[1]+oy2,base[2]+ox2];
+            else p=[base[0]+ox2,base[1],base[2]+oy2];
+            let q=rotY(p,ry); q=rotX(q,rx); return q;
+          });
+          const avgZ=corners.reduce((s,p)=>s+p[2],0)/4;
+          const pts2=corners.map(p=>proj(p,fov,cx2,cy2));
+          // Lighting
+          let ln=[...normal]; let rln=rotY(ln,ry); rln=rotX(rln,rx);
+          const light=[0.4,-0.55,1]; const llen=Math.sqrt(1+0.3025+0.16);
+          const bright=Math.max(0.10,-(rln[0]*light[0]+rln[1]*light[1]+rln[2]*light[2])/llen);
+          quads.push({pts2,rgb:FACE_COLS_RGB[fi+(r+cc)%2===0&&fi===2?0:0],bright,z:avgZ,fi,r,cc});
+        }
+      }
+    });
+
+    quads.sort((a,b)=>a.z-b.z);
+    quads.forEach(({pts2,fi,bright,r,cc})=>{
+      // Vary sticker color slightly per position for scramble effect
+      const phase=Math.floor(t/150);
+      const sfi=(fi+(r*3+cc+phase)%2===0?0:0); // keep color consistent for now
+      drawSticker(ctx,pts2,FACE_COLS_RGB[fi],bright);
+    });
+
+    // Outer glow
+    const pulse=0.6+0.4*Math.sin(t*0.04);
+    const og=ctx.createRadialGradient(cx2,cy2,u*2,cx2,cy2,u*5);
+    og.addColorStop(0,`rgba(192,96,248,${0.05*pulse})`); og.addColorStop(1,'transparent');
+    ctx.fillStyle=og; ctx.fillRect(0,0,S,S);
+
+    // Rotation arc
+    const arcA=t*0.020;
+    const arcG=ctx.createLinearGradient(cx2-u*4,cy2,cx2+u*4,cy2);
+    arcG.addColorStop(0,'rgba(192,96,248,0)'); arcG.addColorStop(0.5,`rgba(192,96,248,${0.55*pulse})`); arcG.addColorStop(1,'rgba(192,96,248,0)');
+    ctx.strokeStyle=arcG; ctx.lineWidth=2.0;
+    ctx.beginPath(); ctx.arc(cx2,cy2,u*4.2,arcA,arcA+Math.PI*0.65); ctx.stroke();
+
+    rubik3dTick++; rubik3dRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopRubik3d(){rubik3dActive=false;cancelAnimationFrame(rubik3dRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 4: Glowing 3D Crystal Lattice Systems
+// ══════════════════════════════════════════
+let crystalActive=false,crystalRAF,crystalTick=0;
+function startCrystal(){
+  const canvas=document.getElementById('crystal-c');if(!canvas)return;
+  const _cr=canvas.getBoundingClientRect();
+  const W=_cr.width||660, H=_cr.height||320;
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  crystalActive=true;
+
+  const systems=[
+    {label:'立方 Cubic',    rgb:[192,96,248],  a1:[1,0,0],a2:[0,1,0],a3:[0,0,1],  scale:1.00},
+    {label:'六方 Hexagonal',rgb:[96,232,176],  a1:[1,0,0],a2:[0.5,0.866,0],a3:[0,0,1.2],scale:0.92},
+    {label:'斜方 Orthorhombic',rgb:[240,160,64],a1:[1,0,0],a2:[0,1.35,0],a3:[0,0,0.80],scale:0.88},
+  ];
+  const n=3, unitW=W/3;
+
+  function frame(){
+    if(!crystalActive)return;
+    ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,W,H);
+    const t=crystalTick;
+
+    systems.forEach(({label,rgb,a1,a2,a3,scale},si)=>{
+      const [cr,cg,cb]=rgb;
+      const panCX=unitW*(si+0.5), panCY=H*0.48;
+      const step=Math.min(unitW,H)*0.115*scale;
+      const ry=t*0.008*(si%2===0?1:-1), rx=0.38;
+
+      // Background panel glow
+      const pg=ctx.createRadialGradient(panCX,panCY,0,panCX,panCY,unitW*0.5);
+      pg.addColorStop(0,`rgba(${cr},${cg},${cb},0.04)`); pg.addColorStop(1,'transparent');
+      ctx.fillStyle=pg; ctx.fillRect(panCX-unitW*0.5,0,unitW,H);
+
+      // Dividers
+      if(si>0){
+        const dg=ctx.createLinearGradient(unitW*si,0,unitW*si,H);
+        dg.addColorStop(0,'transparent'); dg.addColorStop(0.5,'rgba(122,95,42,0.20)'); dg.addColorStop(1,'transparent');
+        ctx.fillStyle=dg; ctx.fillRect(unitW*si-1,0,2,H);
+      }
+
+      // Build 3D atom positions
+      const atoms=[];
+      for(let i=-n;i<=n;i++) for(let j=-n;j<=n;j++) for(let k=-n;k<=n;k++){
+        // 3D position using lattice vectors
+        let x=i*a1[0]+j*a2[0]+k*a3[0];
+        let y=i*a1[1]+j*a2[1]+k*a3[1];
+        let z=i*a1[2]+j*a2[2]+k*a3[2];
+        // Rotate
+        const cosY=Math.cos(ry), sinY=Math.sin(ry);
+        const cosX=Math.cos(rx), sinX=Math.sin(rx);
+        [x,z]=[x*cosY+z*sinY,-x*sinY+z*cosY];
+        [y,z]=[y*cosX-z*sinX, y*sinX+z*cosX];
+        const fov=step*14, s=fov/(z*step+fov);
+        const sx=panCX+x*step*s, sy=panCY+y*step*s;
+        const depth=(z+n+1)/(2*n+2);
+        atoms.push({sx,sy,z,depth,i,j,k,x:x*step,y:y*step});
+      }
+      atoms.sort((a,b)=>a.z-b.z);
+
+      // Draw bonds
+      atoms.forEach((a,ai)=>{
+        atoms.forEach((b,bi)=>{
+          if(bi<=ai) return;
+          const di=Math.abs(a.i-b.i)+Math.abs(a.j-b.j)+Math.abs(a.k-b.k);
+          if(di!==1) return;
+          const dx=a.sx-b.sx, dy=a.sy-b.sy;
+          if(Math.sqrt(dx*dx+dy*dy)>step*3) return;
+          const depthMid=(a.depth+b.depth)/2;
+          ctx.beginPath(); ctx.moveTo(a.sx,a.sy); ctx.lineTo(b.sx,b.sy);
+          ctx.strokeStyle=`rgba(${cr},${cg},${cb},${0.08+depthMid*0.18})`; ctx.lineWidth=0.7+depthMid*0.5; ctx.stroke();
+        });
+      });
+
+      // Draw atoms with glow
+      atoms.forEach(({sx,sy,depth})=>{
+        const r2=step*0.22*(0.4+depth*0.6);
+        // Glow
+        const ag=ctx.createRadialGradient(sx,sy,0,sx,sy,r2*2.5);
+        ag.addColorStop(0,`rgba(${cr},${cg},${cb},${depth*0.18})`); ag.addColorStop(1,'transparent');
+        ctx.fillStyle=ag; ctx.fillRect(sx-r2*2.5,sy-r2*2.5,r2*5,r2*5);
+        // Atom sphere
+        const sg=ctx.createRadialGradient(sx-r2*0.3,sy-r2*0.3,0,sx,sy,r2);
+        sg.addColorStop(0,`rgba(${Math.min(255,cr+60)},${Math.min(255,cg+60)},${Math.min(255,cb+60)},${0.5+depth*0.45})`);
+        sg.addColorStop(1,`rgba(${cr},${cg},${cb},${0.2+depth*0.35})`);
+        ctx.beginPath(); ctx.arc(sx,sy,r2,0,Math.PI*2); ctx.fillStyle=sg; ctx.fill();
+      });
+
+      // Label
+      ctx.font=`${Math.round(H*0.075)}px Cinzel,serif`; ctx.textAlign='center';
+      ctx.fillStyle=`rgba(${cr},${cg},${cb},0.60)`;
+      ctx.fillText(label, panCX, H*0.94);
+    });
+
+    crystalTick++; crystalRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopCrystal(){crystalActive=false;cancelAnimationFrame(crystalRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 6: Noether — Grand Symmetry↔Conservation Mandala
+// ══════════════════════════════════════════
+let noetherActive=false,noetherRAF,noetherTick=0;
+function startNoether(){
+  const canvas=document.getElementById('noether-c');if(!canvas)return;
+  const _nr=canvas.getBoundingClientRect();
+  const S=Math.min(_nr.width||460,_nr.height||460);
+  canvas.width=S; canvas.height=S;
+  const ctx=canvas.getContext('2d');
+  noetherActive=true;
+  const cx=S/2, cy=S/2;
+
+  function frame(){
+    if(!noetherActive)return;
+    ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,S,S);
+    const t=noetherTick, R=S*0.42;
+
+    // ── Left half: Symmetry — rotating nested polygons ──
+    {
+      const lx=cx*0.52, ly=cy;
+      const rot=t*0.008;
+      // Outer glow
+      const og=ctx.createRadialGradient(lx,ly,R*0.1,lx,ly,R*0.72);
+      og.addColorStop(0,'rgba(248,112,160,0.06)'); og.addColorStop(1,'transparent');
+      ctx.fillStyle=og; ctx.fillRect(lx-R*0.75,ly-R*0.75,R*1.5,R*1.5);
+
+      [3,4,5,6,7,8].forEach((n,ni)=>{
+        const r=R*(0.10+ni*0.11);
+        const alpha=0.30+0.18*Math.sin(t*0.035+ni*0.7);
+        const pulse=0.7+0.3*Math.sin(t*0.05+ni);
+        ctx.beginPath();
+        for(let i=0;i<=n;i++){
+          const a=(i/n)*Math.PI*2+rot*(ni%2===0?1:-1.3)+(ni===0?0:0);
+          i===0?ctx.moveTo(lx+Math.cos(a)*r,ly+Math.sin(a)*r)
+               :ctx.lineTo(lx+Math.cos(a)*r,ly+Math.sin(a)*r);
+        }
+        ctx.closePath();
+        ctx.strokeStyle=`rgba(248,112,160,${alpha*pulse})`; ctx.lineWidth=1.1+ni*0.1; ctx.stroke();
+        ctx.fillStyle=`rgba(248,112,160,${alpha*0.06})`; ctx.fill();
+
+        // Vertices glow
+        for(let i=0;i<n;i++){
+          const a=(i/n)*Math.PI*2+rot*(ni%2===0?1:-1.3);
+          const vx=lx+Math.cos(a)*r, vy=ly+Math.sin(a)*r;
+          const vg=ctx.createRadialGradient(vx,vy,0,vx,vy,r*0.15);
+          vg.addColorStop(0,`rgba(248,112,160,${pulse*0.55})`); vg.addColorStop(1,'transparent');
+          ctx.fillStyle=vg; ctx.fillRect(vx-r*0.15,vy-r*0.15,r*0.30,r*0.30);
+        }
+      });
+
+      // Label
+      ctx.font=`${Math.round(S*0.062)}px Cinzel,serif`; ctx.textAlign='center';
+      ctx.fillStyle='rgba(248,112,160,0.58)';
+      ctx.fillText('对称性', lx, cy+R*0.56);
+      ctx.font=`${Math.round(S*0.042)}px Cinzel,serif`;
+      ctx.fillStyle='rgba(248,112,160,0.35)';
+      ctx.fillText('Symmetry', lx, cy+R*0.66);
+    }
+
+    // ── Center divider: gold pulsing arrow ══
+    {
+      const pulse=0.7+0.3*Math.sin(t*0.055);
+      // Vertical dashed line
+      ctx.strokeStyle=`rgba(201,168,76,${pulse*0.22})`; ctx.lineWidth=0.8;
+      ctx.setLineDash([5,8]);
+      ctx.beginPath(); ctx.moveTo(cx,cy-R*0.58); ctx.lineTo(cx,cy+R*0.58); ctx.stroke();
+      ctx.setLineDash([]);
+      // ⟺ symbol
+      ctx.font=`${Math.round(S*0.10)}px serif`; ctx.textAlign='center';
+      ctx.fillStyle=`rgba(201,168,76,${pulse*0.85})`;
+      ctx.fillText('⟺', cx, cy+S*0.040);
+      // Noether label
+      ctx.font=`${Math.round(S*0.050)}px Cinzel,serif`;
+      ctx.fillStyle=`rgba(201,168,76,${pulse*0.48})`;
+      ctx.fillText('Noether', cx, cy-R*0.64);
+      ctx.font=`${Math.round(S*0.034)}px Cinzel,serif`;
+      ctx.fillStyle=`rgba(201,168,76,${pulse*0.32})`;
+      ctx.fillText('1882 – 1935', cx, cy-R*0.55);
+    }
+
+    // ── Right half: Conservation — flowing conserved quantities ──
+    {
+      const rx2=cx*1.48, ly=cy;
+      const og=ctx.createRadialGradient(rx2,ly,R*0.1,rx2,ly,R*0.72);
+      og.addColorStop(0,'rgba(240,160,64,0.06)'); og.addColorStop(1,'transparent');
+      ctx.fillStyle=og; ctx.fillRect(rx2-R*0.75,ly-R*0.75,R*1.5,R*1.5);
+
+      // Draw 6 flowing streams: E, p, L, Q, color charge, ...
+      const laws=['E','p','L','Q','B','S'];
+      const lawCols=[[240,160,64],[96,232,176],[192,96,248],[248,112,160],[96,180,240],[240,220,80]];
+
+      laws.forEach((law,li)=>{
+        const laneY=ly+R*(li-2.5)*0.18;
+        const [cr,cg,cb]=lawCols[li];
+        const alpha=0.40+0.20*Math.sin(t*0.038+li*0.9);
+        const pulse=0.7+0.3*Math.sin(t*0.05+li*1.2);
+
+        // Flowing dots (conserved quantity stream)
+        const nDots=6;
+        for(let di=0;di<nDots;di++){
+          const phase=((t*0.4+di*(1/nDots)*R*0.65)%(R*0.65));
+          const dx=rx2-R*0.32+phase;
+          if(dx<rx2-R*0.33||dx>rx2+R*0.32) continue;
+          const dotA=alpha*(1-Math.abs(dx-rx2)/(R*0.35));
+          ctx.beginPath(); ctx.arc(dx,laneY,S*0.014*pulse,0,Math.PI*2);
+          ctx.fillStyle=`rgba(${cr},${cg},${cb},${dotA*0.90})`; ctx.fill();
+        }
+
+        // Arrow line
+        const lineG=ctx.createLinearGradient(rx2-R*0.33,0,rx2+R*0.33,0);
+        lineG.addColorStop(0,`rgba(${cr},${cg},${cb},0)`);
+        lineG.addColorStop(0.5,`rgba(${cr},${cg},${cb},${alpha*0.40})`);
+        lineG.addColorStop(1,`rgba(${cr},${cg},${cb},0)`);
+        ctx.strokeStyle=lineG; ctx.lineWidth=1.0;
+        ctx.beginPath(); ctx.moveTo(rx2-R*0.33,laneY); ctx.lineTo(rx2+R*0.33,laneY); ctx.stroke();
+
+        // Law label
+        ctx.font=`bold ${Math.round(S*0.062)}px Cinzel,serif`; ctx.textAlign='left';
+        ctx.fillStyle=`rgba(${cr},${cg},${cb},${alpha*0.70})`;
+        ctx.fillText(law, rx2+R*0.35, laneY+S*0.022);
+      });
+
+      ctx.font=`${Math.round(S*0.062)}px Cinzel,serif`; ctx.textAlign='center';
+      ctx.fillStyle='rgba(240,160,64,0.58)';
+      ctx.fillText('守恒量', rx2, cy+R*0.56);
+      ctx.font=`${Math.round(S*0.042)}px Cinzel,serif`;
+      ctx.fillStyle='rgba(240,160,64,0.35)';
+      ctx.fillText('Conservation', rx2, cy+R*0.66);
+    }
+
+    noetherTick++; noetherRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopNoether(){noetherActive=false;cancelAnimationFrame(noetherRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 7: Dramatic Symmetry Breaking — Mexican Hat Potential
+// ══════════════════════════════════════════
+let breakActive=false,breakRAF,breakTick=0;
+function startBreak(){
+  const canvas=document.getElementById('break-c');if(!canvas)return;
+  const _br=canvas.getBoundingClientRect();
+  const W=_br.width||640, H=_br.height||340;
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  breakActive=true;
+
+  function frame(){
+    if(!breakActive)return;
+    ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,W,H);
+    const t=breakTick;
+    // Cycle: 0→120 symmetric, 120→200 transition, 200→300 broken
+    const phase=t%300;
+    const prog=phase<120?0:phase<220?Math.min(1,(phase-120)/100):1;
+    const cx=W*0.5, potY=H*0.50;
+    const scaleX=W*0.22, scaleY=H*0.30;
+
+    // Potential V(φ) = (φ²-1)² shape (Mexican hat cross-section)
+    // Before breaking (prog=0): V = φ² (parabola up)
+    // After breaking (prog=1): V = (φ²-1)² (double well)
+    const mu2=1+prog*1.2;
+    const lam=1;
+
+    // Compute potential curve (cross-section)
+    const potPoints=[];
+    for(let px=0;px<=W;px+=2){
+      const phi=(px-cx)/scaleX;
+      const v=(-mu2*phi*phi+lam*phi*phi*phi*phi);
+      const py=potY-v*scaleY;
+      if(py>H*0.04&&py<H*0.92) potPoints.push([px,py]);
+    }
+
+    // Gradient fill under curve
+    if(potPoints.length>1){
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(potPoints[0][0],H);
+      potPoints.forEach(([px,py])=>ctx.lineTo(px,py));
+      ctx.lineTo(potPoints[potPoints.length-1][0],H);
+      ctx.closePath();
+      const fillG=ctx.createLinearGradient(0,potY-scaleY,0,H);
+      fillG.addColorStop(0,`rgba(192,96,248,${0.06+prog*0.06})`);
+      fillG.addColorStop(1,'rgba(192,96,248,0)');
+      ctx.fillStyle=fillG; ctx.fill();
+      ctx.restore();
+    }
+
+    // Draw curve
+    ctx.beginPath();
+    potPoints.forEach(([px,py],i)=>i===0?ctx.moveTo(px,py):ctx.lineTo(px,py));
+    const curveG=ctx.createLinearGradient(0,0,W,0);
+    curveG.addColorStop(0,'rgba(192,96,248,0)'); curveG.addColorStop(0.2,'rgba(192,96,248,0.80)');
+    curveG.addColorStop(0.5,'rgba(248,112,160,0.90)'); curveG.addColorStop(0.8,'rgba(192,96,248,0.80)');
+    curveG.addColorStop(1,'rgba(192,96,248,0)');
+    ctx.strokeStyle=curveG; ctx.lineWidth=2.5; ctx.stroke();
+
+    // Minima markers
+    if(prog>0.05){
+      const minPhi=Math.sqrt(mu2/(2*lam));
+      [-minPhi,minPhi].forEach((phi,mi)=>{
+        const mx=cx+phi*scaleX;
+        const vy=-mu2*phi*phi+lam*phi*phi*phi*phi;
+        const my=potY-vy*scaleY;
+        if(my<H*0.04||my>H*0.92) return;
+        // Glow
+        const mg=ctx.createRadialGradient(mx,my,0,mx,my,W*0.055);
+        mg.addColorStop(0,`rgba(96,232,176,${prog*0.35})`); mg.addColorStop(1,'transparent');
+        ctx.fillStyle=mg; ctx.fillRect(mx-W*0.06,my-W*0.06,W*0.12,W*0.12);
+        ctx.beginPath(); ctx.arc(mx,my,W*0.015,0,Math.PI*2);
+        ctx.fillStyle=`rgba(96,232,176,${0.50+prog*0.45})`; ctx.fill();
+        if(prog>0.5){
+          ctx.font=`${Math.round(H*0.06)}px Cinzel,serif`; ctx.textAlign='center';
+          ctx.fillStyle=`rgba(96,232,176,${(prog-0.5)*1.2*0.60})`;
+          ctx.fillText(mi===0?'真空态⁻':'真空态⁺', mx, my+H*0.075);
+        }
+      });
+    }
+
+    // Rolling ball (follows the potential)
+    {
+      const ballPhase=phase<120?0:Math.min(1,(phase-120)/90);
+      const minPhi=Math.sqrt(mu2/(2*lam));
+      const ballPhi=ballPhase*minPhi*(1+0.06*Math.sin(t*0.12)); // oscillates near minimum
+      const ballX=cx+ballPhi*scaleX;
+      const bv=-mu2*ballPhi*ballPhi+lam*ballPhi*ballPhi*ballPhi*ballPhi;
+      const ballY=potY-bv*scaleY;
+
+      if(ballY>H*0.04&&ballY<H*0.94){
+        const ballR=W*0.022;
+        const bg=ctx.createRadialGradient(ballX-ballR*0.3,ballY-ballR*0.3,0,ballX,ballY,ballR*2.5);
+        bg.addColorStop(0,'rgba(240,208,96,0.90)'); bg.addColorStop(0.5,'rgba(200,160,40,0.45)'); bg.addColorStop(1,'transparent');
+        ctx.fillStyle=bg; ctx.fillRect(ballX-ballR*2.5,ballY-ballR*2.5,ballR*5,ballR*5);
+        ctx.beginPath(); ctx.arc(ballX,ballY,ballR,0,Math.PI*2);
+        ctx.fillStyle='rgba(240,208,96,0.98)'; ctx.fill();
+        ctx.strokeStyle='rgba(255,240,150,0.60)'; ctx.lineWidth=1.2; ctx.stroke();
+      }
+    }
+
+    // Axes
+    ctx.strokeStyle='rgba(122,95,42,0.25)'; ctx.lineWidth=0.8;
+    ctx.beginPath(); ctx.moveTo(W*0.05,potY); ctx.lineTo(W*0.95,potY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx,H*0.05); ctx.lineTo(cx,H*0.90); ctx.stroke();
+    ctx.font=`${Math.round(H*0.060)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle='rgba(122,95,42,0.45)';
+    ctx.fillText('V(φ)', cx, H*0.09);
+    ctx.fillText('φ', W*0.93, potY-H*0.025);
+
+    // Phase label
+    ctx.font=`${Math.round(H*0.058)}px Cinzel,serif`; ctx.textAlign='center';
+    if(prog<0.15){
+      ctx.fillStyle=`rgba(192,96,248,${0.65-prog*3})`;
+      ctx.fillText('对称相：一个最低点', cx, H*0.14);
+    } else if(prog>0.85){
+      ctx.fillStyle=`rgba(96,232,176,${(prog-0.85)*6.5*0.65})`;
+      ctx.fillText('对称自发破缺：真空选择了一个方向', cx, H*0.14);
+    }
+
+    breakTick++; breakRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopBreak(){breakActive=false;cancelAnimationFrame(breakRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 8 FINALE — Group Theory Universe
+// ══════════════════════════════════════════
+const c8=document.getElementById('c8');
+let t8=0,c8Active=false,c8Raf;
+function resizeC8(){ const r=c8.getBoundingClientRect(); c8.width=r.width||660; c8.height=r.height||260; }
+function drawC8(){
+  if(!c8Active)return;
+  resizeC8();
+  const CW=c8.width, CH=c8.height, ctx=c8.getContext('2d');
+  ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,CW,CH);
+  const t=t8, cx=CW/2, cy=CH/2;
+  const R=Math.min(CW,CH)*0.42;
+  const n=3, unitW=CW/n;
+
+  // ── Panel 1: Z₆ orbit ──
+  {
+    const px=unitW*0.5, py=cy;
+    const groupCols=[[192,96,248],[96,232,176],[240,160,64],[248,112,160],[96,180,240],[240,220,80]];
+    const nNodes=6, orbitR=Math.min(unitW,CH)*0.33;
+    // Ring
+    ctx.beginPath(); ctx.arc(px,py,orbitR,0,Math.PI*2);
+    ctx.strokeStyle='rgba(201,168,76,0.07)'; ctx.lineWidth=0.8; ctx.stroke();
+    // Nodes
+    for(let i=0;i<nNodes;i++){
+      const a=(i/nNodes)*Math.PI*2+t*0.010;
+      const nx=px+Math.cos(a)*orbitR, ny=py+Math.sin(a)*orbitR;
+      const [cr,cg,cb]=groupCols[i];
+      const pulse=0.7+0.3*Math.sin(t*0.05+i);
+      // Glow
+      const gg=ctx.createRadialGradient(nx,ny,0,nx,ny,orbitR*0.28);
+      gg.addColorStop(0,`rgba(${cr},${cg},${cb},${pulse*0.30})`); gg.addColorStop(1,'transparent');
+      ctx.fillStyle=gg; ctx.fillRect(nx-orbitR*0.28,ny-orbitR*0.28,orbitR*0.56,orbitR*0.56);
+      ctx.beginPath(); ctx.arc(nx,ny,CH*0.040*pulse,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${cr},${cg},${cb},${pulse*0.88})`; ctx.fill();
+      // Edge
+      const na=(((i+1)%nNodes)/nNodes)*Math.PI*2+t*0.010;
+      const nnx=px+Math.cos(na)*orbitR, nny=py+Math.sin(na)*orbitR;
+      ctx.beginPath(); ctx.moveTo(nx,ny); ctx.lineTo(nnx,nny);
+      ctx.strokeStyle=`rgba(${cr},${cg},${cb},0.18)`; ctx.lineWidth=0.9; ctx.stroke();
+    }
+    // Center
+    const cg2=ctx.createRadialGradient(px,py,0,px,py,CH*0.055);
+    cg2.addColorStop(0,'rgba(201,168,76,0.90)'); cg2.addColorStop(1,'transparent');
+    ctx.fillStyle=cg2; ctx.fillRect(px-CH*0.06,py-CH*0.06,CH*0.12,CH*0.12);
+    ctx.font=`${Math.round(CH*0.085)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle='rgba(192,96,248,0.58)'; ctx.fillText('Z₆', px, CH*0.93);
+  }
+
+  // Divider 1
+  {
+    const dg=ctx.createLinearGradient(unitW,0,unitW,CH);
+    dg.addColorStop(0,'transparent'); dg.addColorStop(0.5,'rgba(201,168,76,0.22)'); dg.addColorStop(1,'transparent');
+    ctx.fillStyle=dg; ctx.fillRect(unitW-1,0,2,CH);
+  }
+
+  // ── Panel 2: Cayley table D4 mini ──
+  {
+    const px=unitW*1.5, py=cy;
+    const n2=4, cell=Math.min(unitW,CH)*0.110;
+    const ox=px-n2*cell*0.5, oy=py-n2*cell*0.5;
+    const eCols=[[192,96,248],[96,232,176],[240,160,64],[248,112,160]];
+    const D4mini=[[0,1,2,3],[1,2,3,0],[2,3,0,1],[3,0,1,2]]; // Z4 approx
+    for(let r=0;r<n2;r++) for(let cc=0;cc<n2;cc++){
+      const val=D4mini[r][cc];
+      const [cr,cg,cb]=eCols[val];
+      const pulse=0.6+0.28*Math.sin(t*0.04+r*0.5+cc*0.7);
+      const x2=ox+cc*cell, y2=oy+r*cell;
+      ctx.fillStyle=`rgba(${cr},${cg},${cb},${pulse*0.25})`; ctx.fillRect(x2+1,y2+1,cell-2,cell-2);
+      ctx.strokeStyle=`rgba(${cr},${cg},${cb},${pulse*0.50})`; ctx.lineWidth=0.7; ctx.strokeRect(x2+1,y2+1,cell-2,cell-2);
+      const elems=['e','r','r²','r³'];
+      ctx.font=`${Math.round(cell*0.32)}px Cinzel,serif`; ctx.textAlign='center';
+      ctx.fillStyle=`rgba(${cr},${cg},${cb},${pulse*0.88})`;
+      ctx.fillText(elems[val], x2+cell*0.5, y2+cell*0.64);
+    }
+    // Diagonal gold highlight
+    for(let i=0;i<n2;i++){
+      const [cr,cg,cb]=eCols[i];
+      ctx.strokeStyle=`rgba(201,168,76,${0.38+0.20*Math.sin(t*0.05+i)})`; ctx.lineWidth=1.5;
+      ctx.strokeRect(ox+i*cell+1,oy+i*cell+1,cell-2,cell-2);
+    }
+    ctx.font=`${Math.round(CH*0.076)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle='rgba(96,232,176,0.55)'; ctx.fillText('Cayley Table', px, CH*0.93);
+  }
+
+  // Divider 2
+  {
+    const dg=ctx.createLinearGradient(unitW*2,0,unitW*2,CH);
+    dg.addColorStop(0,'transparent'); dg.addColorStop(0.5,'rgba(201,168,76,0.22)'); dg.addColorStop(1,'transparent');
+    ctx.fillStyle=dg; ctx.fillRect(unitW*2-1,0,2,CH);
+  }
+
+  // ── Panel 3: Symmetry↔Conservation pulse ──
+  {
+    const px=unitW*2.5, py=cy;
+    const pulse=0.72+0.28*Math.sin(t*0.055);
+    // Left: rotating nested polygons (symmetry)
+    const rot=t*0.009;
+    [3,4,5,6].forEach((n3,ni)=>{
+      const r3=Math.min(unitW,CH)*(0.07+ni*0.065);
+      const alpha=(0.30+0.18*Math.sin(t*0.038+ni))*pulse;
+      ctx.beginPath();
+      for(let i=0;i<=n3;i++){
+        const a=(i/n3)*Math.PI*2+rot*(ni%2===0?1:-1.2);
+        i===0?ctx.moveTo(px-unitW*0.22+Math.cos(a)*r3,py+Math.sin(a)*r3)
+             :ctx.lineTo(px-unitW*0.22+Math.cos(a)*r3,py+Math.sin(a)*r3);
+      }
+      ctx.closePath();
+      ctx.strokeStyle=`rgba(248,112,160,${alpha})`; ctx.lineWidth=1.0; ctx.stroke();
+    });
+    // Center ⟺
+    ctx.font=`${Math.round(CH*0.115)}px serif`; ctx.textAlign='center';
+    ctx.fillStyle=`rgba(201,168,76,${pulse*0.88})`;
+    ctx.fillText('⟺', px, py+CH*0.045);
+    // Right: flowing conserved arrows
+    const lawCols=[[240,160,64],[96,232,176],[192,96,248]];
+    ['E','p','L'].forEach((law,li)=>{
+      const ly=py+CH*(li-1)*0.18;
+      const [cr,cg,cb]=lawCols[li];
+      const phase=((t*0.4+li*30)%(unitW*0.35));
+      const dx=px+unitW*0.06+phase;
+      ctx.beginPath(); ctx.arc(Math.min(dx,px+unitW*0.40),ly,CH*0.028*pulse,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${cr},${cg},${cb},${0.70*pulse})`; ctx.fill();
+      const lineG=ctx.createLinearGradient(px+unitW*0.05,0,px+unitW*0.44,0);
+      lineG.addColorStop(0,`rgba(${cr},${cg},${cb},0)`); lineG.addColorStop(0.5,`rgba(${cr},${cg},${cb},0.30)`); lineG.addColorStop(1,`rgba(${cr},${cg},${cb},0)`);
+      ctx.strokeStyle=lineG; ctx.lineWidth=0.9;
+      ctx.beginPath(); ctx.moveTo(px+unitW*0.05,ly); ctx.lineTo(px+unitW*0.44,ly); ctx.stroke();
+      ctx.font=`bold ${Math.round(CH*0.068)}px Cinzel,serif`; ctx.textAlign='left';
+      ctx.fillStyle=`rgba(${cr},${cg},${cb},${0.68*pulse})`;
+      ctx.fillText(law, px+unitW*0.46, ly+CH*0.025);
+    });
+    ctx.font=`${Math.round(CH*0.075)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle='rgba(240,160,64,0.55)'; ctx.fillText('诺特定理', px, CH*0.93);
+  }
+
+  t8++; c8Raf=requestAnimationFrame(drawC8);
+}
+
+// ══════════════════════════════════════════
+// SCENE MANAGER
+// ══════════════════════════════════════════
+const scenes=document.querySelectorAll('.scene');
+const totalScenes=scenes.length;
+let current=0,isTransitioning=false;
+const dotsEl=document.getElementById('nav-dots');
+for(let i=0;i<totalScenes;i++){
+  const d=document.createElement('div');d.className='nav-dot'+(i===0?' active':'');
+  d.addEventListener('click',()=>goTo(i));dotsEl.appendChild(d);
+}
+function updateDots(){document.querySelectorAll('.nav-dot').forEach((d,i)=>d.classList.toggle('active',i===current));}
+function updateProgress(){document.getElementById('progress').style.width=(current/(totalScenes-1)*100)+'%';}
+
+function onEnterScene(idx){
+  if(idx===0){
+    ['s0-b','s0-t','s0-s','s0-body'].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add('show');},200+i*280));
+    c0.style.opacity='1'; setTimeout(()=>{ t0=0; if(c0Raf)cancelAnimationFrame(c0Raf); drawC0(); },380);
+  }
+  if(idx===1){
+    document.querySelectorAll('#ax-panel .axiom-item').forEach((el,i)=>setTimeout(()=>el.classList.add('show'),300+i*350));
+    document.getElementById('c1-cayley').style.opacity='1'; setTimeout(startCayley,380);
+  }
+  if(idx===2){
+    startScene2Renderers();
+    ['oc0','oc1','oc2'].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add('show');},300+i*300));
+  }
+  if(idx===3){
+    document.getElementById('rubik3d-c').style.opacity='1';
+    const ri=document.getElementById('rubik-info');if(ri)ri.style.opacity='1';
+    setTimeout(startRubik3d,380);
+  }
+  if(idx===4){
+    document.getElementById('crystal-c').style.opacity='1';
+    const cl=document.getElementById('cry-label');if(cl)cl.classList.add('show');
+    setTimeout(startCrystal,380);
+  }
+  if(idx===5){
+    const items=document.querySelectorAll('#ng-grid .ng-item');
+    const arrows=document.querySelectorAll('#ng-grid .ng-arrow');
+    items.forEach((el,i)=>setTimeout(()=>el.classList.add('show'),400+Math.floor(i/2)*500));
+    arrows.forEach((el,i)=>setTimeout(()=>el.classList.add('show'),650+i*500));
+  }
+  if(idx===6){
+    document.getElementById('noether-c').style.opacity='1';
+    const ni=document.getElementById('noether-info');if(ni)ni.style.opacity='1';
+    setTimeout(startNoether,380);
+  }
+  if(idx===7){
+    document.getElementById('break-c').style.opacity='1';
+    const bl=document.getElementById('brk-label');if(bl)bl.classList.add('show');
+    setTimeout(startBreak,380);
+  }
+  if(idx===8){
+    ['e-t','e-q','e-a'].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add('show');},300+i*500));
+    c8.style.opacity='1'; setTimeout(()=>{ t8=0; c8Active=true; if(c8Raf)cancelAnimationFrame(c8Raf); drawC8(); },380);
+  }
+}
+function onLeaveScene(idx){
+  if(idx===0){ if(c0Raf)cancelAnimationFrame(c0Raf); }
+  if(idx===1){stopCayley();document.querySelectorAll('#ax-panel .axiom-item').forEach(el=>el.classList.remove('show'));}
+  if(idx===2){stopScene2Renderers();['oc0','oc1','oc2'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('show');});}
+  if(idx===3)stopRubik3d();
+  if(idx===4)stopCrystal();
+  if(idx===5){document.querySelectorAll('#ng-grid .ng-item').forEach(el=>el.classList.remove('show'));document.querySelectorAll('#ng-grid .ng-arrow').forEach(el=>el.classList.remove('show'));}
+  if(idx===6)stopNoether();
+  if(idx===7)stopBreak();
+  if(idx===8){ c8Active=false; if(c8Raf)cancelAnimationFrame(c8Raf); }
+}
+function goTo(idx){
+  if(isTransitioning||idx===current)return;
+  isTransitioning=true;onLeaveScene(current);
+  scenes[current].classList.remove('active');current=idx;scenes[current].classList.add('active');
+  updateDots();updateProgress();
+  setTimeout(()=>{onEnterScene(current);isTransitioning=false;},600);
+}
+function next(){if(current<totalScenes-1)goTo(current+1);}
+function prev(){if(current>0)goTo(current-1);}
+document.getElementById('btn-next').addEventListener('click',next);
+document.getElementById('btn-prev').addEventListener('click',prev);
+// Click anywhere to advance (document-level for reliability)
+document.addEventListener('click', (e) => {
+  if(e.target.closest('#nav')) return;
+  if(e.target.closest('a')) return;
+  if(e.target.closest('button')) return;
+  if(e.target.closest('#home-btn')) return;
+  if(e.target.closest('#ch-lang-bar')) return;
+  next();
+});
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')next();if(e.key==='ArrowLeft')prev();});
+setTimeout(()=>{document.getElementById('ornament').classList.add('visible');document.getElementById('hint').classList.add('visible');},1500);
+updateProgress();onEnterScene(0);
+</script>
+
+<div id="ch-lang-bar">
+  <button class="ch-lb" id="ch-btn-zh" onclick="chLang('zh')">中文</button>
+  <div class="ch-lb-sep"></div>
+  <button class="ch-lb on" id="ch-btn-en" onclick="chLang('en')">EN</button>
+</div>
+<script id=<script id="bilingual-js">
+(function(){
+  var D={"ornament": "Chapter X · Group Theory · The Ultimate Code of Symmetry", "badges": ["Chapter X", "§ 10.1 · What is a Group?", "§ 10.1 · Three Group Examples", "§ 10.2 · Rubik's Cube", "§ 10.2 · Crystal Symmetry", "§ 10.3 · Noether's Theorem", "§ 10.3 · Emmy Noether", "§ 10.4 · Symmetry Breaking", "Epilogue · Chapter X"], "titles": ["Group Theory", "Elementary Algebra Studies Numbers; Group Theory Studies Structure", "Four Axioms, Infinite Structure", "Rubik's Cube, Snowflake, Integer Addition", "Rubik's Cube: God's Number = 20", "230 Crystal Space Groups", "Symmetry → Conservation Law", "Emmy Noether: The Most Important Mathematician", "Symmetry Breaking: How Structure Emerges", "Symmetry ↔ Conservation"], "bodies": ["Elementary algebra studies numbers;<br>group theory studies the <strong>structure of operations</strong> — the algebra of symmetry itself.", "A <strong>group</strong> needs only four rules — closure, associativity, identity, inverse —<br>yet from these four, infinite structure unfolds.", "Rubik's cube, snowflake, integer addition — superficially different, same group skeleton.", "All moves of a Rubik's cube form a group of order ≈ 4.3×10¹⁹.<br><strong>God's number = 20</strong>: any state solvable in at most 20 moves.", "Nature's crystal arrangements, fully catalogued, yield exactly <strong>230 space groups</strong> —<br>the complete set compatible with 3D periodic symmetry.", "Emmy Noether 1915: <strong>every continuous symmetry corresponds to a conservation law.</strong><br>Time symmetry → energy. Space symmetry → momentum.", "Emmy Noether (1882–1935) revolutionized algebra and physics.<br>Einstein called her \"the most significant creative mathematical genius thus far produced.\"", "Perfect symmetry is beautiful — but produces <strong>no change, no structure, no life</strong>.<br>When symmetry breaks, differentiation emerges: the Higgs mechanism, matter over antimatter.", "Symmetry and conservation are two faces of one truth.<br><strong>The universe conserves what it refuses to break.</strong>"]};
+  var orig=null;
+  function save(){
+    if(orig)return;
+    var os=document.querySelector('.ornament-line span');
+    orig={
+      ornament:os?os.textContent:'',
+      badges:[].map.call(document.querySelectorAll('.chapter-badge'),function(e){return e.innerHTML;}),
+      titles:[].map.call(document.querySelectorAll('.scene-title'),function(e){return e.innerHTML;}),
+      bodies:[].map.call(document.querySelectorAll('.scene-body'),function(e){return e.innerHTML;}),
+    };
+  }
+  function applyEn(){
+    save();
+    applyPatchEn();
+    var os=document.querySelector('.ornament-line span');
+    if(os&&D.ornament)os.textContent=D.ornament;
+    [].forEach.call(document.querySelectorAll('.chapter-badge'),function(el,i){if(D.badges[i]!=null)el.innerHTML=D.badges[i];});
+    [].forEach.call(document.querySelectorAll('.scene-title'),function(el,i){if(D.titles[i]!=null)el.innerHTML=D.titles[i];});
+    [].forEach.call(document.querySelectorAll('.scene-body'),function(el,i){if(D.bodies[i]!=null)el.innerHTML=D.bodies[i];});
+  
+  
+
+    /* zwOrig save */
+    if(!window._zwOrig){
+      window._zwOrig={};
+      ['rub-p0','rub-p1','rub-p2','noe-p0','noe-p1','noe-p2','e-q','e-a','e-t'].forEach(function(id){var e=document.getElementById(id);if(e)window._zwOrig[id]=e.innerHTML;});
+    }
+    /* __direct_wires__ */
+    var _w=document.getElementById('e-t');if(_w)_w.innerHTML='The universe is a self-consistent group';
+    var _w=document.getElementById('e-a');if(_w)_w.innerHTML='— Chapter X · End';
+    var _w=document.getElementById('rub-p0');if(_w)_w.innerHTML='All legal Rubik&#39;s Cube moves form a finite group. Each rotation is a group element; compositions yield new elements.';
+    var _w=document.getElementById('rub-p1');if(_w)_w.innerHTML='Any scrambled cube can be solved in &le;20 moves &mdash; &ldquo;God&#39;s Number.&rdquo; Group theory provides this guarantee.';
+    var _w=document.getElementById('rub-p2');if(_w)_w.innerHTML='Group order: 43,252,003,274,489,856,000<br>Generators: 6 face rotation operations';
+    var _w=document.getElementById('noe-p0');if(_w)_w.innerHTML='Einstein called her &ldquo;the most important woman in the history of mathematics.&rdquo; She bridged abstract algebra and theoretical physics.';
+    var _w=document.getElementById('noe-p1');if(_w)_w.innerHTML='Expelled from G&ouml;ttingen by the Nazis in 1933, she fled to the US. Her theorem remains a cornerstone of modern physics.';
+    var _w=document.getElementById('noe-p2');if(_w)_w.innerHTML='&ldquo;Every conservation law is a symmetry of the universe. The universe is stable because it is algebraically self-consistent.&rdquo;';
+    var _w=document.getElementById('e-q');if(_w)_w.innerHTML='Elementary algebra studies the relations of numbers;<br>group theory studies the structure of transformations themselves.<br>Noether showed us: the universe has conservation laws<br>because <strong style="color:var(--gold-light);">the universe is symmetric.</strong>';
+  }
+  function applyZh(){
+    if(!orig)return;
+    /* zwOrig restore */
+    if(window._zwOrig){['rub-p0','rub-p1','rub-p2','noe-p0','noe-p1','noe-p2','e-q','e-a','e-t'].forEach(function(id){var e=document.getElementById(id);if(e&&window._zwOrig[id]!==undefined)e.innerHTML=window._zwOrig[id];});}
+    applyPatchZh();
+    var os=document.querySelector('.ornament-line span');
+    if(os)os.textContent=orig.ornament;
+    [].forEach.call(document.querySelectorAll('.chapter-badge'),function(el,i){if(orig.badges[i]!=null)el.innerHTML=orig.badges[i];});
+    [].forEach.call(document.querySelectorAll('.scene-title'),function(el,i){if(orig.titles[i]!=null)el.innerHTML=orig.titles[i];});
+    [].forEach.call(document.querySelectorAll('.scene-body'),function(el,i){if(orig.bodies[i]!=null)el.innerHTML=orig.bodies[i];});
+  }
+  
+  // Extended EN patches for elements not covered by D.badges/titles/bodies
+  var enPatches=[["#s0-s", 0, "The Ultimate Code of Symmetry"], [".axiom-item", 0, "<div class=\"axiom-num\">Closure</div><div class=\"axiom-body\">The result of combining any two elements <strong>remains in the group</strong>. Rotate twice, still a rotation.</div>"], [".axiom-item", 1, "<div class=\"axiom-num\">Associativity</div><div class=\"axiom-body\">(a ∘ b) ∘ c = a ∘ (b ∘ c). Operations can be regrouped without changing the result.</div>"], [".axiom-item", 2, "<div class=\"axiom-num\">Identity</div><div class=\"axiom-body\">There exists a \"do nothing\" element <strong>e</strong> such that a ∘ e = e ∘ a = a.</div>"], [".axiom-item", 3, "<div class=\"axiom-num\">Inverse</div><div class=\"axiom-body\">Every operation has an <strong>inverse</strong> that undoes it: a ∘ a⁻¹ = e.</div>"], [".obj-label", 0, "Rubik's Cube Group"], [".obj-sub", 0, "About 4.3×10¹⁹ states, all generated by the rotation group"], [".obj-label", 1, "Dihedral Group D₆"], [".obj-sub", 1, "6 rotations + 6 axes of symmetry of a snowflake"], [".obj-label", 2, "Integer Addition Group ℤ"], [".obj-sub", 2, "Infinite cyclic group, identity element is 0"], [".ng-box", 0, "Time Translation Symmetry<br><small style=\"opacity:0.6\">Physical laws are the same today and tomorrow</small>"], [".ng-box", 1, "Conservation of Energy"], [".ng-box", 2, "Spatial Translation Symmetry<br><small style=\"opacity:0.6\">Physical laws are the same here and there</small>"], [".ng-box", 3, "Conservation of Momentum"], [".ng-box", 4, "Rotational Symmetry<br><small style=\"opacity:0.6\">Physical laws are independent of direction</small>"], [".ng-box", 5, "Conservation of Angular Momentum"], [".ng-box", 6, "Gauge Symmetry<br><small style=\"opacity:0.6\">Quantum phase can be chosen freely</small>"], [".ng-box", 7, "Conservation of Charge"], ["#rubik-info p", 0, "All legal moves of a Rubik&rsquo;s Cube form a finite group. Each rotation is a group element; composing two rotations yields another element."], ["#rubik-info p", 1, "Mathematicians proved: any scrambled Rubik&rsquo;s Cube can be solved in at most 20 moves — &ldquo;God&rsquo;s Number.&rdquo; Group theory provides this guarantee."], ["#rubik-info p", 2, "Group order: 43,252,003,274,489,856,000<br>Generators: 6 face rotation operations"], ["#noether-info p", 0, "Einstein called her &ldquo;the most important woman in the history of mathematics.&rdquo; She built a bridge between abstract algebra and theoretical physics."], ["#noether-info p", 1, "In 1933 she was expelled from Göttingen University by the Nazis and fled to the United States. Her theorem remains a cornerstone of modern physics."], ["#noether-info p", 2, "&ldquo;Every conservation law is a symmetry of the universe. The universe is stable because it is algebraically self-consistent.&rdquo;"], ["#e-q", 0, "Elementary algebra studies the relations of numbers;<br>group theory studies the structure of transformations themselves.<br>Noether showed us: the universe has conservation laws<br>because <strong style='color:var(--gold-light);'>the universe is symmetric.</strong>"], ['.axiom-title', 0, 'Closure'], ['.axiom-body', 0, 'Any operation between two elements stays within the group'], ['.axiom-title', 1, 'Associativity'], ['.axiom-body', 1, '(a ∘ b) ∘ c = a ∘ (b ∘ c). Order of association does not affect the result.'], ['.axiom-title', 2, 'Identity'], ['.axiom-body', 2, 'There exists an element e such that a ∘ e = a for all a.'], ['.axiom-title', 3, 'Inverse'], ['.axiom-body', 3, 'Every element has an inverse such that a ∘ a⁻¹ = e.']];
+  var patchOrig=null;
+  function savePatch(){
+    if(patchOrig)return;
+    patchOrig=enPatches.map(function(p){
+      var els=document.querySelectorAll(p[0]);
+      return els[p[1]]?els[p[1]].innerHTML:null;
+    });
+  }
+  function applyPatchEn(){
+    savePatch();
+    enPatches.forEach(function(p){
+      var els=document.querySelectorAll(p[0]);
+      if(els[p[1]]!=null)els[p[1]].innerHTML=p[2];
+    });
+  }
+  function applyPatchZh(){
+    if(!patchOrig)return;
+    enPatches.forEach(function(p,i){
+      var els=document.querySelectorAll(p[0]);
+      if(els[p[1]]!=null&&patchOrig[i]!=null)els[p[1]].innerHTML=patchOrig[i];
+    });
+  }
+  window.chLang=function(l){
+    window.__currentLang=l;
+    try{localStorage.setItem('mathsite_lang',l);}catch(e){}
+    document.getElementById('ch-btn-zh').classList.toggle('on',l==='zh');
+    document.getElementById('ch-btn-en').classList.toggle('on',l==='en');
+    if(l==='en')applyEn();else applyZh();
+  };
+  // Auto-switch based on ?lang=en in URL
+  window.addEventListener('DOMContentLoaded',function(){
+    // Read language from localStorage or ?lang URL param, default English
+    var _lp=(new URLSearchParams(location.search)).get('lang');
+    var _ls=null;try{_ls=localStorage.getItem('mathsite_lang');}catch(e){}
+    var _l=_lp||_ls||'en';
+    window.__currentLang=_l;
+    document.getElementById('ch-btn-zh').classList.toggle('on',_l==='zh');
+    document.getElementById('ch-btn-en').classList.toggle('on',_l==='en');
+    // Always run applyEn first to populate orig/patchOrig caches,
+    // then switch to Chinese if needed
+    applyEn();
+    if(_l==='zh')applyZh();
+  });
+})();
+
+/* Mobile touch swipe */
+(function(){
+  var ts=null,tx=null;
+  document.addEventListener('touchstart',function(e){ts=e.touches[0].clientX;tx=e.touches[0].clientY;},{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(ts===null)return;
+    var dx=e.changedTouches[0].clientX-ts, dy=e.changedTouches[0].clientY-tx;
+    if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>40){
+      if(dx<0&&typeof next==='function')next();
+      else if(dx>0&&typeof prev==='function')prev();
+    }
+    ts=null;tx=null;
+  },{passive:true});
+})();
+
+/* Mobile: add stack class to inline-flex children on narrow screens */
+(function(){
+  function applyMobileLayout(){
+    var isMobile = window.innerWidth <= 700;
+    document.querySelectorAll('.scene > div, .scene > section').forEach(function(el){
+      var s = el.getAttribute('style') || '';
+      if(s.includes('display:flex') || s.includes('display: flex')){
+        if(isMobile){ el.style.flexDirection='column'; el.style.alignItems='center'; }
+        else { el.style.flexDirection=''; el.style.alignItems=''; }
+      }
+    });
+  }
+  applyMobileLayout();
+  window.addEventListener('resize', applyMobileLayout);
+})();
+</script>
+</body>
+</html>

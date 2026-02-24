@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第四章：对称与分形</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700&family=Cinzel:wght@400;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --gold: #c9a84c; --gold-light: #e8cc7a; --gold-dim: #7a5f2a;
+    --ink: #05050a; --cream: #e8dfc8;
+    --sym-col: #7ec8e3; --frac-col: #b47fe3;
+  }
+  body {
+    background: var(--ink); font-family: 'Noto Serif SC', serif;
+    overflow: hidden; width: 100vw; height: 100vh; cursor: default;
+  }
+  #bg-canvas { position: fixed; inset: 0; z-index: 0; }
+  #vignette {
+    position: fixed; inset: 0; z-index: 5; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 28%, rgba(0,0,0,0.58) 70%, rgba(0,0,0,0.92) 100%);
+  }
+  .ornament-line {
+    position: fixed; top: 32px; left: 50%; transform: translateX(-50%);
+    z-index: 20; display: flex; align-items: center; gap: 14px;
+    opacity: 0; transition: opacity 1.2s;
+  }
+  .ornament-line.visible { opacity: 1; }
+  .ornament-line span {
+    font-family: 'Cinzel', serif; font-size: 10px;
+    letter-spacing: 5px; color: var(--gold-dim); text-transform: uppercase;
+  }
+  .ornament-line::before, .ornament-line::after {
+    content: ''; width: 70px; height: 1px;
+    background: linear-gradient(to right, transparent, var(--gold-dim));
+  }
+  .ornament-line::after { background: linear-gradient(to left, transparent, var(--gold-dim)); }
+
+  #progress {
+    position: fixed; bottom: 0; left: 0; height: 2px;
+    background: linear-gradient(to right, var(--gold-dim), var(--gold), var(--gold-light));
+    z-index: 100; transition: width 0.4s linear;
+  }
+  .scene {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 1.4s ease; z-index: 10;
+  }
+  .scene.active { opacity: 1; pointer-events: auto; }
+
+  .chapter-badge {
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 5px;
+    color: var(--gold-dim); text-transform: uppercase;
+    display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+  }
+  .chapter-badge::before, .chapter-badge::after {
+    content: ''; width: 28px; height: 1px; background: var(--gold-dim);
+  }
+  .scene-title {
+    font-family: 'Cinzel', serif; font-size: clamp(24px,4vw,54px);
+    color: var(--gold-light); text-align: center; line-height: 1.2; letter-spacing: 2px;
+    text-shadow: 0 0 50px rgba(201,168,76,0.3);
+  }
+  .scene-body {
+    font-family: 'Noto Serif SC', serif; font-size: clamp(13px,1.5vw,18px);
+    color: var(--cream); text-align: center; line-height: 1.95;
+    max-width: 640px; margin-top: 18px; padding: 0 24px; font-weight: 300;
+  }
+  .scene-body strong { color: var(--gold-light); font-weight: 400; }
+  .divider {
+    width: 180px; height: 1px;
+    background: linear-gradient(to right, transparent, var(--gold-dim), transparent);
+    margin: 20px auto;
+  }
+  .fade-up { opacity: 0; transform: translateY(16px); transition: all 0.8s ease; }
+  .fade-up.show { opacity: 1; transform: translateY(0); }
+
+  /* ── SYMMETRY ROW ── */
+  #sym-row {
+    display: flex; align-items: flex-start; justify-content: center;
+    gap: clamp(16px, 4vw, 60px); margin-top: 26px;
+  }
+  .sym-card {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    opacity: 0; transform: translateY(20px) scale(0.93);
+    transition: all 0.7s ease;
+  }
+  .sym-card.show { opacity: 1; transform: translateY(0) scale(1); }
+  .sym-label {
+    font-family: 'Cinzel', serif; font-size: clamp(10px,1vw,12px);
+    letter-spacing: 2px; color: var(--sym-col); text-align: center;
+  }
+  .sym-desc {
+    font-size: clamp(10px,1vw,12px); color: var(--gold-dim);
+    text-align: center; max-width: 120px; line-height: 1.5; font-weight: 300;
+  }
+
+  /* ── CONSERVATION LAW PANEL ── */
+  .law-grid {
+    display: grid; grid-template-columns: 1fr auto 1fr;
+    gap: 10px 20px; align-items: center; margin-top: 22px;
+    max-width: 600px; padding: 0 20px;
+  }
+  .law-item {
+    opacity: 0; transform: translateX(-14px); transition: all 0.6s ease;
+  }
+  .law-item.show { opacity: 1; transform: translateX(0); }
+  .law-item.right { transform: translateX(14px); }
+  .law-item.right.show { transform: translateX(0); }
+  .law-box {
+    padding: 10px 18px; border: 1px solid rgba(126,200,227,0.25);
+    font-size: clamp(12px,1.3vw,15px); color: var(--sym-col);
+    text-align: center; font-family: 'Noto Serif SC'; font-weight: 300;
+    line-height: 1.5;
+  }
+  .law-box.right { color: var(--gold-light); border-color: rgba(201,168,76,0.25); }
+  .law-arrow {
+    font-family: 'IM Fell English', serif; font-size: 20px;
+    color: var(--gold-dim); text-align: center;
+    opacity: 0; transition: opacity 0.5s 0.3s;
+  }
+  .law-arrow.show { opacity: 1; }
+
+  /* ── MANDELBROT SCENE ── */
+  #mandel-wrap {
+    position: relative; margin-top: 16px;
+    opacity: 0; transition: opacity 1.2s 0.2s;
+  }
+  #mandel-wrap.show { opacity: 1; }
+  #mandel-label {
+    position: absolute; bottom: -28px; left: 50%; transform: translateX(-50%);
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 3px;
+    color: var(--gold-dim); white-space: nowrap;
+  }
+
+  /* ── FRACTAL ZOOM COUNTER ── */
+  #zoom-counter {
+    font-family: 'Cinzel', serif; font-size: clamp(10px,1.1vw,13px);
+    color: var(--gold-dim); letter-spacing: 2px; margin-top: 14px;
+    opacity: 0; transition: opacity 0.6s 0.8s;
+  }
+  #zoom-counter.show { opacity: 1; }
+
+  /* ── SNOWFLAKE SCENE ── */
+  #flake-row {
+    display: flex; align-items: center; justify-content: center;
+    gap: clamp(20px, 5vw, 72px); margin-top: 20px;
+  }
+
+  /* ── QUOTE BOX ── */
+  .quote-box {
+    margin-top: 22px; padding: 18px 32px;
+    border: 1px solid rgba(180,127,227,0.3);
+    position: relative; opacity: 0; transition: opacity 0.8s 0.4s;
+    max-width: 580px;
+  }
+  .quote-box.show { opacity: 1; }
+  .quote-box::before, .quote-box::after {
+    content: ''; position: absolute; width: 8px; height: 8px; border: 1px solid var(--frac-col);
+  }
+  .quote-box::before { top:-4px; left:-4px; border-right:none; border-bottom:none; }
+  .quote-box::after { bottom:-4px; right:-4px; border-left:none; border-top:none; }
+  .quote-text {
+    font-family: 'IM Fell English', serif; font-style: italic;
+    font-size: clamp(13px,1.5vw,18px); color: var(--cream);
+    text-align: center; line-height: 1.75;
+  }
+  .quote-src {
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 3px;
+    color: var(--frac-col); text-align: center; margin-top: 10px;
+  }
+
+  /* ── ENDING ── */
+  .big-quote {
+    font-family: 'IM Fell English', serif; font-style: italic;
+    font-size: clamp(15px,2vw,26px); color: var(--cream);
+    text-align: center; max-width: 580px; line-height: 1.78; padding: 0 28px;
+  }
+
+  /* ── NAV ── */
+  #nav {
+    position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%);
+    z-index: 200; display: flex; gap: 10px; align-items: center;
+  }
+  .nav-btn {
+    width: 34px; height: 34px; border: 1px solid var(--gold-dim);
+    background: transparent; color: var(--gold); cursor: pointer;
+    font-size: 16px; display: flex; align-items: center; justify-content: center; transition: all 0.3s;
+  }
+  .nav-btn:hover { background: rgba(201,168,76,0.1); border-color: var(--gold); }
+  .nav-dots { display: flex; gap: 6px; align-items: center; }
+  .nav-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold-dim); cursor: pointer; transition: all 0.3s; }
+  .nav-dot.active { background: var(--gold); width: 20px; border-radius: 3px; }
+  #hint {
+    position: fixed; bottom: 22px; right: 28px; z-index: 100;
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 2px;
+    color: var(--gold-dim); display: flex; align-items: center; gap: 8px;
+    opacity: 0; transition: opacity 1s;
+  }
+  #hint.visible { opacity: 1; }
+  #hint-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--gold-dim); animation: blink 1.6s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:1}50%{opacity:0.15} }
+
+  #home-btn {
+    position: fixed; top: 26px; left: 36px; z-index: 9000;
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 3px;
+    color: var(--gold); text-decoration: none;
+    border: 1px solid var(--gold-dim); padding: 8px 16px;
+    background: rgba(6,5,7,0.7); cursor: pointer !important;
+    transition: background .3s, color .3s, border-color .3s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  #home-btn:hover { background: rgba(201,168,76,.15); border-color: var(--gold-light); color: var(--gold-light); }
+</style>
+
+<style id="bilingual-css">
+#ch-lang-bar{position:fixed;top:26px;right:36px;z-index:9000;display:flex;align-items:stretch;border:1px solid rgba(122,95,42,.5);overflow:hidden;}
+.ch-lb{font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;padding:8px 16px;background:transparent;border:none;outline:none;color:#7a5f2a;cursor:pointer;transition:background .3s,color .3s;}
+.ch-lb:hover{background:rgba(201,168,76,.1);}
+.ch-lb.on{background:rgba(201,168,76,.2);color:#e8cc7a;}
+.ch-lb-sep{width:1px;background:rgba(122,95,42,.4);flex-shrink:0;}
+</style>
+
+<style id="mobile-responsive">
+@media (max-width: 700px) {
+  /* Core layout - keep centered, handle overflow with scroll wrapper */
+  .scene {
+    padding: 55px 14px 90px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  /* Typography */
+  .scene-title { font-size: clamp(17px, 5.5vw, 28px) !important; letter-spacing: 1px; }
+  .scene-subtitle { font-size: clamp(11px, 3vw, 15px) !important; }
+  .scene-body { font-size: clamp(12px, 3.2vw, 15px) !important; padding: 0 8px; max-width: 96vw; line-height: 1.75 !important; }
+  .chapter-badge { font-size: 7px; letter-spacing: 3px; }
+  .ornament-line span { font-size: 7px; letter-spacing: 1px; max-width: 55vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* UI controls */
+  #home-btn { top: 10px; left: 10px; padding: 5px 10px; font-size: 9px; }
+  #ch-lang-bar { top: 10px; right: 10px; }
+  .ch-lb { padding: 5px 9px; font-size: 8px; letter-spacing: 1px; }
+  #hint { display: none; }
+  .ornament-line { top: 14px; }
+
+  /* Nav - larger touch targets */
+  #nav { bottom: 8px; }
+  .nav-btn { width: 44px; height: 44px; font-size: 22px; }
+
+  /* Force ALL flex row containers to stack */
+  .split-layout,
+  .split-text,
+  .info-row,
+  .sym-row,
+  .law-row,
+  .tl-row,
+  .card-row,
+  .geo-row {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  /* Info panels */
+  .split-info, [id$="-info"], [id$="-text"], [id$="-panel"] {
+    max-width: 94vw !important; width: 94vw !important;
+  }
+  .split-info p, [id$="-info"] p { font-size: clamp(11px, 2.8vw, 14px) !important; }
+
+  /* Only limit standalone full-width canvases, not gallery 3D canvases */
+  canvas#bg-canvas { max-width: 100vw !important; }
+
+  /* Grids → two columns, small screens one column */
+  .law-grid, .var-grid, .sym-grid, .const-grid, .card-grid,
+  [class*="grid"] { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+
+  /* Epilogue / poem */
+  .big-quote, #e-q, #fin-q, .poem { 
+    font-size: clamp(13px, 3.5vw, 18px) !important; 
+    padding: 0 16px; 
+    line-height: 1.9 !important;
+  }
+  .ending-quote { font-size: clamp(14px, 3.8vw, 19px) !important; }
+
+  /* Tables */
+  table { font-size: 10px; width: 100%; }
+  td, th { padding: 4px 6px !important; }
+
+  /* Axiom boxes */
+  .axiom-item { padding: 8px 10px !important; }
+  .axiom-body { font-size: 11px !important; }
+
+  /* Divider spacing */
+  .divider { margin: 12px auto !important; }
+}
+
+@media (max-width: 420px) {
+  .scene-title { font-size: clamp(15px, 5vw, 22px) !important; }
+
+  [class*="grid"] { grid-template-columns: 1fr !important; }
+}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div id="vignette"></div>
+<a id="home-btn" href="index.html">&#8962;&nbsp;HOME</a>
+<div class="ornament-line" id="ornament"><span>Chapter III · Symmetry & Transformation</span></div>
+<div id="progress"></div>
+<div id="nav">
+  <button class="nav-btn" id="btn-prev">&#8249;</button>
+  <div class="nav-dots" id="nav-dots"></div>
+  <button class="nav-btn" id="btn-next">&#8250;</button>
+</div>
+<div id="hint"><div id="hint-dot"></div>CLICK TO ADVANCE</div>
+
+<!-- ════ SCENE 0: Chapter Title ════ -->
+<div class="scene active" id="scene-0">
+  <div class="chapter-badge fade-up" id="s0-b">第四章</div>
+  <div class="scene-title fade-up" id="s0-t">对称与分形</div>
+  <div style="font-family:'IM Fell English',serif;font-style:italic;font-size:clamp(14px,1.9vw,23px);color:var(--gold-dim);text-align:center;margin-top:10px;" class="fade-up" id="s0-s">静态与动态的舞步</div>
+  <div class="divider" style="margin:24px auto;"></div>
+  <div class="scene-body fade-up" id="s0-body" style="max-width:500px;font-size:clamp(13px,1.4vw,17px);">
+    有一种美，藏在不变性之中——旋转、翻转，形态依然。<br>
+    有一种美，藏在无限重复的细节里——<br>
+    放大再放大，仍是同一幅面孔。<br>
+    <strong>诺特定理与分形几何，是这两种美的数学语言。</strong>
+  </div>
+  <canvas id="c0" style="margin-top:20px;opacity:0;transition:opacity 1.5s 0.5s;width:min(660px,94vw);height:min(300px,36vh);"></canvas>
+</div>
+
+<!-- ════ SCENE 1: Types of Symmetry ════ -->
+<div class="scene" id="scene-1">
+  <div class="chapter-badge">§ 3.1 · 对称的类型</div>
+  <div class="scene-title" style="font-size:clamp(20px,3.2vw,44px);">对称的类型：镜像、旋转、平移</div>
+  <div class="scene-body" style="margin-top:10px;margin-bottom:4px;font-size:clamp(12px,1.3vw,16px);">
+    从最简单的镜像，到无穷旋转，对称的语言贯穿自然的每一个尺度。
+  </div>
+  <div id="sym-row">
+    <div class="sym-card" id="sc-0">
+      <canvas id="sym-reflect" style="width:min(190px,44vw);height:min(190px,44vw);"></canvas>
+      <div class="sym-label">镜像对称</div>
+      <div class="sym-desc">左右等价，自然界最常见的对称形式</div>
+    </div>
+    <div class="sym-card" id="sc-1">
+      <canvas id="sym-rotate" style="width:min(190px,44vw);height:min(190px,44vw);"></canvas>
+      <div class="sym-label">旋转对称</div>
+      <div class="sym-desc">旋转任意角度后自身重合</div>
+    </div>
+    <div class="sym-card" id="sc-2">
+      <canvas id="sym-snow" style="width:min(190px,44vw);height:min(190px,44vw);"></canvas>
+      <div class="sym-label">六角放射对称</div>
+      <div class="sym-desc">雪花的秘密——水分子的氢键几何</div>
+    </div>
+    <div class="sym-card" id="sc-3">
+      <canvas id="sym-trans" style="width:min(190px,44vw);height:min(190px,44vw);"></canvas>
+      <div class="sym-label">平移对称</div>
+      <div class="sym-desc">晶格、波纹——宇宙的无限复读机</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ SCENE 2: Symmetry = Conservation ════ -->
+<div class="scene" id="scene-2">
+  <div class="chapter-badge">§ 3.1 · 诺特定理</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">对称即守恒</div>
+  <div class="scene-body" style="margin-top:12px;max-width:580px;font-size:clamp(13px,1.4vw,17px);">
+    1915 年，艾米·诺特证明了一个惊人的定理：<br>
+    物理定律的每一种<strong>对称性</strong>，都对应一条<strong>守恒定律</strong>。<br>
+    几何与代数在此彼此握手，构成现代科学最深刻的根基。
+  </div>
+  <div class="law-grid" id="law-grid">
+    <div class="law-item"><div class="law-box">时间平移对称<br><small style="opacity:0.6">物理规律不随时间改变</small></div></div>
+    <div class="law-arrow" id="arr-0">→</div>
+    <div class="law-item right"><div class="law-box right">能量守恒</div></div>
+
+    <div class="law-item"><div class="law-box">空间平移对称<br><small style="opacity:0.6">物理规律与位置无关</small></div></div>
+    <div class="law-arrow" id="arr-1">→</div>
+    <div class="law-item right"><div class="law-box right">动量守恒</div></div>
+
+    <div class="law-item"><div class="law-box">旋转对称<br><small style="opacity:0.6">物理规律与方向无关</small></div></div>
+    <div class="law-arrow" id="arr-2">→</div>
+    <div class="law-item right"><div class="law-box right">角动量守恒</div></div>
+  </div>
+</div>
+
+<!-- ════ SCENE 3: Fractals Intro ════ -->
+<div class="scene" id="scene-3">
+  <div class="chapter-badge">§ 3.2 · 曼德博</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">云朵不是球体</div>
+  <div class="scene-body" style="margin-top:12px;max-width:580px;">
+    传统几何太过<strong>光滑</strong>——它无法描述真实自然的粗糙。<br>
+    曼德博发现：真实的形状，存在于整数维度之间的<strong>分数维</strong>里。<br>
+    一条海岸线，既不是一维的线，也不是二维的面。
+  </div>
+  <canvas id="mandel-mini" style="width:min(620px,94vw);height:min(340px,42vh);margin-top:18px;opacity:0;transition:opacity 1.2s 0.3s;"></canvas>
+  <div id="zoom-counter" id="zoom-ctr">ZOOM · <span id="zoom-val">×1</span></div>
+</div>
+
+<!-- ════ SCENE 4: Koch Snowflake / Self-Similarity ════ -->
+<div class="scene" id="scene-4">
+  <div class="chapter-badge">§ 3.2 · 自相似性</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">局部即整体</div>
+  <div class="scene-body" style="margin-top:12px;max-width:580px;">
+    科赫雪花：从一个等边三角形出发，<br>
+    每一条边无限向外生长出新的三角形——<br>
+    <strong>周长无限增大，面积永远有限。</strong><br>
+    这是数学给出的第一个"无限边界包围有限空间"的证明。
+  </div>
+  <canvas id="koch-c" style="width:min(580px,94vw);height:min(360px,46vh);margin-top:18px;opacity:0;transition:opacity 1s 0.3s;"></canvas>
+  <div class="quote-box" id="qbox">
+    <div class="quote-text">"上帝的指纹——在无限微小中，藏着整体的面貌。"</div>
+    <div class="quote-src">— Benoit Mandelbrot · 1975</div>
+  </div>
+</div>
+
+<!-- ════ SCENE 5: Fern IFS ════ -->
+<div class="scene" id="scene-5">
+  <div class="chapter-badge">§ 3.2 · 迭代函数系统</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">简单规则，无穷复杂</div>
+  <div class="scene-body" style="margin-top:12px;max-width:580px;">
+    巴恩斯利蕨叶：仅用<strong>四条仿射变换规则</strong>，<br>
+    迭代数十万次后，涌现出与真实蕨叶几乎相同的形状。<br>
+    自然从不浪费——它用最少的代码，运行最壮丽的程序。
+  </div>
+  <canvas id="fern-c" style="width:min(280px,50vh);height:min(440px,72vh);margin-top:16px;opacity:0;transition:opacity 1.5s 0.2s;"></canvas>
+</div>
+
+<!-- ════ SCENE 6: Ending ════ -->
+<div class="scene" id="scene-6">
+  <div class="chapter-badge">尾声 · 第三章</div>
+  <div class="scene-title fade-up" id="e-t" style="font-size:clamp(20px,3vw,42px);">舞步从未停止</div>
+  <div class="divider" style="margin:24px auto;"></div>
+  <div class="big-quote fade-up" id="e-q">
+    对称告诉我们，什么是<strong style="color:var(--sym-col);">不变的</strong>；<br>
+    分形告诉我们，什么是<strong style="color:var(--frac-col);">无穷尽的</strong>。<br><br>
+    而这两者共同揭示的，是宇宙最深层的美学偏好——<br>
+    <strong style="color:var(--gold-light);">以最简单的规则，创造最复杂的世界。</strong>
+  </div>
+  <div style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;color:var(--gold-dim);margin-top:20px;text-align:center;" class="fade-up" id="e-a">— 第四章 · 终</div>
+  <canvas id="c6" style="margin-top:18px;opacity:0;transition:opacity 2s;width:min(640px,94vw);height:min(280px,34vh);"></canvas>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// BACKGROUND
+// ══════════════════════════════════════════════════
+const bgC = document.getElementById('bg-canvas');
+const bgX = bgC.getContext('2d');
+let BW, BH, bgTick = 0;
+function resizeBg() { BW = bgC.width = window.innerWidth; BH = bgC.height = window.innerHeight; }
+resizeBg(); window.addEventListener('resize', resizeBg);
+
+const stars = Array.from({length:200}, () => ({
+  x: Math.random(), y: Math.random(), r: Math.random()*1.1+0.2,
+  a: Math.random(), sp: Math.random()*0.003+0.001
+}));
+
+function drawBg() {
+  bgX.clearRect(0,0,BW,BH);
+  const g = bgX.createRadialGradient(BW/2,BH/2,0,BW/2,BH/2,Math.max(BW,BH)*0.75);
+  g.addColorStop(0,'#080612'); g.addColorStop(1,'#020205');
+  bgX.fillStyle = g; bgX.fillRect(0,0,BW,BH);
+
+  stars.forEach(s => {
+    s.a += s.sp;
+    const al = (Math.sin(s.a)+1)/2*0.55+0.07;
+    bgX.beginPath(); bgX.arc(s.x*BW, s.y*BH, s.r, 0, Math.PI*2);
+    bgX.fillStyle = `rgba(160,140,220,${al})`; bgX.fill();
+  });
+
+  // Subtle symmetry axes in bg
+  bgX.save(); bgX.translate(BW/2,BH/2); bgX.rotate(bgTick*0.0002);
+  for(let i=0;i<8;i++) {
+    const a = (i/8)*Math.PI;
+    bgX.beginPath(); bgX.moveTo(-BW, Math.tan(a)*(-BW)); bgX.lineTo(BW, Math.tan(a)*BW);
+    bgX.strokeStyle = 'rgba(126,200,227,0.025)'; bgX.lineWidth=1; bgX.stroke();
+  }
+  bgX.restore();
+  bgTick++;
+  requestAnimationFrame(drawBg);
+}
+drawBg();
+
+// ══════════════════════════════════════════════════
+// SCENE 0 OPENING CANVAS
+// ══════════════════════════════════════════════════
+const c0 = document.getElementById('c0');
+let t0=0, c0Raf;
+function resizeC0(){ const r=c0.getBoundingClientRect(); c0.width=r.width||660; c0.height=r.height||300; }
+function drawC0() {
+  resizeC0();
+  const CW=c0.width, CH=c0.height, ctx=c0.getContext('2d');
+  ctx.fillStyle='rgba(4,2,10,0.88)'; ctx.fillRect(0,0,CW,CH);
+  const t=t0, cx=CW/2, cy=CH/2;
+
+  // ── n-fold kaleidoscope: draw one slice, mirror n times ──
+  const N=8; // 8-fold symmetry
+  const R=Math.min(CW,CH)*0.46;
+
+  for(let sym=0; sym<N; sym++) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate((sym/N)*Math.PI*2 + t*0.004);
+    if(sym%2===1) ctx.scale(-1,1); // mirror every other
+
+    // Petal shape using bezier
+    const nPetals=3;
+    for(let pi=0; pi<nPetals; pi++) {
+      const pa=(pi/nPetals)*Math.PI*2/N*N + t*0.008;
+      const pr=R*(0.25+0.12*Math.sin(t*0.03+pi*2));
+      const px=Math.cos(pa)*pr, py=Math.sin(pa)*pr;
+      const col = pi===0 ? `rgba(126,200,227,` : pi===1 ? `rgba(180,127,227,` : `rgba(201,168,76,`;
+      const al=0.12+0.08*Math.sin(t*0.04+pi*1.4+sym);
+
+      ctx.beginPath();
+      ctx.moveTo(0,0);
+      ctx.bezierCurveTo(px*0.3, py*0.3+R*0.15, px*0.7, py*0.7-R*0.1, px, py);
+      ctx.bezierCurveTo(px*0.7+R*0.08, py*0.7+R*0.08, px*0.3, py*0.3, 0, 0);
+      ctx.fillStyle=col+al+')'; ctx.fill();
+      ctx.strokeStyle=col+(al*3+0.15)+')'; ctx.lineWidth=0.8; ctx.stroke();
+    }
+
+    // Radial spoke
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0, -R*0.85);
+    ctx.strokeStyle=`rgba(201,168,76,${0.08+0.05*Math.sin(t*0.03+sym)})`; ctx.lineWidth=0.6; ctx.stroke();
+
+    ctx.restore();
+  }
+
+  // ── Concentric symmetry rings ──
+  [0.22, 0.44, 0.66, 0.86].forEach((fr, ri) => {
+    const r2=R*fr, pulse=0.5+0.5*Math.sin(t*0.025+ri*0.8);
+    ctx.beginPath(); ctx.arc(cx,cy,r2,0,Math.PI*2);
+    const col=ri%2===0?'126,200,227':'180,127,227';
+    ctx.strokeStyle=`rgba(${col},${0.08+pulse*0.07})`; ctx.lineWidth=0.7; ctx.stroke();
+    // Dots at intersections
+    for(let di=0; di<N; di++) {
+      const da=(di/N)*Math.PI*2+t*0.004;
+      const dx=cx+Math.cos(da)*r2, dy=cy+Math.sin(da)*r2;
+      ctx.beginPath(); ctx.arc(dx,dy,2,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${col},${0.25+pulse*0.25})`; ctx.fill();
+    }
+  });
+
+  // ── Rotating fractal dots (self-similar) ──
+  for(let level=0; level<3; level++) {
+    const nDots=N*(level+1);
+    const dr=R*(0.18+level*0.22);
+    for(let di=0; di<nDots; di++) {
+      const da=(di/nDots)*Math.PI*2 + t*0.006*(level%2===0?1:-1);
+      const dx=cx+Math.cos(da)*dr, dy=cy+Math.sin(da)*dr;
+      const ds=3.5-level*0.9;
+      const cols=['126,200,227','180,127,227','201,168,76'];
+      ctx.beginPath(); ctx.arc(dx,dy,ds,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${cols[level]},${0.45+0.3*Math.sin(t*0.05+di)})`; ctx.fill();
+    }
+  }
+
+  // ── Central starburst ──
+  const pulseC=0.7+0.3*Math.sin(t*0.06);
+  const cg=ctx.createRadialGradient(cx,cy,0,cx,cy,R*0.14);
+  cg.addColorStop(0,`rgba(201,168,76,${pulseC*0.85})`);
+  cg.addColorStop(0.5,`rgba(180,127,227,${pulseC*0.3})`);
+  cg.addColorStop(1,'transparent');
+  ctx.fillStyle=cg; ctx.fillRect(cx-R*0.15,cy-R*0.15,R*0.3,R*0.3);
+  ctx.beginPath(); ctx.arc(cx,cy,5*pulseC,0,Math.PI*2);
+  ctx.fillStyle='rgba(201,168,76,0.95)'; ctx.fill();
+
+  t0++; c0Raf=requestAnimationFrame(drawC0);
+}
+
+// ══════════════════════════════════════════════════
+// SCENE 1 SYMMETRY CANVASES — enhanced
+// ══════════════════════════════════════════════════
+const symRenderers = {};
+
+function drawSymReflect(canvas, tick) {
+  const ctx=canvas.getContext('2d'), W=canvas.width, H=canvas.height;
+  ctx.fillStyle='rgba(4,2,10,0.92)'; ctx.fillRect(0,0,W,H);
+  const cx=W/2, cy=H/2, R=Math.min(W,H)*0.40;
+  // Organic petal shape with bilateral symmetry
+  const nPts=8;
+  function petalPts(mirror) {
+    const pts=[];
+    for(let i=0;i<nPts;i++) {
+      const t2=i/nPts;
+      const r2=R*(0.3+0.55*Math.pow(Math.sin(t2*Math.PI),1.4));
+      const a=(t2-0.5)*Math.PI + (mirror?0:0);
+      pts.push([cx + (mirror?1:-1)*Math.cos(a)*r2*0.85, cy + Math.sin(a+tick*0.012)*r2]);
+    }
+    return pts;
+  }
+  ['rgba(126,200,227,', 'rgba(180,127,227,'].forEach((col,ci) => {
+    const offset=ci*Math.PI*0.18;
+    [false,true].forEach(mirror => {
+      ctx.beginPath();
+      const pts=petalPts(mirror);
+      ctx.moveTo(cx,cy);
+      pts.forEach(p=>ctx.lineTo(p[0]+Math.sin(tick*0.02+ci)*2,p[1]));
+      ctx.closePath();
+      ctx.fillStyle=col+(0.08+ci*0.04)+')'; ctx.fill();
+      ctx.strokeStyle=col+'0.65)'; ctx.lineWidth=1.3; ctx.stroke();
+    });
+  });
+  // Mirror axis
+  ctx.beginPath(); ctx.moveTo(cx,cy-R*1.0); ctx.lineTo(cx,cy+R*1.0);
+  ctx.strokeStyle='rgba(201,168,76,0.45)'; ctx.lineWidth=1;
+  ctx.setLineDash([5,6]); ctx.stroke(); ctx.setLineDash([]);
+  // Center dot
+  ctx.beginPath(); ctx.arc(cx,cy,4,0,Math.PI*2);
+  ctx.fillStyle='rgba(201,168,76,0.85)'; ctx.fill();
+}
+
+function drawSymRotate(canvas, tick) {
+  const ctx=canvas.getContext('2d'), W=canvas.width, H=canvas.height;
+  ctx.fillStyle='rgba(4,2,10,0.92)'; ctx.fillRect(0,0,W,H);
+  const cx=W/2, cy=H/2, N=6, R=Math.min(W,H)*0.41;
+  // Rose curve r = cos(N/2 * θ) displayed as N-fold rotational symmetry
+  ctx.save(); ctx.translate(cx,cy);
+  // Background circles
+  [0.35,0.65,0.90].forEach(fr=>{
+    ctx.beginPath(); ctx.arc(0,0,R*fr,0,Math.PI*2);
+    ctx.strokeStyle='rgba(126,200,227,0.08)'; ctx.lineWidth=0.6; ctx.stroke();
+  });
+  // N petals via rotation
+  for(let i=0;i<N;i++) {
+    ctx.save(); ctx.rotate((i/N)*Math.PI*2 + tick*0.010);
+    // Single petal bezier
+    ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.bezierCurveTo(R*0.35,-R*0.18, R*0.75,-R*0.22, R*0.88,0);
+    ctx.bezierCurveTo(R*0.75,R*0.22, R*0.35,R*0.18, 0,0);
+    const heat=0.55+0.45*Math.sin(tick*0.04+i*1.1);
+    ctx.fillStyle=`rgba(${i%2===0?'126,200,227':'180,127,227'},${0.12+heat*0.12})`; ctx.fill();
+    ctx.strokeStyle=`rgba(${i%2===0?'126,200,227':'180,127,227'},${0.55+heat*0.35})`; ctx.lineWidth=1.4; ctx.stroke();
+    ctx.restore();
+  }
+  // Spokes
+  for(let i=0;i<N;i++) {
+    const a=(i/N)*Math.PI*2+tick*0.010;
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(a)*R*0.95,Math.sin(a)*R*0.95);
+    ctx.strokeStyle='rgba(201,168,76,0.10)'; ctx.lineWidth=0.6; ctx.stroke();
+  }
+  // Glowing center
+  const cg=ctx.createRadialGradient(0,0,0,0,0,R*0.15);
+  cg.addColorStop(0,'rgba(201,168,76,0.9)'); cg.addColorStop(1,'transparent');
+  ctx.fillStyle=cg; ctx.fillRect(-R*0.15,-R*0.15,R*0.3,R*0.3);
+  ctx.beginPath(); ctx.arc(0,0,5,0,Math.PI*2);
+  ctx.fillStyle='rgba(201,168,76,1)'; ctx.fill();
+  ctx.restore();
+}
+
+function drawSymSnow(canvas, tick) {
+  const ctx=canvas.getContext('2d'), W=canvas.width, H=canvas.height;
+  ctx.fillStyle='rgba(4,2,10,0.92)'; ctx.fillRect(0,0,W,H);
+  const cx=W/2, cy=H/2, R=Math.min(W,H)*0.43;
+  function snowBranch(x1,y1,len,angle,depth) {
+    if(depth<0||len<1.5) return;
+    const x2=x1+Math.cos(angle)*len, y2=y1+Math.sin(angle)*len;
+    const al=0.15+depth*0.12;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+    ctx.strokeStyle=`rgba(200,230,255,${al})`; ctx.lineWidth=depth*0.5+0.3; ctx.stroke();
+    // Dot at branch tip
+    if(depth===1){ ctx.beginPath(); ctx.arc(x2,y2,2,0,Math.PI*2); ctx.fillStyle=`rgba(200,230,255,${al*2})`; ctx.fill(); }
+    snowBranch(x2,y2,len*0.50,angle+0.52,depth-1);
+    snowBranch(x2,y2,len*0.50,angle-0.52,depth-1);
+    if(depth>2) {
+      snowBranch(x2,y2,len*0.35,angle+Math.PI/2,depth-2);
+      snowBranch(x2,y2,len*0.35,angle-Math.PI/2,depth-2);
+    }
+  }
+  const slowRot=tick*0.002;
+  for(let i=0;i<6;i++) {
+    const a=(i/6)*Math.PI*2+slowRot;
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(a);
+    snowBranch(0,0,R*0.78,-Math.PI/2,5);
+    ctx.restore();
+  }
+  // Center hex glow
+  const cg=ctx.createRadialGradient(cx,cy,0,cx,cy,R*0.12);
+  cg.addColorStop(0,'rgba(200,230,255,0.5)'); cg.addColorStop(1,'transparent');
+  ctx.fillStyle=cg; ctx.fillRect(cx-R*0.12,cy-R*0.12,R*0.24,R*0.24);
+  ctx.beginPath(); ctx.arc(cx,cy,4,0,Math.PI*2);
+  ctx.fillStyle='rgba(220,240,255,0.9)'; ctx.fill();
+}
+
+function drawSymTrans(canvas, tick) {
+  const ctx=canvas.getContext('2d'), W=canvas.width, H=canvas.height;
+  ctx.fillStyle='rgba(4,2,10,0.92)'; ctx.fillRect(0,0,W,H);
+  // Wallpaper pattern: p4m symmetry (4-fold + mirrors)
+  const step=Math.min(W,H)*0.22;
+  const offX=(tick*0.4)%step, offY=(tick*0.25)%step;
+  const cols=Math.ceil(W/step)+2, rows=Math.ceil(H/step)+2;
+  for(let col=-1; col<=cols; col++) {
+    for(let row=-1; row<=rows; row++) {
+      const cx2=col*step+offX, cy2=row*step+offY;
+      const phase=Math.sin(tick*0.03+col*0.7+row*0.5);
+      // Rotated square motif
+      ctx.save(); ctx.translate(cx2,cy2); ctx.rotate(Math.PI/4+tick*0.005);
+      const s=step*0.36, al=0.10+0.06*phase;
+      ctx.strokeStyle=`rgba(126,200,227,${al})`; ctx.lineWidth=0.8;
+      ctx.strokeRect(-s/2,-s/2,s,s);
+      // Inner rotated square
+      ctx.rotate(Math.PI/4);
+      ctx.strokeStyle=`rgba(180,127,227,${al})`; ctx.lineWidth=0.6;
+      ctx.strokeRect(-s*0.38,-s*0.38,s*0.76,s*0.76);
+      ctx.restore();
+      // Center dot
+      ctx.beginPath(); ctx.arc(cx2,cy2,2,0,Math.PI*2);
+      ctx.fillStyle=`rgba(201,168,76,${0.20+0.15*phase})`; ctx.fill();
+    }
+  }
+  // Wave overlay (showing translation symmetry)
+  for(let row=0; row<3; row++) {
+    ctx.beginPath();
+    for(let x=0;x<W;x+=2){
+      const y=H/2+(row-1)*step*0.9+Math.sin((x+tick*1.2)*0.09)*10;
+      x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle='rgba(126,200,227,0.08)'; ctx.lineWidth=0.7; ctx.stroke();
+  }
+}
+
+function startSymRenderers() {
+  const canvases = [
+    {id:'sym-reflect', fn:drawSymReflect},
+    {id:'sym-rotate',  fn:drawSymRotate},
+    {id:'sym-snow',    fn:drawSymSnow},
+    {id:'sym-trans',   fn:drawSymTrans},
+  ];
+  canvases.forEach(({id,fn}) => {
+    const c = document.getElementById(id); if(!c) return;
+    // Proper init with getBoundingClientRect
+    const r=c.getBoundingClientRect(); const S=Math.max(r.width,r.height,130);
+    c.width=S; c.height=S;
+    let t=0, active=true, raf;
+    function loop(){ c&&fn(c,t++); raf=active?requestAnimationFrame(loop):0; }
+    loop();
+    symRenderers[id] = { stop(){ active=false; cancelAnimationFrame(raf); }};
+  });
+}
+function stopSymRenderers() {
+  Object.values(symRenderers).forEach(r=>r.stop());
+}
+
+// ══════════════════════════════════════════════════
+// SCENE 3: MANDELBROT — full-width, electric color scheme
+// ══════════════════════════════════════════════════
+let mandelRAF, mandelActive=false;
+
+function renderMandelbrot() {
+  const canvas = document.getElementById('mandel-mini');
+  if(!canvas) return;
+  const _mr=canvas.getBoundingClientRect();
+  const W = canvas.width = Math.floor(_mr.width)||620;
+  const H = canvas.height = Math.floor(_mr.height)||340;
+  const ctx = canvas.getContext('2d');
+  const maxIter = 120;
+
+  let zoomPhase = 0;
+  mandelActive = true;
+
+  // Zoom targets: seahorse valley → antenna → minibrot
+  const targets=[
+    {cx:-0.7436,cy:0.1318,zoom:1.0},
+    {cx:-0.7453,cy:0.1127,zoom:3.5},
+    {cx:-0.7469,cy:0.1002,zoom:12},
+    {cx:-0.7440,cy:0.1320,zoom:35},
+  ];
+
+  function frame() {
+    if(!mandelActive) return;
+    const img = ctx.createImageData(W, H);
+    const t2=Math.min(1,zoomPhase/3.2);
+    const ti=Math.min(targets.length-2, Math.floor(zoomPhase/3.5));
+    const tf=(zoomPhase/3.5)%1;
+    const tA=targets[Math.min(ti,targets.length-1)];
+    const tB=targets[Math.min(ti+1,targets.length-1)];
+    const mcx=tA.cx*(1-tf)+tB.cx*tf;
+    const mcy=tA.cy*(1-tf)+tB.cy*tf;
+    const zoom=tA.zoom*(1-tf)+tB.zoom*tf;
+    const scale=3.0/(zoom*W);
+
+    for(let py=0;py<H;py++) {
+      for(let px=0;px<W;px++) {
+        const cr=(px-W/2)*scale+mcx;
+        const ci=(py-H/2)*scale+mcy;
+        let zr=0,zi=0,iter=0,zr2=0,zi2=0;
+        while(zr2+zi2<4 && iter<maxIter){
+          zi=2*zr*zi+ci; zr=zr2-zi2+cr;
+          zr2=zr*zr; zi2=zi*zi; iter++;
+        }
+        const idx=(py*W+px)*4;
+        if(iter===maxIter){
+          img.data[idx]=3; img.data[idx+1]=2; img.data[idx+2]=8;
+        } else {
+          // Smooth coloring + electric palette
+          const smooth=iter+1-Math.log(Math.log(Math.sqrt(zr2+zi2)))/Math.log(2);
+          const nt=smooth/maxIter;
+          // Electric blue → cyan → gold → purple scheme
+          const angle=nt*6.28*3+zoomPhase*0.1;
+          img.data[idx]   = Math.floor(Math.max(0,Math.min(255, 10+nt*120+Math.sin(angle)*80+nt*nt*100)));
+          img.data[idx+1] = Math.floor(Math.max(0,Math.min(255,  3+nt*80 +Math.sin(angle+2.1)*60)));
+          img.data[idx+2] = Math.floor(Math.max(0,Math.min(255, 20+nt*200+Math.sin(angle+4.2)*100)));
+        }
+        img.data[idx+3]=255;
+      }
+    }
+    ctx.putImageData(img,0,0);
+
+    // Gold vignette glow
+    const grd=ctx.createRadialGradient(W*0.42,H*0.50,0,W/2,H/2,W*0.55);
+    grd.addColorStop(0,'rgba(201,168,76,0.05)'); grd.addColorStop(1,'transparent');
+    ctx.fillStyle=grd; ctx.fillRect(0,0,W,H);
+
+    const zEl=document.getElementById('zoom-val');
+    if(zEl) zEl.textContent=`×${zoom.toFixed(1)}`;
+
+    zoomPhase += 0.14;
+    if(zoomPhase < 14 && mandelActive) mandelRAF = setTimeout(frame, 110);
+  }
+  frame();
+}
+
+function stopMandelbrot() { mandelActive=false; clearTimeout(mandelRAF); }
+
+// ══════════════════════════════════════════════════
+// SCENE 4: KOCH SNOWFLAKE — large, colorful, dramatic
+// ══════════════════════════════════════════════════
+let kochActive=false, kochRAF;
+
+function kochPoints(pts) {
+  const out=[];
+  for(let i=0;i<pts.length;i++) {
+    const a=pts[i], b=pts[(i+1)%pts.length];
+    const dx=b[0]-a[0], dy=b[1]-a[1];
+    const p1=[a[0]+dx/3, a[1]+dy/3];
+    const p2=[a[0]+2*dx/3, a[1]+2*dy/3];
+    const mx=(p1[0]+p2[0])/2, my=(p1[1]+p2[1])/2;
+    const nx=-(p2[1]-p1[1]), ny=p2[0]-p1[0];
+    const len=Math.sqrt(nx*nx+ny*ny)||1;
+    const peak=[mx+nx/len*(Math.sqrt(3)/6)*(Math.sqrt(dx*dx+dy*dy)),
+                my+ny/len*(Math.sqrt(3)/6)*(Math.sqrt(dx*dx+dy*dy))];
+    out.push(a,p1,peak,p2);
+  }
+  return out;
+}
+
+function startKoch() {
+  const canvas=document.getElementById('koch-c');
+  if(!canvas) return;
+  const _kr=canvas.getBoundingClientRect();
+  const W=_kr.width||580, H=_kr.height||360;
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  const cx=W/2, cy=H*0.52, r=Math.min(W,H)*0.40;
+  let iter=0, maxIter=5, pts;
+
+  function initPts() {
+    pts=[];
+    for(let i=0;i<3;i++){
+      const a=(i/3)*Math.PI*2-Math.PI/2;
+      pts.push([cx+Math.cos(a)*r, cy+Math.sin(a)*r]);
+    }
+  }
+  initPts(); kochActive=true;
+
+  function draw(pts, alpha=1) {
+    ctx.fillStyle='rgba(4,2,10,0.92)'; ctx.fillRect(0,0,W,H);
+
+    // Outer glow halo
+    const halo=ctx.createRadialGradient(cx,cy,r*0.3,cx,cy,r*1.2);
+    halo.addColorStop(0,'rgba(126,200,227,0.04)');
+    halo.addColorStop(0.5,'rgba(180,127,227,0.03)');
+    halo.addColorStop(1,'transparent');
+    ctx.fillStyle=halo; ctx.fillRect(0,0,W,H);
+
+    // Fill with gradient
+    const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,r*1.1);
+    grd.addColorStop(0,`rgba(180,127,227,${0.14*alpha})`);
+    grd.addColorStop(0.5,`rgba(126,200,227,${0.08*alpha})`);
+    grd.addColorStop(1,`rgba(126,200,227,${0.02*alpha})`);
+
+    ctx.beginPath();
+    pts.forEach((p,i)=>i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]));
+    ctx.closePath();
+    ctx.fillStyle=grd; ctx.fill();
+
+    // Colored stroke: gradient along perimeter
+    // Draw segments with color based on position
+    const nSegs=pts.length;
+    for(let si2=0;si2<nSegs;si2++) {
+      const a=pts[si2], b=pts[(si2+1)%nSegs];
+      const frac=si2/nSegs;
+      // Cycle through blue→purple→teal
+      const hue=frac*6;
+      let r2,g2,b2;
+      if(hue<1)      {r2=126+(180-126)*hue; g2=200+(127-200)*hue; b2=227;}
+      else if(hue<2) {r2=180; g2=127+(200-127)*(hue-1); b2=227;}
+      else if(hue<3) {r2=180-(180-80)*(hue-2); g2=200; b2=227;}
+      else if(hue<4) {r2=80+(126-80)*(hue-3); g2=200; b2=227;}
+      else if(hue<5) {r2=126; g2=200-(200-127)*(hue-4); b2=227;}
+      else           {r2=126+(180-126)*(hue-5); g2=127; b2=227;}
+      ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]);
+      ctx.strokeStyle=`rgba(${Math.floor(r2)},${Math.floor(g2)},${Math.floor(b2)},${0.75*alpha})`;
+      ctx.lineWidth=Math.max(0.5, 1.2-iter*0.15); ctx.stroke();
+    }
+
+    // Iteration label
+    ctx.font=`${Math.round(H*0.05)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle=`rgba(201,168,76,${alpha*0.70})`;
+    ctx.fillText(`迭代 ${iter}`, cx, H-18);
+    // Segment count
+    ctx.font=`${Math.round(H*0.035)}px Cinzel,serif`;
+    ctx.fillStyle=`rgba(180,127,227,${alpha*0.55})`;
+    ctx.fillText(`${pts.length} 段`, cx, H-6);
+  }
+
+  function step() {
+    if(!kochActive) return;
+    draw(pts);
+    if(iter < maxIter) {
+      kochRAF=setTimeout(()=>{
+        pts=kochPoints(pts); iter++;
+        step();
+      }, 950);
+    } else {
+      kochRAF=setTimeout(()=>{
+        iter=0; initPts(); step();
+      }, 2800);
+    }
+  }
+  step();
+}
+
+function stopKoch() { kochActive=false; clearTimeout(kochRAF); }
+
+// ══════════════════════════════════════════════════
+// SCENE 5: BARNSLEY FERN — vibrant, large, gold-dusted
+// ══════════════════════════════════════════════════
+let fernActive=false, fernRAF;
+
+function startFern() {
+  const canvas=document.getElementById('fern-c');
+  if(!canvas) return;
+  const _fr=canvas.getBoundingClientRect();
+  const CW=Math.floor(_fr.width)||280;
+  const CH=Math.floor(_fr.height)||440;
+  canvas.width=CW; canvas.height=CH;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#030208'; ctx.fillRect(0,0,CW,CH);
+  fernActive=true;
+
+  let x=0, y=0;
+  const transforms=[
+    {p:0.01, a:0,    b:0,     c:0,     d:0.16,  e:0,   f:0},
+    {p:0.85, a:0.85, b:0.04,  c:-0.04, d:0.85,  e:0,   f:1.6},
+    {p:0.07, a:0.20, b:-0.26, c:0.23,  d:0.22,  e:0,   f:1.6},
+    {p:0.07, a:-0.15,b:0.28,  c:0.26,  d:0.24,  e:0,   f:0.44},
+  ];
+
+  function scaleXY(fx,fy) {
+    return [CW/2 + fx*(CW*0.42), CH - fy*(CH/10.5) - 8];
+  }
+
+  let count=0;
+  function batch() {
+    if(!fernActive) return;
+    for(let i=0;i<700;i++) {
+      const r=Math.random();
+      let tr=transforms[0]; let cum=0;
+      for(const t of transforms){ cum+=t.p; if(r<cum){tr=t;break;} }
+      const nx=tr.a*x+tr.b*y+tr.e;
+      const ny=tr.c*x+tr.d*y+tr.f;
+      x=nx; y=ny;
+      const [px,py]=scaleXY(x,y);
+      if(px<0||px>=CW||py<0||py>=CH) continue;
+      // Color: stem=teal, fronds=deep green to lime, tip=gold
+      const yFrac=1-(py/CH);
+      let rc,gc,bc;
+      if(yFrac<0.05) { rc=40; gc=100; bc=60; }          // stem base
+      else if(yFrac<0.5) { rc=20+yFrac*40; gc=130+yFrac*80; bc=50; } // mid green
+      else { rc=30+yFrac*120; gc=160+yFrac*80; bc=40+yFrac*30; }     // tip: yellow-green→gold
+      const alpha=0.40+Math.random()*0.35;
+      ctx.fillStyle=`rgba(${Math.floor(rc)},${Math.floor(gc)},${Math.floor(bc)},${alpha})`;
+      ctx.fillRect(px,py,1.2,1.2);
+      count++;
+    }
+
+    // Gold shimmer dust at tips (after enough points)
+    if(count>30000 && Math.random()<0.06) {
+      for(let di=0;di<12;di++) {
+        const gx=CW*0.35+Math.random()*CW*0.3;
+        const gy=CH*0.02+Math.random()*CH*0.18;
+        ctx.beginPath(); ctx.arc(gx,gy,Math.random()*1.5,0,Math.PI*2);
+        ctx.fillStyle=`rgba(201,168,76,${0.15+Math.random()*0.25})`; ctx.fill();
+      }
+    }
+
+    if(fernActive) fernRAF=requestAnimationFrame(batch);
+  }
+  batch();
+}
+function stopFern() { fernActive=false; cancelAnimationFrame(fernRAF); }
+
+// ══════════════════════════════════════════════════
+// SCENE 6 OUTRO — Grand Kaleidoscope Finale
+// ══════════════════════════════════════════════════
+const c6=document.getElementById('c6');
+let t6=0, c6Active=false, c6Raf;
+function resizeC6(){const r=c6.getBoundingClientRect();c6.width=r.width||640;c6.height=r.height||280;}
+function drawC6() {
+  if(!c6Active) return;
+  resizeC6();
+  const CW=c6.width, CH=c6.height, ctx=c6.getContext('2d');
+  ctx.fillStyle='rgba(4,2,10,0.88)'; ctx.fillRect(0,0,CW,CH);
+  const t=t6, cx=CW/2, cy=CH/2;
+
+  // ── Left panel: Rose curve (rotational symmetry) ──
+  {
+    const lcx=CW*0.22, lcy=cy;
+    const R=Math.min(CW*0.20, CH*0.42);
+    ctx.save(); ctx.translate(lcx,lcy);
+    const N=5; // 5-petal rose
+    for(let i=0;i<N;i++) {
+      ctx.save(); ctx.rotate((i/N)*Math.PI*2+t*0.008);
+      ctx.beginPath(); ctx.moveTo(0,0);
+      ctx.bezierCurveTo(R*0.35,-R*0.20,R*0.75,-R*0.24,R*0.90,0);
+      ctx.bezierCurveTo(R*0.75,R*0.24,R*0.35,R*0.20,0,0);
+      const h=0.5+0.5*Math.sin(t*0.04+i);
+      ctx.fillStyle=`rgba(126,200,227,${0.10+h*0.10})`; ctx.fill();
+      ctx.strokeStyle=`rgba(126,200,227,${0.55+h*0.35})`; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.restore();
+    }
+    // Center glow
+    const cg=ctx.createRadialGradient(0,0,0,0,0,R*0.18);
+    cg.addColorStop(0,'rgba(201,168,76,0.85)'); cg.addColorStop(1,'transparent');
+    ctx.fillStyle=cg; ctx.fillRect(-R*0.2,-R*0.2,R*0.4,R*0.4);
+    ctx.beginPath(); ctx.arc(0,0,5,0,Math.PI*2); ctx.fillStyle='rgba(201,168,76,1)'; ctx.fill();
+    // Label
+    ctx.font=`${Math.round(CH*0.048)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle='rgba(126,200,227,0.55)'; ctx.fillText('旋转对称',0,R+20);
+    ctx.restore();
+  }
+
+  // ── Center panel: Expanding self-similar fractal rings ──
+  {
+    ctx.save(); ctx.translate(cx, cy);
+    const R=Math.min(CW*0.18, CH*0.44);
+    for(let level=0; level<4; level++) {
+      const nRing=8*(level+1);
+      const ringR=R*(0.20+level*0.22);
+      for(let di=0; di<nRing; di++) {
+        const da=(di/nRing)*Math.PI*2+t*0.006*(level%2===0?1:-1);
+        const dx=Math.cos(da)*ringR, dy=Math.sin(da)*ringR;
+        const ds=Math.max(1.2,4.5-level*0.9);
+        const col=level%2===0?'126,200,227':'180,127,227';
+        const al=0.40+0.35*Math.sin(t*0.05+di+level);
+        // Main dot
+        ctx.beginPath(); ctx.arc(dx,dy,ds,0,Math.PI*2);
+        ctx.fillStyle=`rgba(${col},${al})`; ctx.fill();
+        // Child dot (self-similar)
+        if(level<3) {
+          const cd=ds*0.50;
+          const ca=da+Math.PI*0.4+t*0.01;
+          const cdx=dx+Math.cos(ca)*ringR*0.18, cdy=dy+Math.sin(ca)*ringR*0.18;
+          ctx.beginPath(); ctx.arc(cdx,cdy,cd,0,Math.PI*2);
+          ctx.fillStyle=`rgba(${col},${al*0.45})`; ctx.fill();
+        }
+      }
+      // Ring faint circle
+      ctx.beginPath(); ctx.arc(0,0,ringR,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(201,168,76,0.06)`; ctx.lineWidth=0.6; ctx.stroke();
+    }
+    // Central burst
+    const pulseC=0.7+0.3*Math.sin(t*0.07);
+    const cg=ctx.createRadialGradient(0,0,0,0,0,R*0.20);
+    cg.addColorStop(0,`rgba(201,168,76,${pulseC*0.9})`);
+    cg.addColorStop(0.5,`rgba(180,127,227,${pulseC*0.35})`);
+    cg.addColorStop(1,'transparent');
+    ctx.fillStyle=cg; ctx.fillRect(-R*0.22,-R*0.22,R*0.44,R*0.44);
+    ctx.beginPath(); ctx.arc(0,0,5*pulseC,0,Math.PI*2);
+    ctx.fillStyle='rgba(201,168,76,1)'; ctx.fill();
+    // Label
+    ctx.font=`${Math.round(CH*0.048)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle='rgba(180,127,227,0.55)'; ctx.fillText('自相似分形',0,R*0.88+20);
+    ctx.restore();
+  }
+
+  // ── Right panel: Mirror snowflake ──
+  {
+    const rcx=CW*0.78, rcy=cy;
+    const R=Math.min(CW*0.19, CH*0.42);
+    ctx.save(); ctx.translate(rcx, rcy);
+    function snowBr(x1,y1,len,angle,depth) {
+      if(depth<0||len<1.5) return;
+      const x2=x1+Math.cos(angle)*len, y2=y1+Math.sin(angle)*len;
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+      ctx.strokeStyle=`rgba(200,230,255,${0.12+depth*0.10})`; ctx.lineWidth=depth*0.4+0.3; ctx.stroke();
+      snowBr(x2,y2,len*0.50,angle+0.52,depth-1);
+      snowBr(x2,y2,len*0.50,angle-0.52,depth-1);
+      if(depth>2){ snowBr(x2,y2,len*0.34,angle+Math.PI/2,depth-2); snowBr(x2,y2,len*0.34,angle-Math.PI/2,depth-2); }
+    }
+    for(let i=0;i<6;i++) {
+      const a=(i/6)*Math.PI*2+t*0.003;
+      ctx.save(); ctx.rotate(a); snowBr(0,0,R*0.80,-Math.PI/2,5); ctx.restore();
+    }
+    const cg=ctx.createRadialGradient(0,0,0,0,0,R*0.14);
+    cg.addColorStop(0,'rgba(200,230,255,0.55)'); cg.addColorStop(1,'transparent');
+    ctx.fillStyle=cg; ctx.fillRect(-R*0.15,-R*0.15,R*0.3,R*0.3);
+    ctx.beginPath(); ctx.arc(0,0,4,0,Math.PI*2); ctx.fillStyle='rgba(220,240,255,0.9)'; ctx.fill();
+    ctx.font=`${Math.round(CH*0.048)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle='rgba(200,230,255,0.55)'; ctx.fillText('镜像对称',0,R+20);
+    ctx.restore();
+  }
+
+  // Dividers
+  [CW*0.44, CW*0.56].forEach(x=>{
+    const dg=ctx.createLinearGradient(x,0,x,CH);
+    dg.addColorStop(0,'transparent'); dg.addColorStop(0.5,'rgba(122,95,42,0.25)'); dg.addColorStop(1,'transparent');
+    ctx.fillStyle=dg; ctx.fillRect(x-1,0,2,CH);
+  });
+
+  t6++; c6Raf=requestAnimationFrame(drawC6);
+}
+
+// ══════════════════════════════════════════════════
+// SCENE MANAGER
+// ══════════════════════════════════════════════════
+const scenes=document.querySelectorAll('.scene');
+const totalScenes=scenes.length;
+let current=0, isTransitioning=false;
+
+const dotsEl=document.getElementById('nav-dots');
+for(let i=0;i<totalScenes;i++){
+  const d=document.createElement('div');
+  d.className='nav-dot'+(i===0?' active':'');
+  d.addEventListener('click',()=>goTo(i)); dotsEl.appendChild(d);
+}
+function updateDots(){ document.querySelectorAll('.nav-dot').forEach((d,i)=>d.classList.toggle('active',i===current)); }
+function updateProgress(){ document.getElementById('progress').style.width=(current/(totalScenes-1)*100)+'%'; }
+
+function onEnterScene(idx) {
+  if(idx===0){
+    ['s0-b','s0-t','s0-s','s0-body'].forEach((id,i)=>setTimeout(()=>{
+      const el=document.getElementById(id); if(el)el.classList.add('show');
+    },200+i*280));
+    c0.style.opacity='1'; setTimeout(()=>{t0=0;if(c0Raf)cancelAnimationFrame(c0Raf);drawC0();},380);
+  }
+  if(idx===1){
+    startSymRenderers();
+    ['sc-0','sc-1','sc-2','sc-3'].forEach((id,i)=>setTimeout(()=>{
+      const el=document.getElementById(id); if(el)el.classList.add('show');
+    },300+i*250));
+  }
+  if(idx===2){
+    const items=document.querySelectorAll('#law-grid .law-item');
+    const arrows=document.querySelectorAll('#law-grid .law-arrow');
+    items.forEach((el,i)=>setTimeout(()=>el.classList.add('show'), 400+Math.floor(i/2)*500));
+    arrows.forEach((el,i)=>setTimeout(()=>el.classList.add('show'), 700+i*500));
+  }
+  if(idx===3){
+    const mc=document.getElementById('mandel-mini');
+    if(mc)mc.style.opacity='1';
+    const zc=document.getElementById('zoom-counter');
+    if(zc)zc.classList.add('show');
+    setTimeout(renderMandelbrot,400);
+  }
+  if(idx===4){
+    const kc=document.getElementById('koch-c');
+    if(kc)kc.style.opacity='1';
+    setTimeout(startKoch,380);
+    setTimeout(()=>{ const q=document.getElementById('qbox'); if(q)q.classList.add('show'); },800);
+  }
+  if(idx===5){
+    const fc=document.getElementById('fern-c');
+    if(fc)fc.style.opacity='1';
+    setTimeout(startFern,380);
+  }
+  if(idx===6){
+    ['e-t','e-q','e-a'].forEach((id,i)=>setTimeout(()=>{
+      const el=document.getElementById(id); if(el)el.classList.add('show');
+    },300+i*500));
+    c6.style.opacity='1'; setTimeout(()=>{t6=0;c6Active=true;if(c6Raf)cancelAnimationFrame(c6Raf);drawC6();},380);
+  }
+}
+
+function onLeaveScene(idx) {
+  if(idx===1) stopSymRenderers();
+  if(idx===3) stopMandelbrot();
+  if(idx===4){ stopKoch(); const q=document.getElementById('qbox'); if(q)q.classList.remove('show'); }
+  if(idx===5) stopFern();
+  if(idx===6) c6Active=false;
+  if(idx===2){
+    document.querySelectorAll('#law-grid .law-item').forEach(e=>e.classList.remove('show'));
+    document.querySelectorAll('#law-grid .law-arrow').forEach(e=>e.classList.remove('show'));
+  }
+}
+
+function goTo(idx) {
+  if(isTransitioning||idx===current) return;
+  isTransitioning=true;
+  onLeaveScene(current);
+  scenes[current].classList.remove('active');
+  current=idx; scenes[current].classList.add('active');
+  updateDots(); updateProgress();
+  setTimeout(()=>{ onEnterScene(current); isTransitioning=false; },600);
+}
+function next(){ if(current<totalScenes-1)goTo(current+1); }
+function prev(){ if(current>0)goTo(current-1); }
+
+document.getElementById('btn-next').addEventListener('click',next);
+document.getElementById('btn-prev').addEventListener('click',prev);
+document.querySelectorAll('.scene').forEach(s=>{
+  // click handled by document listener
+// Click anywhere to advance (document-level for reliability)
+document.addEventListener('click', (e) => {
+  if(e.target.closest('#nav')) return;
+  if(e.target.closest('a')) return;
+  if(e.target.closest('button')) return;
+  if(e.target.closest('#home-btn')) return;
+  if(e.target.closest('#ch-lang-bar')) return;
+  next();
+});
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key===' ')next();
+  if(e.key==='ArrowLeft')prev();
+});
+
+setTimeout(()=>{
+  document.getElementById('ornament').classList.add('visible');
+  document.getElementById('hint').classList.add('visible');
+},1500);
+
+updateProgress();
+onEnterScene(0);
+</script>
+
+<div id="ch-lang-bar">
+  <button class="ch-lb" id="ch-btn-zh" onclick="chLang('zh')">中文</button>
+  <div class="ch-lb-sep"></div>
+  <button class="ch-lb on" id="ch-btn-en" onclick="chLang('en')">EN</button>
+</div>
+<script id="bilingual-js">
+(function(){
+  var D={"ornament": "Chapter IV · Symmetry & Fractals · Conservation & Self-Similarity", "badges": ["Chapter IV", "§ 4.1 · Symmetry", "§ 4.1 · Noether's Theorem", "§ 4.2 · Fractals", "§ 4.2 · Koch Snowflake", "§ 4.2 · Barnsley Fern", "Epilogue · Chapter IV"], "titles": ["Symmetry & Fractals", "The Hidden Beauty of Invariance", "Noether's Theorem: Symmetry → Conservation", "Fractals: Beyond Smooth Geometry", "Koch Snowflake: Infinite Perimeter, Finite Area", "Barnsley Fern: Four Rules, One Leaf", "Simple Rules, Infinite Complexity"], "bodies": ["There is a beauty hidden in <strong>invariance</strong> —<br>from simple reflection to infinite rotation, symmetry runs through every scale of nature.", "Symmetry is not just visual beauty — it is a <strong>deep algebraic structure</strong>.<br>When a system looks the same after transformation, something profound is conserved.", "In 1915, Emmy Noether proved: <strong>every symmetry corresponds to a conservation law.</strong><br>Time symmetry → energy. Space symmetry → momentum.", "Traditional geometry is too <strong>smooth</strong> to describe nature's roughness.<br>Coastlines, clouds, trees, blood vessels — their true geometry is fractal.", "Koch snowflake: replace the middle third of each edge with two triangle sides.<br>Repeat forever — <strong>finite area, infinite perimeter</strong>.", "Barnsley fern: only <strong>four affine transformation rules</strong>,<br>randomly applied, trace a perfect fern from a single point.", "Fractal aesthetics reveal an algebraic truth:<br><strong>simple rules produce infinite, never-repeating complexity.</strong>"]};
+  var orig=null;
+  function save(){
+    if(orig)return;
+    var os=document.querySelector('.ornament-line span');
+    orig={
+      ornament:os?os.textContent:'',
+      badges:[].map.call(document.querySelectorAll('.chapter-badge'),function(e){return e.innerHTML;}),
+      titles:[].map.call(document.querySelectorAll('.scene-title'),function(e){return e.innerHTML;}),
+      bodies:[].map.call(document.querySelectorAll('.scene-body'),function(e){return e.innerHTML;}),
+    };
+  }
+  function applyEn(){
+    save();
+    applyPatchEn();
+    var os=document.querySelector('.ornament-line span');
+    if(os&&D.ornament)os.textContent=D.ornament;
+    [].forEach.call(document.querySelectorAll('.chapter-badge'),function(el,i){if(D.badges[i]!=null)el.innerHTML=D.badges[i];});
+    [].forEach.call(document.querySelectorAll('.scene-title'),function(el,i){if(D.titles[i]!=null)el.innerHTML=D.titles[i];});
+    [].forEach.call(document.querySelectorAll('.scene-body'),function(el,i){if(D.bodies[i]!=null)el.innerHTML=D.bodies[i];});
+  
+  
+
+    /* zwOrig save */
+    if(!window._zwOrig){
+      window._zwOrig={};
+      ['e-q','e-a','e-t'].forEach(function(id){var e=document.getElementById(id);if(e)window._zwOrig[id]=e.innerHTML;});
+    }
+    /* __direct_wires__ */
+    var _w=document.getElementById('e-t');if(_w)_w.innerHTML='The dance never stops';
+    var _w=document.getElementById('e-a');if(_w)_w.innerHTML='— Chapter IV · End';
+    var _w=document.getElementById('e-q');if(_w)_w.innerHTML='Symmetry tells us what is <strong style="color:var(--gold-light);">invariant</strong>;<br>fractals tell us what is <strong style="color:#c080ff;">infinite</strong>.<br><br>Together they reveal the universe&#39;s deepest aesthetic preference &mdash;<br><strong style="color:var(--gold-light);">to create the most complex worlds from the simplest rules.</strong>';
+  }
+  function applyZh(){
+    if(!orig)return;
+    /* zwOrig restore */
+    if(window._zwOrig){['e-q','e-a','e-t'].forEach(function(id){var e=document.getElementById(id);if(e&&window._zwOrig[id]!==undefined)e.innerHTML=window._zwOrig[id];});}
+    applyPatchZh();
+    var os=document.querySelector('.ornament-line span');
+    if(os)os.textContent=orig.ornament;
+    [].forEach.call(document.querySelectorAll('.chapter-badge'),function(el,i){if(orig.badges[i]!=null)el.innerHTML=orig.badges[i];});
+    [].forEach.call(document.querySelectorAll('.scene-title'),function(el,i){if(orig.titles[i]!=null)el.innerHTML=orig.titles[i];});
+    [].forEach.call(document.querySelectorAll('.scene-body'),function(el,i){if(orig.bodies[i]!=null)el.innerHTML=orig.bodies[i];});
+  }
+  
+  // Extended EN patches for elements not covered by D.badges/titles/bodies
+  var enPatches=[["#s0-s", 0, "The Dance of Static and Dynamic"], [".sym-label", 0, "Mirror Symmetry"], [".sym-desc", 0, "Left-right equivalence, the most common symmetry in nature"], [".sym-label", 1, "Rotational Symmetry"], [".sym-desc", 1, "Overlaps itself after rotation by any angle"], [".sym-label", 2, "Hexagonal Radial Symmetry"], [".sym-desc", 2, "The snowflake's secret — hydrogen bond geometry of water molecules"], [".sym-label", 3, "Translational Symmetry"], [".sym-desc", 3, "Crystal lattices, waves — the universe's infinite repeater"], [".law-box", 0, "Time Translation Symmetry<br><small style=\"opacity:0.6\">Physical laws do not change with time</small>"], [".law-box", 1, "Conservation of Energy"], [".law-box", 2, "Spatial Translation Symmetry<br><small style=\"opacity:0.6\">Physical laws are independent of position</small>"], [".law-box", 3, "Conservation of Momentum"], [".law-box", 4, "Rotational Symmetry<br><small style=\"opacity:0.6\">Physical laws are independent of direction</small>"], [".law-box", 5, "Conservation of Angular Momentum"], [".quote-text", 0, "\"God's fingerprint — in the infinitely small lies the shape of the whole.\""], ["#e-q", 0, "Symmetry tells us what is <strong style='color:var(--gold-light);'>invariant</strong>;<br>fractals tell us what is <strong style='color:var(--frac,#c080ff);'>infinite</strong>.<br><br>Together they reveal the universe&rsquo;s deepest aesthetic preference —<br><strong style='color:var(--gold-light);'>to create the most complex worlds from the simplest rules.</strong>"], ];
+  var patchOrig=null;
+  function savePatch(){
+    if(patchOrig)return;
+    patchOrig=enPatches.map(function(p){
+      var els=document.querySelectorAll(p[0]);
+      return els[p[1]]?els[p[1]].innerHTML:null;
+    });
+  }
+  function applyPatchEn(){
+    savePatch();
+    enPatches.forEach(function(p){
+      var els=document.querySelectorAll(p[0]);
+      if(els[p[1]]!=null)els[p[1]].innerHTML=p[2];
+    });
+  }
+  function applyPatchZh(){
+    if(!patchOrig)return;
+    enPatches.forEach(function(p,i){
+      var els=document.querySelectorAll(p[0]);
+      if(els[p[1]]!=null&&patchOrig[i]!=null)els[p[1]].innerHTML=patchOrig[i];
+    });
+  }
+  window.chLang=function(l){
+    window.__currentLang=l;
+    try{localStorage.setItem('mathsite_lang',l);}catch(e){}
+    document.getElementById('ch-btn-zh').classList.toggle('on',l==='zh');
+    document.getElementById('ch-btn-en').classList.toggle('on',l==='en');
+    if(l==='en')applyEn();else applyZh();
+  };
+  // Auto-switch based on ?lang=en in URL
+  window.addEventListener('DOMContentLoaded',function(){
+    // Read language from localStorage or ?lang URL param, default English
+    var _lp=(new URLSearchParams(location.search)).get('lang');
+    var _ls=null;try{_ls=localStorage.getItem('mathsite_lang');}catch(e){}
+    var _l=_lp||_ls||'en';
+    window.__currentLang=_l;
+    document.getElementById('ch-btn-zh').classList.toggle('on',_l==='zh');
+    document.getElementById('ch-btn-en').classList.toggle('on',_l==='en');
+    // Always run applyEn first to populate orig/patchOrig caches,
+    // then switch to Chinese if needed
+    applyEn();
+    if(_l==='zh')applyZh();
+  });
+})();
+
+/* Mobile touch swipe */
+(function(){
+  var ts=null,tx=null;
+  document.addEventListener('touchstart',function(e){ts=e.touches[0].clientX;tx=e.touches[0].clientY;},{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(ts===null)return;
+    var dx=e.changedTouches[0].clientX-ts, dy=e.changedTouches[0].clientY-tx;
+    if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>40){
+      if(dx<0&&typeof next==='function')next();
+      else if(dx>0&&typeof prev==='function')prev();
+    }
+    ts=null;tx=null;
+  },{passive:true});
+})();
+
+/* Mobile: add stack class to inline-flex children on narrow screens */
+(function(){
+  function applyMobileLayout(){
+    var isMobile = window.innerWidth <= 700;
+    document.querySelectorAll('.scene > div, .scene > section').forEach(function(el){
+      var s = el.getAttribute('style') || '';
+      if(s.includes('display:flex') || s.includes('display: flex')){
+        if(isMobile){ el.style.flexDirection='column'; el.style.alignItems='center'; }
+        else { el.style.flexDirection=''; el.style.alignItems=''; }
+      }
+    });
+  }
+  applyMobileLayout();
+  window.addEventListener('resize', applyMobileLayout);
+})();
+</script>
+</body>
+</html>

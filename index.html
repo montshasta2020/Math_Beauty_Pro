@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数学之美 · The Beauty of Mathematics</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700&family=Cinzel:wght@400;700;900&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root{--gold:#c9a84c;--gold-light:#e8cc7a;--gold-dim:#7a5f2a;--ink:#020308;--cream:#e8dfc8;--cream-dim:rgba(232,223,200,0.6);}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--ink);color:var(--cream);font-family:'Noto Serif SC',serif;min-height:100vh;cursor:none;overflow-x:hidden;}
+  #bg{position:fixed;inset:0;z-index:0;pointer-events:none;}
+  #vignette{position:fixed;inset:0;z-index:1;pointer-events:none;
+    background:radial-gradient(ellipse at 50% 30%,transparent 20%,rgba(2,3,8,.7) 70%,rgba(2,3,8,.97) 100%);}
+  #cursor{position:fixed;width:8px;height:8px;border-radius:50%;background:var(--gold);
+    pointer-events:none;z-index:9999;transform:translate(-50%,-50%);box-shadow:0 0 12px var(--gold);}
+  #cursor-ring{position:fixed;width:30px;height:30px;border-radius:50%;
+    border:1px solid rgba(201,168,76,.35);pointer-events:none;z-index:9998;
+    transform:translate(-50%,-50%);transition:width .25s,height .25s,border-color .25s;}
+  #lang-bar{position:fixed;top:26px;right:36px;z-index:500;display:flex;align-items:stretch;
+    border:1px solid rgba(122,95,42,.5);overflow:hidden;}
+  .lb{font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;padding:8px 18px;
+    background:transparent;border:none;outline:none;color:var(--gold-dim);cursor:none;transition:background .3s,color .3s;}
+  .lb:hover{background:rgba(201,168,76,.08);}
+  .lb.on{background:rgba(201,168,76,.18);color:var(--gold);}
+  .lb-sep{width:1px;background:rgba(122,95,42,.4);}
+  .page{position:relative;z-index:2;max-width:1100px;margin:0 auto;padding:0 40px 100px;}
+  header{text-align:center;padding:80px 0 56px;}
+  .series-label{font-family:'Cinzel',serif;font-size:10px;letter-spacing:6px;color:var(--gold-dim);
+    text-transform:uppercase;margin-bottom:24px;display:flex;align-items:center;justify-content:center;gap:14px;}
+  .series-label::before,.series-label::after{content:'';width:60px;height:1px;}
+  .series-label::before{background:linear-gradient(to right,transparent,var(--gold-dim));}
+  .series-label::after{background:linear-gradient(to left,transparent,var(--gold-dim));}
+  h1{font-family:'Cinzel',serif;font-size:clamp(32px,6vw,74px);font-weight:900;
+    color:var(--gold-light);letter-spacing:4px;line-height:1.1;
+    text-shadow:0 0 80px rgba(201,168,76,.35);margin-bottom:12px;}
+  .subtitle{font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(16px,2.5vw,28px);color:var(--gold-dim);letter-spacing:2px;margin-bottom:30px;}
+  .header-desc{font-size:clamp(13px,1.4vw,16px);color:var(--cream-dim);line-height:2;
+    max-width:620px;margin:0 auto;font-weight:300;}
+  .header-desc strong{color:var(--gold-light);font-weight:400;}
+  .hero-formula{display:flex;align-items:center;justify-content:center;
+    gap:clamp(8px,1.8vw,24px);margin:44px 0 52px;flex-wrap:wrap;}
+  .hf{font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(28px,5vw,64px);opacity:0;transform:translateY(12px);
+    animation:rise .8s ease forwards;text-shadow:0 0 30px currentColor;}
+  .hf.e  {color:#58d68d;animation-delay:.2s;}
+  .hf.i  {color:#c060f8;animation-delay:.5s;}
+  .hf.pi {color:#e87040;animation-delay:.8s;}
+  .hf.op {color:var(--gold-dim);animation-delay:1.1s;font-style:normal;}
+  .hf.one{color:var(--gold-light);animation-delay:1.4s;}
+  .hf.eq {color:var(--gold-dim);animation-delay:1.7s;font-style:normal;}
+  .hf.z  {color:#a0b8d0;animation-delay:2.0s;}
+  @keyframes rise{to{opacity:1;transform:translateY(0);}}
+  .div{width:100%;height:1px;background:linear-gradient(to right,transparent,var(--gold-dim),transparent);margin:44px 0;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:22px;}
+
+  /* ── CARD ── */
+  .card{
+    position:relative;border:1px solid rgba(122,95,42,.25);
+    background:linear-gradient(135deg,rgba(10,8,20,.92),rgba(6,4,12,.96));
+    padding:26px 26px 0;text-decoration:none;display:flex;flex-direction:column;
+    overflow:hidden;transition:border-color .4s,transform .35s,box-shadow .4s;
+    cursor:none;opacity:0;transform:translateY(20px);animation:cardIn .6s ease forwards;
+  }
+  .card:hover{border-color:rgba(201,168,76,.6);transform:translateY(-5px);
+    box-shadow:0 12px 48px rgba(0,0,0,.4),0 0 30px rgba(201,168,76,.06);}
+  .card::before{content:'';position:absolute;inset:0;
+    background:radial-gradient(circle at 10% 20%,rgba(201,168,76,.05),transparent 55%);
+    opacity:0;transition:opacity .4s;}
+  .card:hover::before{opacity:1;}
+  .ca{position:absolute;top:0;left:0;right:0;height:2px;opacity:.3;transition:opacity .4s;}
+  .card:hover .ca{opacity:1;}
+  .cn{font-family:'Cinzel',serif;font-size:10px;letter-spacing:4px;color:var(--gold-dim);
+    margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+  .cn::after{content:'';flex:1;height:1px;background:rgba(122,95,42,.3);}
+  .ci{font-family:'IM Fell English',serif;font-style:italic;font-size:clamp(26px,3.5vw,40px);
+    line-height:1;margin-bottom:12px;display:block;transition:text-shadow .4s;flex-shrink:0;}
+  .card:hover .ci{text-shadow:0 0 24px currentColor;}
+  .ct{font-family:'Cinzel',serif;font-size:clamp(14px,1.5vw,17px);color:var(--gold-light);
+    font-weight:700;letter-spacing:1px;margin-bottom:5px;line-height:1.3;flex-shrink:0;}
+  .cs{font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(11px,1.1vw,13px);color:var(--gold-dim);margin-bottom:12px;flex-shrink:0;}
+  .cd{font-size:clamp(11px,1vw,13px);color:var(--cream-dim);line-height:1.85;font-weight:300;flex-grow:1;}
+
+  /* ── ENTRY STRIP — always visible ── */
+  .clink{
+    display:flex;align-items:center;justify-content:space-between;
+    margin:18px -26px 0;padding:11px 22px;
+    border-top:1px solid rgba(122,95,42,.18);
+    font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;
+    color:rgba(122,95,42,.7);
+    background:rgba(4,2,10,.5);
+    transition:background .35s,color .35s,border-color .35s;
+    flex-shrink:0;
+  }
+  .card:hover .clink{
+    background:rgba(201,168,76,.07);
+    color:var(--gold);
+    border-top-color:rgba(122,95,42,.4);
+  }
+  .clink-arrow{font-size:16px;transition:transform .3s;}
+  .card:hover .clink-arrow{transform:translateX(5px);}
+
+  @keyframes cardIn{to{opacity:1;transform:translateY(0);}}
+
+  footer{text-align:center;padding:48px 0 20px;border-top:1px solid rgba(122,95,42,.15);}
+  .ff{font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(18px,2.5vw,30px);color:var(--gold-dim);letter-spacing:6px;
+    margin-bottom:14px;text-shadow:0 0 40px rgba(201,168,76,.2);}
+  .fn{font-family:'Cinzel',serif;font-size:10px;letter-spacing:4px;
+    color:rgba(122,95,42,.5);text-transform:uppercase;}
+
+
+  /* ── GALLERY ── */
+  .gallery-section{margin:0 0 52px;}
+  .gallery-label{font-family:'Cinzel',serif;font-size:10px;letter-spacing:6px;
+    color:var(--gold-dim);text-transform:uppercase;
+    display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:32px;}
+  .gallery-label::before,.gallery-label::after{content:'';flex:1;height:1px;
+    background:linear-gradient(to right,transparent,rgba(122,95,42,.4));}
+  .gallery-label::after{background:linear-gradient(to left,transparent,rgba(122,95,42,.4));}
+  .gallery{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;}
+  .gcard{position:relative;border:1px solid rgba(122,95,42,.2);
+    background:rgba(6,4,12,.9);overflow:hidden;
+    aspect-ratio:1;cursor:none;
+    transition:border-color .4s,transform .35s,box-shadow .4s;}
+  .gcard:hover{border-color:rgba(201,168,76,.5);transform:translateY(-4px) scale(1.02);
+    box-shadow:0 16px 56px rgba(0,0,0,.6),0 0 40px rgba(201,168,76,.05);}
+  .gcard canvas{width:100%;height:100%;display:block;}
+  .gcard-info{
+    position:absolute;bottom:0;left:0;right:0;
+    padding:10px 12px;
+    background:linear-gradient(to top,rgba(2,3,8,.95) 60%,transparent);
+    transform:translateY(0);transition:transform .35s;
+  }
+  .gcard-name{font-family:'Cinzel',serif;font-size:clamp(9px,0.85vw,11px);
+    letter-spacing:2px;color:var(--gold-light);margin-bottom:3px;}
+  .gcard-formula{font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(9px,0.8vw,11px);color:var(--gold-dim);}
+  .gcard-glow{position:absolute;inset:0;opacity:0;transition:opacity .4s;
+    background:radial-gradient(circle at 50% 50%,rgba(201,168,76,.04),transparent 70%);}
+  .gcard:hover .gcard-glow{opacity:1;}
+  @media(max-width:700px){
+    .gallery{grid-template-columns:repeat(2,1fr);gap:10px;}
+    .gallery .gcard:last-child{grid-column:span 2;aspect-ratio:2/1;}
+  }
+  @media(min-width:701px) and (max-width:960px){
+    .gallery{grid-template-columns:repeat(3,1fr);}
+    .gallery .gcard:nth-child(n+4){display:none;}
+  }
+
+  @media(max-width:700px){
+    .page{padding:0 14px 80px;}
+    #lang-bar{top:12px;right:12px;}
+    .lb{padding:5px 10px;font-size:9px;}
+    h1{font-size:clamp(22px,7vw,40px);}
+    .grid{grid-template-columns:1fr !important;gap:14px !important;}
+    .card{padding:16px 16px 0;}
+    .clink{margin:14px -16px 0;}
+  }
+  @media(min-width:701px) and (max-width:960px){
+    .grid{grid-template-columns:1fr 1fr !important;}
+  }
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div id="vignette"></div>
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+
+<div id="lang-bar">
+  <button class="lb" id="btn-zh" onclick="setLang('zh')">中文</button>
+  <div class="lb-sep"></div>
+  <button class="lb" id="btn-en" onclick="setLang('en')">English</button>
+</div>
+
+<div class="page">
+  <header>
+    <div class="series-label" id="lbl-series">十二章互动动画系列</div>
+    <h1 id="lbl-h1">数学之美</h1>
+    <div class="subtitle" id="lbl-sub">理性与美，从未分开</div>
+    <p class="header-desc" id="lbl-desc">
+      几何的严谨、代数的优雅、对称的深邃、无穷的诗意——<br>
+      十二章动画，带你看见<strong>数学最美的一面</strong>，<br>
+      感受那些隐藏在公式背后的惊喜与震撼。
+    </p>
+    <div class="hero-formula">
+      <span class="hf e">e</span>
+      <span class="hf i" style="font-size:.6em;vertical-align:super;">i</span>
+      <span class="hf pi" style="font-size:.6em;vertical-align:super;">π</span>
+      <span class="hf op">+</span>
+      <span class="hf one">1</span>
+      <span class="hf eq">=</span>
+      <span class="hf z">0</span>
+    </div>
+  </header>
+
+  <section class="gallery-section">
+    <div class="gallery-label" id="lbl-gallery">数学奇景</div>
+    <div class="gallery">
+      <div class="gcard" id="gc0"><canvas id="c-fern"></canvas><div class="gcard-glow"></div>
+        <div class="gcard-info"><div class="gcard-name" id="gn0">巴恩斯利蕨</div><div class="gcard-formula" id="gf0">4 条仿射变换，迭代生蕨</div></div></div>
+      <div class="gcard" id="gc1"><canvas id="c-mand"></canvas><div class="gcard-glow"></div>
+        <div class="gcard-info"><div class="gcard-name" id="gn1">曼德博集合</div><div class="gcard-formula" id="gf1">z → z² + c</div></div></div>
+      <div class="gcard" id="gc2"><canvas id="c-lorenz"></canvas><div class="gcard-glow"></div>
+        <div class="gcard-info"><div class="gcard-name" id="gn2">洛伦兹吸引子</div><div class="gcard-formula" id="gf2">混沌，却有形</div></div></div>
+      <div class="gcard" id="gc3"><canvas id="c-julia"></canvas><div class="gcard-glow"></div>
+        <div class="gcard-info"><div class="gcard-name" id="gn3">朱利亚集</div><div class="gcard-formula" id="gf3">z → z² − 0.7 + 0.27i</div></div></div>
+      <div class="gcard" id="gc4"><canvas id="c-liss"></canvas><div class="gcard-glow"></div>
+        <div class="gcard-info"><div class="gcard-name" id="gn4">黄金螺旋</div><div class="gcard-formula" id="gf4">r = φ^(θ · 2/π)</div></div></div>
+    </div>
+  </section>
+
+  <div class="div"></div>
+  <div class="grid" id="grid"></div>
+  <div class="div" style="margin-top:60px;"></div>
+
+  <footer>
+    <div class="ff">e<sup style="font-size:.6em;">iπ</sup> + 1 = 0</div>
+    <div class="fn" id="lbl-foot">数学 · 宇宙的语言</div>
+  </footer>
+</div>
+
+<script>
+const CH = [
+  {
+    icon:'△', ic:'#e8cc7a', file:'euclid_animation.html',
+    accent:'linear-gradient(to right,#e8cc7a,#c9a84c)',
+    zh:{num:'第一章', title:'欧几里得几何', sub:'纯粹理性的第一座大厦',
+      desc:'五条公理，一把直尺，一个圆规。欧几里得不用实验、不用测量，只凭逻辑，便推导出整个平面几何的全部真理。两千三百年来，无一错漏。'},
+    en:{num:'Chapter I', title:'Euclidean Geometry', sub:'The First Palace of Pure Reason',
+      desc:'Five axioms, a straightedge, a compass. No experiments, no measurements — only logic. From these five seeds, Euclid deduced the whole of plane geometry. Two thousand years on, not one theorem has cracked.'},
+  },
+  {
+    icon:'⬡', ic:'#80d8f8', file:'platonic_solids_animation.html',
+    accent:'linear-gradient(to right,#80d8f8,#4090c0)',
+    zh:{num:'第二章', title:'柏拉图立体', sub:'三维空间唯一允许的五种完美',
+      desc:'每个面完全相同、每个顶角完全相同的立体，三维空间只允许五种存在，不多不少。柏拉图视之为宇宙的元素；数学家视之为对称性的极致结晶。'},
+    en:{num:'Chapter II', title:'Platonic Solids', sub:'The Five Perfections Space Permits',
+      desc:'Solids with every face identical, every vertex identical — 3D space permits exactly five. No more, no fewer. Plato saw in them the elements of the cosmos; mathematicians see the ultimate expression of symmetry.'},
+  },
+  {
+    icon:'◈', ic:'#a0f0c0', file:'crystal_minerals_animation.html',
+    accent:'linear-gradient(to right,#a0f0c0,#40a070)',
+    zh:{num:'第三章', title:'晶体矿物', sub:'原子自发书写的几何诗篇',
+      desc:'食盐的立方、萤石的八面体、黄铁矿的五角十二面体——原子在几何法则的支配下自发组装，无需设计师，无需图纸。自然的建筑，正是数学的建筑。'},
+    en:{num:'Chapter III', title:'Crystal Minerals', sub:'Geometry Written in Atoms',
+      desc:"Salt's cube, fluorite's octahedron, pyrite's dodecahedron — atoms self-assemble under geometric law, with no architect and no blueprint. Nature's architecture is mathematics made tangible."},
+  },
+  {
+    icon:'❄', ic:'#c080f8', file:'symmetry_fractals_animation.html',
+    accent:'linear-gradient(to right,#c080f8,#8040d0)',
+    zh:{num:'第四章', title:'对称与分形', sub:'守恒的深层根源 · 无穷的自相似',
+      desc:'诺特定理：每一种对称，对应一条物理守恒定律——这是数学与物理之间最深的联结。分形几何则揭示：最简单的规则，能孕育无穷尽的精妙细节。'},
+    en:{num:'Chapter IV', title:'Symmetry & Fractals', sub:'The Root of Conservation · Infinite Self-Similarity',
+      desc:"Noether's theorem: every symmetry corresponds to a conservation law — the deepest bond between math and physics. Fractal geometry reveals that the simplest rule, endlessly iterated, can produce inexhaustible beauty."},
+  },
+  {
+    icon:'⬟', ic:'#f8a060', file:'tessellation_voronoi_animation.html',
+    accent:'linear-gradient(to right,#f8a060,#c06020)',
+    zh:{num:'第五章', title:'镶嵌与自然图案', sub:'蜂巢、斑纹与伊斯兰艺术的共同数学',
+      desc:'蜜蜂选择六边形，因为它是铺满平面最节省材料的形状。长颈鹿的斑纹、伊斯兰艺术的无穷星形——同一个数学原理，在自然与人类的审美里同时绽放。'},
+    en:{num:'Chapter V', title:'Tessellation & Natural Patterns', sub:'The Mathematics Behind Honeycombs, Spots & Starwork',
+      desc:'Hexagons tile a plane using the least material — the honeybee solved this optimization problem. Giraffe spots, infinite Islamic starwork: the same mathematics underlies both nature and a thousand years of human artistry.'},
+  },
+  {
+    icon:'∿', ic:'#80f0c0', file:'non_euclidean_animation.html',
+    accent:'linear-gradient(to right,#80f0c0,#30a080)',
+    zh:{num:'第六章', title:'非欧几何', sub:'一条公理被推翻，新宇宙由此诞生',
+      desc:'两千年来，欧几里得第五公设被视为不可动摇的真理。当它最终被推翻，双曲几何与椭圆几何相继诞生——其中一种，正是描述我们真实宇宙形状的几何学。'},
+    en:{num:'Chapter VI', title:'Non-Euclidean Geometry', sub:'One Axiom Falls, New Universes Are Born',
+      desc:"Euclid's fifth postulate stood unchallenged for two millennia. When it was finally overturned, hyperbolic and elliptic geometries emerged — and one of them turned out to describe the true shape of our universe."},
+  },
+  {
+    icon:'⊛', ic:'#f8d060', file:'spacetime_geometry_animation.html',
+    accent:'linear-gradient(to right,#f8d060,#c09020)',
+    zh:{num:'第七章', title:'时空几何与广义相对论', sub:'引力即几何，物理即弯曲',
+      desc:'爱因斯坦没有修正牛顿的方程，他取消了"引力"这个概念本身——以时空的弯曲代替。质量压弯时空，万物沿弯曲路径运动。物理学变成了几何学。'},
+    en:{num:'Chapter VII', title:'Spacetime & General Relativity', sub:'Gravity as Geometry · Physics as Curvature',
+      desc:"Einstein didn't revise Newton's equations — he abolished the concept of gravitational force entirely, replacing it with the curvature of spacetime. Mass bends space; objects follow curved paths. Physics became geometry."},
+  },
+  {
+    icon:'χ', ic:'#f0c040', file:'algebra_beauty_animation.html',
+    accent:'linear-gradient(to right,#f0c040,#a07010)',
+    zh:{num:'第八章', title:'代数之美', sub:'用一个字母，言说所有的数',
+      desc:'变量 x 的出现，是人类智识史上最深刻的飞跃之一：一个符号，同时代表无穷多个数。代数把数学从逐个计算升华为揭示普遍结构的科学。'},
+    en:{num:'Chapter VIII', title:'The Beauty of Algebra', sub:'One Letter to Speak for All Numbers',
+      desc:'The variable x was among the most profound intellectual leaps in history — one symbol standing for infinitely many numbers at once. Algebra elevated mathematics from arithmetic to the science of universal structure.'},
+  },
+  {
+    icon:'eπ', ic:'#a0d870', file:'constants_combined_animation.html',
+    accent:'linear-gradient(to right,#58d68d,#c9a84c,#e87040)',
+    zh:{num:'第九章', title:'e 与 π 的相遇', sub:'来自不同世界的两个常数，共享同一行等式',
+      desc:'e 生于增长与极限，π 生于圆与几何，i 是负数的平方根。三者来自数学最不同的角落，却在欧拉的一行等式里以最简洁的方式完美相遇，令人震叹。'},
+    en:{num:'Chapter IX', title:'When e Meets π', sub:'Two Constants From Different Worlds, One Equation',
+      desc:'e arises from growth and limits, π from circles and geometry, i from the square root of −1. They come from entirely different realms of mathematics — yet Euler united all three in a single, perfect equation.'},
+  },
+  {
+    icon:'⊞', ic:'#c060f8', file:'group_theory_animation.html',
+    accent:'linear-gradient(to right,#c060f8,#7020b0)',
+    zh:{num:'第十章', title:'群论', sub:'对称性的代数语言',
+      desc:'群论研究的不是数，而是变换本身——旋转、翻转、置换。它揭示了一个深刻的真理：看似截然不同的事物，可能拥有完全相同的对称结构。'},
+    en:{num:'Chapter X', title:'Group Theory', sub:'The Algebra of Symmetry',
+      desc:"Group theory studies not numbers but transformations — rotations, reflections, permutations. It reveals a profound truth: vastly different objects can share the same underlying symmetry because they share the same algebraic structure."},
+  },
+  {
+    icon:'∞', ic:'#a040f8', file:'fractals_iteration_animation.html',
+    accent:'linear-gradient(to right,#a040f8,#6010b0)',
+    zh:{num:'第十一章', title:'分形与迭代', sub:'一行公式，无穷的美丽',
+      desc:'z(n+1) = zn² + c。曼德博集合的边界是无限复杂的分形曲线——无论放大多少倍，细节永远不会耗尽。这一切，仅来自一行公式的无限重复。'},
+    en:{num:'Chapter XI', title:'Fractals & Iteration', sub:'One Formula · Infinite Beauty',
+      desc:'z(n+1) = z(n)² + c. The boundary of the Mandelbrot set is infinitely complex — zoom forever and new detail always emerges. All of it arising from a single formula, repeated without end.'},
+  },
+  {
+    icon:'≡', ic:'#e8cc7a', file:'euler_identity_finale_animation.html',
+    accent:'linear-gradient(to right,#e8cc7a,#c9a84c,#f8e8a0)', special:true,
+    zh:{num:'第十二章 · 终章', title:'欧拉恒等式', sub:'e^(iπ) + 1 = 0 · 数学最美的句子',
+      desc:'五个常数——来自分析学、复数、几何、乘法单位元、加法单位元——在一行等式里以最简洁的方式完美相遇。这不是巧合，是数学内在统一性的最高宣言。'},
+    en:{num:'Chapter XII · Finale', title:"Euler's Identity", sub:"e^(iπ) + 1 = 0 · Mathematics' Most Beautiful Sentence",
+      desc:"Five constants — from analysis, complex numbers, geometry, the multiplicative identity, the additive identity — united in one equation of impossible brevity. Not coincidence: the supreme declaration of mathematics' inner unity."},
+  },
+];
+
+let lang = 'zh';
+
+const UI = {
+  zh:{
+    series:'十二章互动动画系列',h1:'数学之美',sub:'理性与美，从未分开',
+    desc:'几何的严谨、代数的优雅、对称的深邃、无穷的诗意——<br>十二章动画，带你看见<strong>数学最美的一面</strong>，<br>感受那些隐藏在公式背后的惊喜与震撼。',
+    foot:'数学 · 宇宙的语言',clink:'进入章节',
+  },
+  en:{
+    series:'Twelve Animated Chapters',h1:'The Beauty of Mathematics',sub:'Where Logic Meets Beauty',
+    desc:'The rigour of geometry, the elegance of algebra, the depth of symmetry, the poetry of infinity —<br>twelve animated chapters revealing <strong>mathematics at its most beautiful</strong>,<br>the wonder hidden behind every equation.',
+    foot:'Mathematics · The Language of the Universe',clink:'Enter Chapter',
+  },
+};
+
+function setLang(l) {
+  lang = l;
+  try{localStorage.setItem('mathsite_lang',l);}catch(e){}
+  document.getElementById('btn-zh').classList.toggle('on', l==='zh');
+  document.getElementById('btn-en').classList.toggle('on', l==='en');
+  document.documentElement.lang = l==='zh'?'zh-CN':'en';
+  const u = UI[l];
+  document.getElementById('lbl-series').textContent = u.series;
+  document.getElementById('lbl-h1').textContent = u.h1;
+  document.getElementById('lbl-sub').textContent = u.sub;
+  document.getElementById('lbl-desc').innerHTML = u.desc;
+  document.getElementById('lbl-foot').textContent = u.foot;
+  document.querySelectorAll('.card').forEach((card,i)=>{
+    const d = CH[i][l];
+    card.querySelector('.cn').textContent = d.num;
+    card.querySelector('.ct').textContent = d.title;
+    card.querySelector('.cs').textContent = d.sub;
+    card.querySelector('.cd').textContent = d.desc;
+    card.querySelector('.clink-label').textContent = u.clink;
+    card.href = l==='zh' ? CH[i].file+'?lang=zh' : CH[i].file;
+  });
+  // Sync gallery names whenever language changes
+  if(typeof galleryNames === 'function') galleryNames(l);
+}
+
+// RENDER CARDS
+const grid = document.getElementById('grid');
+CH.forEach((ch,i)=>{
+  const a = document.createElement('a');
+  a.href = ch.file; a.className = 'card';
+  a.style.animationDelay = `${0.05*i+0.3}s`;
+  if(ch.special) a.style.gridColumn = 'span 2';
+  const d = ch.zh;
+  a.innerHTML = `
+    <div class="ca" style="background:${ch.accent};"></div>
+    <div class="cn">${d.num}</div>
+    <span class="ci" style="color:${ch.ic};">${ch.icon}</span>
+    <div class="ct">${d.title}</div>
+    <div class="cs">${d.sub}</div>
+    <p class="cd">${d.desc}</p>
+    <div class="clink">
+      <span class="clink-label">进入章节</span>
+      <span class="clink-arrow" style="color:${ch.ic};">→</span>
+    </div>
+  `;
+  grid.appendChild(a);
+});
+
+setLang((function(){try{return localStorage.getItem('mathsite_lang')||'zh';}catch(e){return 'zh';}})()); 
+
+
+// ══ GALLERY RENDERS ══
+function galleryNames(l){
+  const zh=['巴恩斯利蕨','曼德博集合','洛伦兹吸引子','朱利亚集','黄金螺旋'];
+  const en=['Barnsley Fern','Mandelbrot Set','Lorenz Attractor','Julia Set','Golden Spiral'];
+  const zhf=['4 条仿射变换，迭代生蕨','z → z² + c','混沌，却有形','z → z² − 0.7 + 0.27i','r = φ^(θ · 2/π)'];
+  const enf=['4 affine transforms, iterated','z → z² + c','Chaos with hidden order','z → z² − 0.7 + 0.27i','r = φ^(θ · 2/π)'];
+  const names=l==='zh'?zh:en;
+  const formulas=l==='zh'?zhf:enf;
+  names.forEach((n,i)=>{const el=document.getElementById('gn'+i);if(el)el.textContent=n;});
+  formulas.forEach((f,i)=>{const el=document.getElementById('gf'+i);if(el)el.textContent=f;});
+  const gl=document.getElementById('lbl-gallery');
+  if(gl)gl.textContent=l==='zh'?'数学奇景':'Mathematical Wonders';
+}
+
+// ── Barnsley Fern ──
+(function(){
+  const cv=document.getElementById('c-fern');
+  function draw(){
+    const W=cv.parentElement.clientWidth,H=cv.parentElement.clientHeight;
+    if(!W||!H)return;
+    cv.width=W;cv.height=H;
+    const ctx=cv.getContext('2d');
+    ctx.fillStyle='#010107';ctx.fillRect(0,0,W,H);
+    const pts=220000;
+    let x=0,y=0;
+    const cp=[.01,.86,.93,1];
+    const T=[
+      {a:0,b:0,c:0,d:.16,e:0,f:0},
+      {a:.85,b:.04,c:-.04,d:.85,e:0,f:1.6},
+      {a:.2,b:-.26,c:.23,d:.22,e:0,f:1.6},
+      {a:-.15,b:.28,c:.26,d:.24,e:0,f:.44}
+    ];
+    const cols=['rgba(60,180,60,','rgba(50,220,70,','rgba(30,200,50,','rgba(70,210,60,'];
+    for(let i=0;i<pts;i++){
+      const r=Math.random();
+      let t;
+      if(r<cp[0])t=0;else if(r<cp[1])t=1;else if(r<cp[2])t=2;else t=3;
+      const nx=T[t].a*x+T[t].b*y+T[t].e;
+      const ny=T[t].c*x+T[t].d*y+T[t].f;
+      x=nx;y=ny;
+      if(i>30){
+        const px=W/2+x*(W*0.09);
+        const py=H-y*(H*0.093)-H*0.03;
+        ctx.fillStyle=cols[t]+(0.55+Math.random()*0.3).toFixed(2)+')';
+        ctx.fillRect(px,py,1,1);
+      }
+    }
+  }
+  setTimeout(draw,80);
+  window.addEventListener('resize',()=>setTimeout(draw,120));
+})();
+
+// ── Mandelbrot ──
+(function(){
+  const cv=document.getElementById('c-mand');
+  function draw(){
+    const W=cv.parentElement.clientWidth,H=cv.parentElement.clientHeight;
+    if(!W||!H)return;
+    cv.width=W;cv.height=H;
+    const ctx=cv.getContext('2d');
+    const img=ctx.createImageData(W,H);
+    const d=img.data;
+    const MAX=90;
+    for(let py=0;py<H;py++){
+      for(let px=0;px<W;px++){
+        const cr=(px/W)*3.5-2.5;
+        const ci=(py/H)*2.8-1.4;
+        let zr=0,zi=0,n=0;
+        while(n<MAX&&zr*zr+zi*zi<4){const t=zr*zr-zi*zi+cr;zi=2*zr*zi+ci;zr=t;n++;}
+        const idx=(py*W+px)*4;
+        if(n===MAX){d[idx]=3;d[idx+1]=2;d[idx+2]=10;d[idx+3]=255;}
+        else{
+          const t=n/MAX;
+          const s=Math.sqrt(t);
+          d[idx]=Math.min(255,Math.floor(9*s*(1-s)*4*255+t*80));
+          d[idx+1]=Math.min(255,Math.floor(15*(1-t)*(1-t)*t*255));
+          d[idx+2]=Math.min(255,Math.floor((1-s)*200));
+          if(t>0.55){const g=((t-0.55)/0.45);d[idx]=Math.min(255,d[idx]+Math.floor(g*140));d[idx+1]=Math.min(255,d[idx+1]+Math.floor(g*100));}
+          d[idx+3]=255;
+        }
+      }
+    }
+    ctx.putImageData(img,0,0);
+  }
+  setTimeout(draw,100);
+  window.addEventListener('resize',()=>setTimeout(draw,120));
+})();
+
+// ── Lorenz Attractor ──
+(function(){
+  const cv=document.getElementById('c-lorenz');
+  function draw(){
+    const W=cv.parentElement.clientWidth,H=cv.parentElement.clientHeight;
+    if(!W||!H)return;
+    cv.width=W;cv.height=H;
+    const ctx=cv.getContext('2d');
+    ctx.fillStyle='#010107';ctx.fillRect(0,0,W,H);
+    const sigma=10,rho=28,beta=8/3,dt=0.005;
+    let x=0.1,y=0,z=5;
+    for(let i=0;i<3000;i++){const dx=sigma*(y-x);const dy=x*(rho-z)-y;const dz=x*y-beta*z;x+=dx*dt;y+=dy*dt;z+=dz*dt;}
+    const scale=Math.min(W,H)*0.024;
+    const cx=W*0.5,cy=H*0.52;
+    const pts=22000;
+    ctx.lineWidth=0.65;
+    let px2=cx+x*scale,py2=cy-(z-25)*scale;
+    for(let i=0;i<pts;i++){
+      const dx=sigma*(y-x);const dy=x*(rho-z)-y;const dz=x*y-beta*z;
+      x+=dx*dt;y+=dy*dt;z+=dz*dt;
+      const nx=cx+x*scale,ny=cy-(z-25)*scale;
+      const t=i/pts;
+      ctx.strokeStyle=`rgba(${Math.floor(20+t*210)},${Math.floor(60+t*110)},${Math.floor(180-t*120)},0.55)`;
+      ctx.beginPath();ctx.moveTo(px2,py2);ctx.lineTo(nx,ny);ctx.stroke();
+      px2=nx;py2=ny;
+    }
+  }
+  setTimeout(draw,120);
+  window.addEventListener('resize',()=>setTimeout(draw,120));
+})();
+
+// ── Julia Set ──
+(function(){
+  const cv=document.getElementById('c-julia');
+  function draw(){
+    const W=cv.parentElement.clientWidth,H=cv.parentElement.clientHeight;
+    if(!W||!H)return;
+    cv.width=W;cv.height=H;
+    const ctx=cv.getContext('2d');
+    const img=ctx.createImageData(W,H);
+    const d=img.data;
+    const MAX=100;
+    const CR=-0.7,CI=0.27015;
+    for(let py=0;py<H;py++){
+      for(let px=0;px<W;px++){
+        let zr=(px/W)*3.5-1.75;
+        let zi=(py/H)*3.5-1.75;
+        let n=0;
+        while(n<MAX&&zr*zr+zi*zi<4){const t=zr*zr-zi*zi+CR;zi=2*zr*zi+CI;zr=t;n++;}
+        const idx=(py*W+px)*4;
+        if(n===MAX){d[idx]=3;d[idx+1]=2;d[idx+2]=12;d[idx+3]=255;}
+        else{
+          const t=Math.pow(n/MAX,0.5);
+          d[idx]=Math.min(255,Math.floor(t*200+40));
+          d[idx+1]=Math.min(255,Math.floor(t*50));
+          d[idx+2]=Math.min(255,Math.floor((1-t)*240));
+          d[idx+3]=255;
+        }
+      }
+    }
+    ctx.putImageData(img,0,0);
+  }
+  setTimeout(draw,140);
+  window.addEventListener('resize',()=>setTimeout(draw,120));
+})();
+
+// ── Golden Spiral ──
+(function(){
+  const cv=document.getElementById('c-liss');
+  function draw(){
+    const W=cv.parentElement.clientWidth,H=cv.parentElement.clientHeight;
+    if(!W||!H)return;
+    cv.width=W;cv.height=H;
+    const ctx=cv.getContext('2d');
+    ctx.fillStyle='#010107';ctx.fillRect(0,0,W,H);
+    const phi=(1+Math.sqrt(5))/2;
+    const cx=W/2,cy=H/2;
+    const maxR=Math.min(W,H)*0.45;
+    // Phyllotaxis dots
+    const goldenAngle=Math.PI*2*(2-phi);
+    const N=680;
+    for(let i=0;i<N;i++){
+      const angle=i*goldenAngle;
+      const r=Math.sqrt(i/N)*maxR*0.9;
+      const gx=cx+Math.cos(angle)*r;
+      const gy=cy+Math.sin(angle)*r;
+      const t=i/N;
+      const rad=Math.max(0.8,2.8*(1-t*0.5));
+      ctx.beginPath();ctx.arc(gx,gy,rad,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${Math.floor(160+t*80)},${Math.floor(120+t*80)},${Math.floor(40+t*50)},${0.5+t*0.5})`;
+      ctx.fill();
+    }
+    // Spiral overlay
+    const steps=3000;
+    ctx.beginPath();
+    let started=false;
+    for(let i=0;i<=steps;i++){
+      const theta=(i/steps)*5*Math.PI*2;
+      const r=Math.pow(phi,theta*2/Math.PI)*1.8;
+      if(r>maxR)break;
+      const gx=cx+Math.cos(theta)*r;
+      const gy=cy+Math.sin(theta)*r;
+      if(!started){ctx.moveTo(gx,gy);started=true;}else ctx.lineTo(gx,gy);
+    }
+    const grad=ctx.createLinearGradient(cx-maxR,cy-maxR,cx+maxR,cy+maxR);
+    grad.addColorStop(0,'rgba(88,214,141,0.5)');
+    grad.addColorStop(0.4,'rgba(201,168,76,0.75)');
+    grad.addColorStop(0.75,'rgba(232,112,64,0.65)');
+    grad.addColorStop(1,'rgba(192,96,248,0.5)');
+    ctx.strokeStyle=grad;ctx.lineWidth=1.3;ctx.stroke();
+  }
+  setTimeout(draw,160);
+  window.addEventListener('resize',()=>setTimeout(draw,120));
+})();
+
+// On initial load, sync gallery names to current lang
+galleryNames(lang);
+
+// BACKGROUND
+const bgC=document.getElementById('bg'),bgX=bgC.getContext('2d');
+let BW,BH,tick=0;
+function resize(){BW=bgC.width=window.innerWidth;BH=bgC.height=window.innerHeight;}
+resize();window.addEventListener('resize',resize);
+const STARS=Array.from({length:300},()=>({x:Math.random(),y:Math.random(),r:Math.random()*1.4+0.2,a:Math.random(),sp:Math.random()*0.003+0.0005}));
+const CD=[{s:'e',c:'rgba(88,214,141,'},{s:'i',c:'rgba(192,96,248,'},{s:'π',c:'rgba(232,112,64,'},{s:'1',c:'rgba(232,204,122,'},{s:'0',c:'rgba(160,184,208,'}];
+function drawBg(){
+  bgX.clearRect(0,0,BW,BH);
+  const g=bgX.createRadialGradient(BW/2,BH*.35,0,BW/2,BH*.35,Math.max(BW,BH)*.8);
+  g.addColorStop(0,'#07050f');g.addColorStop(1,'#010107');
+  bgX.fillStyle=g;bgX.fillRect(0,0,BW,BH);
+  const cx=BW/2,cy=BH*.28;
+  CD.forEach(({s,c},i)=>{
+    const r=Math.min(BW,BH)*(.22+i*.04);
+    const a=(i/5)*Math.PI*2+tick*(.005-i*.0004);
+    const px=cx+Math.cos(a)*r,py=cy+Math.sin(a)*r*.42;
+    bgX.beginPath();bgX.ellipse(cx,cy,r,r*.42,0,0,Math.PI*2);
+    bgX.strokeStyle=c+'0.02)';bgX.lineWidth=.8;bgX.stroke();
+    bgX.font=`italic ${14+i*2}px IM Fell English,serif`;bgX.textAlign='center';
+    bgX.fillStyle=c+(0.06+0.03*Math.sin(tick*.04+i))+')';
+    bgX.fillText(s,px,py+6);
+  });
+  STARS.forEach(s=>{s.a+=s.sp;const al=(Math.sin(s.a)+1)/2*.45+.04;
+    bgX.beginPath();bgX.arc(s.x*BW,s.y*BH,s.r,0,Math.PI*2);
+    bgX.fillStyle=`rgba(220,200,255,${al})`;bgX.fill();
+  });
+  tick++;requestAnimationFrame(drawBg);
+}
+drawBg();
+
+// CURSOR
+const cur=document.getElementById('cursor'),ring=document.getElementById('cursor-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
+(function loop(){
+  cur.style.left=mx+'px';cur.style.top=my+'px';
+  rx+=(mx-rx)*.12;ry+=(my-ry)*.12;
+  ring.style.left=rx+'px';ring.style.top=ry+'px';
+  requestAnimationFrame(loop);
+})();
+document.querySelectorAll('a,.lb').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{ring.style.width='52px';ring.style.height='52px';ring.style.borderColor='rgba(201,168,76,.65)';});
+  el.addEventListener('mouseleave',()=>{ring.style.width='30px';ring.style.height='30px';ring.style.borderColor='rgba(201,168,76,.35)';});
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第五章：镶嵌与自然图案</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700&family=Cinzel:wght@400;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+  :root{
+    --gold:#c9a84c;--gold-light:#e8cc7a;--gold-dim:#7a5f2a;
+    --ink:#04050a;--cream:#e8dfc8;
+    --vor-col:#e87c5a;--ara-col:#5abbe8;--ara2:#e85a9a;
+  }
+  body{background:var(--ink);font-family:'Noto Serif SC',serif;overflow:hidden;width:100vw;height:100vh;cursor:default;}
+  #bg-canvas{position:fixed;inset:0;z-index:0;}
+  #vignette{position:fixed;inset:0;z-index:5;pointer-events:none;
+    background:radial-gradient(ellipse at center,transparent 28%,rgba(0,0,0,0.56) 70%,rgba(0,0,0,0.92) 100%);}
+  .ornament-line{position:fixed;top:32px;left:50%;transform:translateX(-50%);z-index:20;
+    display:flex;align-items:center;gap:14px;opacity:0;transition:opacity 1.2s;}
+  .ornament-line.visible{opacity:1;}
+  .ornament-line span{font-family:'Cinzel',serif;font-size:10px;letter-spacing:5px;color:var(--gold-dim);text-transform:uppercase;}
+  .ornament-line::before,.ornament-line::after{content:'';width:70px;height:1px;}
+  .ornament-line::before{background:linear-gradient(to right,transparent,var(--gold-dim));}
+  .ornament-line::after{background:linear-gradient(to left,transparent,var(--gold-dim));}
+  #progress{position:fixed;bottom:0;left:0;height:2px;
+    background:linear-gradient(to right,var(--gold-dim),var(--gold),var(--gold-light));
+    z-index:100;transition:width 0.4s linear;}
+  .scene{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    opacity:0;pointer-events:none;transition:opacity 1.4s ease;z-index:10;}
+  .scene.active{opacity:1;pointer-events:auto;}
+  .chapter-badge{font-family:'Cinzel',serif;font-size:10px;letter-spacing:5px;color:var(--gold-dim);
+    text-transform:uppercase;display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+  .chapter-badge::before,.chapter-badge::after{content:'';width:28px;height:1px;background:var(--gold-dim);}
+  .scene-title{font-family:'Cinzel',serif;font-size:clamp(24px,4vw,54px);color:var(--gold-light);
+    text-align:center;line-height:1.2;letter-spacing:2px;text-shadow:0 0 50px rgba(201,168,76,0.3);}
+  .scene-body{font-family:'Noto Serif SC',serif;font-size:clamp(13px,1.5vw,18px);color:var(--cream);
+    text-align:center;line-height:1.95;max-width:640px;margin-top:18px;padding:0 24px;font-weight:300;}
+  .scene-body strong{color:var(--gold-light);font-weight:400;}
+  .divider{width:180px;height:1px;background:linear-gradient(to right,transparent,var(--gold-dim),transparent);margin:20px auto;}
+  .fade-up{opacity:0;transform:translateY(16px);transition:all 0.8s ease;}
+  .fade-up.show{opacity:1;transform:translateY(0);}
+
+  /* TWO-COLUMN layout for Voronoi scene */
+  .split-layout{display:flex;align-items:center;justify-content:center;gap:clamp(20px,4vw,60px);
+    margin-top:18px;flex-wrap:wrap;}
+  .split-text{max-width:300px;text-align:left;}
+  .split-text p{font-size:clamp(12px,1.3vw,16px);color:var(--cream);line-height:1.85;font-weight:300;}
+  .split-text p+p{margin-top:12px;}
+  .split-text strong{color:var(--gold-light);font-weight:400;}
+  .split-text .tag{display:inline-block;font-family:'Cinzel',serif;font-size:9px;
+    letter-spacing:2px;color:var(--vor-col);border:1px solid rgba(232,124,90,0.3);
+    padding:2px 8px;margin-bottom:10px;}
+
+  /* GALLERY compare row */
+  .compare-row{display:flex;align-items:flex-start;justify-content:center;
+    gap:clamp(16px,3.5vw,50px);margin-top:22px;}
+  .cmp-card{display:flex;flex-direction:column;align-items:center;gap:10px;
+    opacity:0;transform:translateY(20px);transition:all 0.7s ease;}
+  .cmp-card.show{opacity:1;transform:translateY(0);}
+  .cmp-label{font-family:'Cinzel',serif;font-size:clamp(10px,1vw,12px);
+    letter-spacing:2px;color:var(--vor-col);text-align:center;}
+  .cmp-desc{font-size:clamp(10px,1vw,12px);color:var(--gold-dim);text-align:center;
+    max-width:130px;line-height:1.5;font-weight:300;}
+
+  /* TESSELLATION full bg scene */
+  #tess-overlay{position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;z-index:2;pointer-events:none;}
+
+  /* QUOTE panel */
+  .ara-quote{font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(14px,1.8vw,22px);color:var(--cream);text-align:center;
+    max-width:560px;line-height:1.8;padding:0 28px;}
+  .ara-source{font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;
+    color:var(--ara-col);margin-top:14px;text-align:center;}
+
+  /* Ending */
+  .big-quote{font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(15px,2vw,26px);color:var(--cream);
+    text-align:center;max-width:580px;line-height:1.78;padding:0 28px;}
+
+  /* NAV */
+  #nav{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
+    z-index:200;display:flex;gap:10px;align-items:center;}
+  .nav-btn{width:34px;height:34px;border:1px solid var(--gold-dim);background:transparent;
+    color:var(--gold);cursor:pointer;font-size:16px;display:flex;align-items:center;
+    justify-content:center;transition:all 0.3s;}
+  .nav-btn:hover{background:rgba(201,168,76,0.1);border-color:var(--gold);}
+  .nav-dots{display:flex;gap:6px;align-items:center;}
+  .nav-dot{width:6px;height:6px;border-radius:50%;background:var(--gold-dim);cursor:pointer;transition:all 0.3s;}
+  .nav-dot.active{background:var(--gold);width:20px;border-radius:3px;}
+  #hint{position:fixed;bottom:22px;right:28px;z-index:100;font-family:'Cinzel',serif;
+    font-size:10px;letter-spacing:2px;color:var(--gold-dim);display:flex;align-items:center;
+    gap:8px;opacity:0;transition:opacity 1s;}
+  #hint.visible{opacity:1;}
+  #hint-dot{width:5px;height:5px;border-radius:50%;background:var(--gold-dim);
+    animation:blink 1.6s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.15}}
+
+  #home-btn {
+    position: fixed; top: 26px; left: 36px; z-index: 9000;
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 3px;
+    color: var(--gold); text-decoration: none;
+    border: 1px solid var(--gold-dim); padding: 8px 16px;
+    background: rgba(6,5,7,0.7); cursor: pointer !important;
+    transition: background .3s, color .3s, border-color .3s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  #home-btn:hover { background: rgba(201,168,76,.15); border-color: var(--gold-light); color: var(--gold-light); }
+</style>
+
+<style id="bilingual-css">
+#ch-lang-bar{position:fixed;top:26px;right:36px;z-index:9000;display:flex;align-items:stretch;border:1px solid rgba(122,95,42,.5);overflow:hidden;}
+.ch-lb{font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;padding:8px 16px;background:transparent;border:none;outline:none;color:#7a5f2a;cursor:pointer;transition:background .3s,color .3s;}
+.ch-lb:hover{background:rgba(201,168,76,.1);}
+.ch-lb.on{background:rgba(201,168,76,.2);color:#e8cc7a;}
+.ch-lb-sep{width:1px;background:rgba(122,95,42,.4);flex-shrink:0;}
+</style>
+
+<style id="mobile-responsive">
+@media (max-width: 700px) {
+  /* Core layout - keep centered, handle overflow with scroll wrapper */
+  .scene {
+    padding: 55px 14px 90px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  /* Typography */
+  .scene-title { font-size: clamp(17px, 5.5vw, 28px) !important; letter-spacing: 1px; }
+  .scene-subtitle { font-size: clamp(11px, 3vw, 15px) !important; }
+  .scene-body { font-size: clamp(12px, 3.2vw, 15px) !important; padding: 0 8px; max-width: 96vw; line-height: 1.75 !important; }
+  .chapter-badge { font-size: 7px; letter-spacing: 3px; }
+  .ornament-line span { font-size: 7px; letter-spacing: 1px; max-width: 55vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* UI controls */
+  #home-btn { top: 10px; left: 10px; padding: 5px 10px; font-size: 9px; }
+  #ch-lang-bar { top: 10px; right: 10px; }
+  .ch-lb { padding: 5px 9px; font-size: 8px; letter-spacing: 1px; }
+  #hint { display: none; }
+  .ornament-line { top: 14px; }
+
+  /* Nav - larger touch targets */
+  #nav { bottom: 8px; }
+  .nav-btn { width: 44px; height: 44px; font-size: 22px; }
+
+  /* Force ALL flex row containers to stack */
+  .split-layout,
+  .split-text,
+  .info-row,
+  .sym-row,
+  .law-row,
+  .tl-row,
+  .card-row,
+  .geo-row {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  /* Info panels */
+  .split-info, [id$="-info"], [id$="-text"], [id$="-panel"] {
+    max-width: 94vw !important; width: 94vw !important;
+  }
+  .split-info p, [id$="-info"] p { font-size: clamp(11px, 2.8vw, 14px) !important; }
+
+  /* Only limit standalone full-width canvases, not gallery 3D canvases */
+  canvas#bg-canvas { max-width: 100vw !important; }
+
+  /* Grids → two columns, small screens one column */
+  .law-grid, .var-grid, .sym-grid, .const-grid, .card-grid,
+  [class*="grid"] { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+
+  /* Epilogue / poem */
+  .big-quote, #e-q, #fin-q, .poem { 
+    font-size: clamp(13px, 3.5vw, 18px) !important; 
+    padding: 0 16px; 
+    line-height: 1.9 !important;
+  }
+  .ending-quote { font-size: clamp(14px, 3.8vw, 19px) !important; }
+
+  /* Tables */
+  table { font-size: 10px; width: 100%; }
+  td, th { padding: 4px 6px !important; }
+
+  /* Axiom boxes */
+  .axiom-item { padding: 8px 10px !important; }
+  .axiom-body { font-size: 11px !important; }
+
+  /* Divider spacing */
+  .divider { margin: 12px auto !important; }
+}
+
+@media (max-width: 420px) {
+  .scene-title { font-size: clamp(15px, 5vw, 22px) !important; }
+
+  [class*="grid"] { grid-template-columns: 1fr !important; }
+}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div id="vignette"></div>
+<a id="home-btn" href="index.html">&#8962;&nbsp;HOME</a>
+<div class="ornament-line" id="ornament"><span>Chapter IV · Tessellation & Infinity</span></div>
+<div id="progress"></div>
+<div id="nav">
+  <button class="nav-btn" id="btn-prev">&#8249;</button>
+  <div class="nav-dots" id="nav-dots"></div>
+  <button class="nav-btn" id="btn-next">&#8250;</button>
+</div>
+<div id="hint"><div id="hint-dot"></div>CLICK TO ADVANCE</div>
+
+<!-- ══ SCENE 0: Title ══ -->
+<div class="scene active" id="scene-0">
+  <div class="chapter-badge fade-up" id="s0-b">第五章</div>
+  <div class="scene-title fade-up" id="s0-t">镶嵌与自然图案</div>
+  <div style="font-family:'IM Fell English',serif;font-style:italic;font-size:clamp(14px,1.9vw,23px);color:var(--gold-dim);text-align:center;margin-top:10px;" class="fade-up" id="s0-s">重复的无限性</div>
+  <div class="divider" style="margin:24px auto;"></div>
+  <div class="scene-body fade-up" id="s0-body" style="max-width:500px;font-size:clamp(13px,1.4vw,17px);">
+    为什么蜂巢偏偏是六边形的？为什么长颈鹿的斑纹长那样？<br>
+    为什么伊斯兰艺术家1000年前画的图案，<br>
+    <strong>和数学家20世纪才发现的定理完全吻合？</strong>
+  </div>
+  <canvas id="c0" style="margin-top:20px;opacity:0;transition:opacity 1.5s 0.5s;width:min(680px,96vw);height:min(300px,38vh);"></canvas>
+</div>
+
+<!-- ══ SCENE 1: Voronoi Introduction ══ -->
+<div class="scene" id="scene-1">
+  <div class="chapter-badge">§ 4.1 · 沃罗诺伊图</div>
+  <div class="scene-title" style="font-size:clamp(20px,3.2vw,44px);">自然的领地划分</div>
+  <canvas id="vor-c" style="opacity:0;transition:opacity 1s 0.3s;width:min(620px,94vw);height:min(380px,52vh);margin-top:12px;"></canvas>
+  <div style="display:none">
+    <div class="split-text" id="vor-text" style="opacity:0;transition:opacity 0.8s 0.8s;">
+      <div class="tag">VORONOI DIAGRAM</div>
+      <p id="vor-p0">随机散布<strong>种子点</strong>，每个种子"占领"距它最近的区域，形成自然边界。</p>
+      <p id="vor-p1">这是自然界解决<strong>空间高效覆盖</strong>的终极方案——长颈鹿斑纹、蜂巢、细胞膜都遵循此规律。</p>
+      <p id="vor-p2" style="margin-top:16px;font-size:clamp(11px,1.1vw,13px);color:var(--gold-dim);">
+        数学定义：平面上点集 S 的沃罗诺伊图，是将平面划分为 |S| 个区域的剖分，使得每个区域内的点比其他种子点更靠近对应种子。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCENE 2: Nature Examples ══ -->
+<div class="scene" id="scene-2">
+  <div class="chapter-badge">§ 4.1 · 自然界的沃罗诺伊</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">形态即效率</div>
+  <div class="scene-body" style="margin-top:10px;font-size:clamp(12px,1.3vw,16px);">
+    当自然界需要<strong>均匀覆盖、减少重叠、最大化填充</strong>时，沃罗诺伊图就会自发浮现。
+  </div>
+  <div class="compare-row">
+    <div class="cmp-card" id="n0">
+      <canvas id="nc-giraffe" style="width:min(200px,44vw);height:min(200px,44vw);"></canvas>
+      <div class="cmp-label" style="color:var(--vor-col);">长颈鹿斑纹</div>
+      <div class="cmp-desc">皮肤色素在胚胎发育时以种子点形式扩散</div>
+    </div>
+    <div class="cmp-card" id="n1">
+      <canvas id="nc-honey" style="width:min(200px,44vw);height:min(200px,44vw);"></canvas>
+      <div class="cmp-label" style="color:var(--gold);">蜂巢结构</div>
+      <div class="cmp-desc">六边形是圆形种子点沃罗诺伊图的极限</div>
+    </div>
+    <div class="cmp-card" id="n2">
+      <canvas id="nc-crack" style="width:min(200px,44vw);height:min(200px,44vw);"></canvas>
+      <div class="cmp-label" style="color:var(--ara-col);">干裂纹理</div>
+      <div class="cmp-desc">土壤收缩张力的沃罗诺伊边界释放</div>
+    </div>
+    <div class="cmp-card" id="n3">
+      <canvas id="nc-cell" style="width:min(200px,44vw);height:min(200px,44vw);"></canvas>
+      <div class="cmp-label" style="color:var(--ara2);">细胞组织</div>
+      <div class="cmp-desc">细胞生长竞争形成自然领地划分</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCENE 3: Islamic Geometry Intro ══ -->
+<div class="scene" id="scene-3">
+  <div class="chapter-badge">§ 4.2 · 阿拉伯几何艺术</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">神圣的无限图案</div>
+  <div class="scene-body" style="margin-top:12px;max-width:580px;">
+    8至14世纪，伊斯兰艺术家将几何升华为神学语言。<br>
+    无缝衔接的<strong>星形镶嵌</strong>象征宇宙的无限延展，<br>
+    每一个图案都能以旋转和平移<strong>铺满整个平面</strong>，直至永恒。
+  </div>
+  <canvas id="ara-intro" style="width:min(620px,96vw);height:min(360px,48vh);margin-top:16px;opacity:0;transition:opacity 1.2s 0.3s;"></canvas>
+</div>
+
+<!-- ══ SCENE 4: Tessellation Live Canvas ══ -->
+<div class="scene" id="scene-4" style="padding:0;">
+  <canvas id="tess-full" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;transition:opacity 1.5s;"></canvas>
+  <div id="tess-overlay">
+    <div class="chapter-badge" style="color:rgba(232,204,122,0.7);">铺砌艺术 · TESSELLATION</div>
+    <div class="scene-title" style="font-size:clamp(20px,3vw,42px);text-shadow:0 0 30px rgba(0,0,0,0.8);" id="tess-title">平面的无限铺展</div>
+    <div class="scene-body" style="background:rgba(4,5,10,0.5);padding:16px 28px;margin-top:14px;
+      backdrop-filter:blur(4px);max-width:520px;" id="tess-body">
+      17种壁纸群——平面上仅存在17种本质不同的对称铺砌方式。<br>
+      阿拉伯工匠在没有群论的年代，凭直觉<strong>发现并运用了全部17种</strong>。
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCENE 5: Star Pattern Deep Dive ══ -->
+<div class="scene" id="scene-5">
+  <div class="chapter-badge">§ 4.2 · 星形多边形</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">星辰的几何语言</div>
+  <div class="split-layout" style="flex-direction:column;align-items:center;gap:8px;">
+    <canvas id="star-c" style="width:min(460px,80vh);height:min(460px,80vh);opacity:0;transition:opacity 1s 0.3s;flex-shrink:0;"></canvas>
+    <div style="max-width:280px;opacity:0;transition:opacity 0.8s 0.8s;" id="star-text">
+      <div class="tag" style="color:var(--ara-col);border-color:rgba(90,187,232,0.3);">GIRIH TILES</div>
+      <p id="st-p0" style="font-size:clamp(12px,1.3vw,15px);color:var(--cream);line-height:1.85;font-weight:300;">
+        <strong style="color:var(--ara-col);">吉里赫砖</strong>是伊斯兰建筑的五种基本镶嵌单元。
+      </p>
+      <p id="st-p1" style="font-size:clamp(12px,1.3vw,15px);color:var(--cream);line-height:1.85;font-weight:300;margin-top:10px;">
+        2007年，物理学家彼得·卢发现：<br>
+        伊斯兰工匠比现代科学早500年，使用了等价准晶体的非周期镶嵌——彭罗斯砖。
+      </p>
+      <p id="st-p2" style="font-size:clamp(11px,1.1vw,13px);color:var(--gold-dim);margin-top:14px;line-height:1.6;">
+        这一发现令物理学界震惊：<br>中世纪工匠的直觉超越了20世纪的数学。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCENE 6: Ending ══ -->
+<div class="scene" id="scene-6">
+  <div class="chapter-badge">尾声 · 第四章</div>
+  <div class="scene-title fade-up" id="e-t" style="font-size:clamp(20px,3vw,42px);">空间从不虚空</div>
+  <div class="divider" style="margin:24px auto;"></div>
+  <div class="big-quote fade-up" id="e-q">
+    沃罗诺伊告诉我们，空间的每一寸都<strong style="color:var(--vor-col);">有其归属</strong>；<br>
+    镶嵌艺术告诉我们，有限的图案可以<strong style="color:var(--ara-col);">无限延伸</strong>。<br><br>
+    自然与艺术，都在用几何回答同一个问题：<br>
+    <strong style="color:var(--gold-light);">最少的规则，如何填满整个宇宙？</strong>
+  </div>
+  <div style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;color:var(--gold-dim);margin-top:20px;text-align:center;" class="fade-up" id="e-a">— 第五章 · 终</div>
+  <canvas id="c6" style="margin-top:18px;opacity:0;transition:opacity 2s;width:min(660px,96vw);height:min(260px,34vh);"></canvas>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// BACKGROUND
+// ══════════════════════════════════════════
+const bgC=document.getElementById('bg-canvas');
+const bgX=bgC.getContext('2d');
+let BW,BH,bgTick=0;
+function resizeBg(){BW=bgC.width=window.innerWidth;BH=bgC.height=window.innerHeight;}
+resizeBg();window.addEventListener('resize',resizeBg);
+const stars=Array.from({length:180},()=>({x:Math.random(),y:Math.random(),r:Math.random()*1.1+0.2,a:Math.random(),sp:Math.random()*0.003+0.001}));
+function drawBg(){
+  bgX.clearRect(0,0,BW,BH);
+  const g=bgX.createRadialGradient(BW/2,BH/2,0,BW/2,BH/2,Math.max(BW,BH)*0.75);
+  g.addColorStop(0,'#08060e');g.addColorStop(1,'#020108');
+  bgX.fillStyle=g;bgX.fillRect(0,0,BW,BH);
+  stars.forEach(s=>{
+    s.a+=s.sp;
+    const al=(Math.sin(s.a)+1)/2*0.55+0.07;
+    bgX.beginPath();bgX.arc(s.x*BW,s.y*BH,s.r,0,Math.PI*2);
+    bgX.fillStyle=`rgba(210,170,120,${al})`;bgX.fill();
+  });
+  bgTick++;requestAnimationFrame(drawBg);
+}
+drawBg();
+
+// ══════════════════════════════════════════
+// VORONOI ENGINE (Fortune's-like approximation)
+// ══════════════════════════════════════════
+function computeVoronoi(seeds, W, H, ctx, palette, animated, tick=0) {
+  const img=ctx.createImageData(W,H);
+  for(let y=0;y<H;y++){
+    for(let x=0;x<W;x++){
+      let minD=Infinity,closest=0;
+      for(let i=0;i<seeds.length;i++){
+        const sx=seeds[i][0]+(animated?Math.sin(tick*0.015+i)*8:0);
+        const sy=seeds[i][1]+(animated?Math.cos(tick*0.018+i*1.3)*6:0);
+        const dx=x-sx,dy=y-sy;
+        const d=dx*dx+dy*dy;
+        if(d<minD){minD=d;closest=i;}
+      }
+      const col=palette[closest%palette.length];
+      const idx=(y*W+x)*4;
+      img.data[idx]=col[0];img.data[idx+1]=col[1];img.data[idx+2]=col[2];img.data[idx+3]=col[3]||255;
+    }
+  }
+  ctx.putImageData(img,0,0);
+  // Draw edges (approximate: find cells near boundary)
+  ctx.strokeStyle='rgba(201,168,76,0.5)';ctx.lineWidth=0.8;
+  // Draw seed points
+  seeds.forEach(([sx,sy],i)=>{
+    const ax=sx+(animated?Math.sin(tick*0.015+i)*8:0);
+    const ay=sy+(animated?Math.cos(tick*0.018+i*1.3)*6:0);
+    ctx.beginPath();ctx.arc(ax,ay,3,0,Math.PI*2);
+    ctx.fillStyle='rgba(232,204,122,0.7)';ctx.fill();
+  });
+}
+
+// ══════════════════════════════════════════
+// SCENE 0: Grand Kaleidoscope Opening
+// ══════════════════════════════════════════
+const c0=document.getElementById('c0');
+let t0=0, c0Raf;
+function resizeC0(){ const r=c0.getBoundingClientRect(); c0.width=r.width||680; c0.height=r.height||300; }
+function drawC0(){
+  resizeC0();
+  const CW=c0.width, CH=c0.height, ctx=c0.getContext('2d');
+  ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,CW,CH);
+  const t=t0, cx=CW/2, cy=CH/2;
+  const R=Math.min(CW,CH)*0.44;
+
+  // ── Left panel: Living Voronoi diagram ──
+  {
+    const lCX=CW*0.27, lCY=cy;
+    const nSeeds=10;
+    const seeds=Array.from({length:nSeeds},(_,i)=>{
+      const a=(i/nSeeds)*Math.PI*2;
+      const r2=R*(0.25+0.45*Math.sin(i*1.7+0.5));
+      return [lCX+Math.cos(a)*r2*(CW*0.18/R), lCY+Math.sin(a)*r2*0.55];
+    });
+    const palette=[
+      [180,80,60],[60,100,180],[80,160,100],[160,80,160],
+      [180,140,60],[60,140,180],[140,60,80],[80,180,140],
+      [160,160,60],[100,60,180],
+    ];
+    // Draw cells as polygon approximations
+    seeds.forEach(([sx,sy],si)=>{
+      const [cr,cg,cb]=palette[si%palette.length];
+      // Draw Voronoi cell as path from nearby midpoints
+      const pts=[];
+      seeds.forEach(([ox,oy],oi)=>{
+        if(oi===si) return;
+        // midpoint of si-oi, weighted by perpendicular
+        const mx=(sx+ox)/2+Math.sin(t*0.008+si*0.7+oi)*3;
+        const my=(sy+oy)/2+Math.cos(t*0.010+si*0.9+oi)*3;
+        const d=Math.sqrt((sx-ox)**2+(sy-oy)**2);
+        if(d<R*0.7) pts.push({mx,my,d});
+      });
+      pts.sort((a,b)=>Math.atan2(a.my-sy,a.mx-sx)-Math.atan2(b.my-sy,b.mx-sx));
+      if(pts.length<3) return;
+      ctx.beginPath(); ctx.moveTo(pts[0].mx,pts[0].my);
+      pts.forEach(p=>ctx.lineTo(p.mx,p.my));
+      ctx.closePath();
+      ctx.fillStyle=`rgba(${cr},${cg},${cb},0.22)`; ctx.fill();
+      ctx.strokeStyle=`rgba(${cr},${cg},${cb},0.55)`; ctx.lineWidth=1.2; ctx.stroke();
+      // Seed point
+      const pr=(t*0.4+si*11)%28;
+      ctx.beginPath(); ctx.arc(sx,sy,pr,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(${cr},${cg},${cb},${Math.max(0,0.3-pr/90)})`; ctx.lineWidth=0.7; ctx.stroke();
+      ctx.beginPath(); ctx.arc(sx,sy,3.5,0,Math.PI*2);
+      ctx.fillStyle=`rgba(232,204,122,0.90)`; ctx.fill();
+    });
+    // Label
+    ctx.font=`${Math.round(CH*0.068)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle='rgba(232,124,90,0.55)';
+    ctx.fillText('Voronoi', lCX, cy+R*0.62+CH*0.04);
+  }
+
+  // Divider
+  {
+    const dg=ctx.createLinearGradient(cx,0,cx,CH);
+    dg.addColorStop(0,'transparent'); dg.addColorStop(0.5,'rgba(201,168,76,0.30)'); dg.addColorStop(1,'transparent');
+    ctx.fillStyle=dg; ctx.fillRect(cx-1,0,2,CH);
+  }
+
+  // ── Right panel: Islamic star mandala ──
+  {
+    const rCX=CW*0.73, rCY=cy;
+    // 3 rings of stars + center
+    [0,1,2].forEach(ring=>{
+      const nStars=ring===0?1:ring===1?6:12;
+      const rRing=ring===0?0:R*(0.22+ring*0.20)*(CW*0.24/R);
+      for(let i=0;i<nStars;i++){
+        const angle=(i/nStars)*Math.PI*2 + t*0.006*(ring%2===0?1:-1);
+        const px=rCX+(ring===0?0:Math.cos(angle)*rRing);
+        const py=rCY+(ring===0?0:Math.sin(angle)*rRing*0.75);
+        const nPoints=ring===0?12:ring===1?8:6;
+        const starR=ring===0?R*0.20*(CH/300):ring===1?R*0.10*(CH/300):R*0.07*(CH/300);
+        const rot=t*0.008*(i%2===0?1:-1.3);
+        const alpha=0.45+0.3*Math.sin(t*0.04+i+ring*1.4);
+        // Star fill
+        ctx.beginPath();
+        for(let j=0;j<nPoints*2;j++){
+          const a2=(j/nPoints)*Math.PI+rot;
+          const rr=j%2===0?starR:starR*0.38;
+          j===0?ctx.moveTo(px+Math.cos(a2)*rr,py+Math.sin(a2)*rr)
+               :ctx.lineTo(px+Math.cos(a2)*rr,py+Math.sin(a2)*rr);
+        }
+        ctx.closePath();
+        const cols=['rgba(90,187,232,','rgba(232,204,122,','rgba(232,124,164,'];
+        ctx.fillStyle=`${cols[ring%cols.length]}${alpha*0.12})`; ctx.fill();
+        ctx.strokeStyle=`${cols[ring%cols.length]}${alpha})`; ctx.lineWidth=1.0; ctx.stroke();
+      }
+      // Ring circle
+      if(ring>0){
+        ctx.beginPath(); ctx.arc(rCX,rCY,rRing,0,Math.PI*2);
+        ctx.strokeStyle='rgba(201,168,76,0.07)'; ctx.lineWidth=0.6; ctx.stroke();
+      }
+    });
+    // Gold center jewel
+    const cg2=ctx.createRadialGradient(rCX,rCY,0,rCX,rCY,R*0.06*(CH/300));
+    cg2.addColorStop(0,'rgba(232,204,122,0.95)'); cg2.addColorStop(1,'transparent');
+    ctx.fillStyle=cg2; ctx.fillRect(rCX-R*0.07,rCY-R*0.07,R*0.14,R*0.14);
+    ctx.beginPath(); ctx.arc(rCX,rCY,5,0,Math.PI*2);
+    ctx.fillStyle='rgba(232,204,122,1)'; ctx.fill();
+    // Label
+    ctx.font=`${Math.round(CH*0.068)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle='rgba(90,187,232,0.55)';
+    ctx.fillText('Tessellation', rCX, cy+R*0.62+CH*0.04);
+  }
+
+  t0++; c0Raf=requestAnimationFrame(drawC0);
+}
+
+function drawStar(ctx,cx,cy,r,n,lineW,color){
+  const inner=r*0.4;
+  ctx.beginPath();
+  for(let i=0;i<n*2;i++){
+    const a=(i/n)*Math.PI-Math.PI/2;
+    const rr=i%2===0?r:inner;
+    i===0?ctx.moveTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr):ctx.lineTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr);
+  }
+  ctx.closePath();
+  ctx.strokeStyle=color;ctx.lineWidth=lineW||1;ctx.stroke();
+  ctx.fillStyle=color.replace('0.5','0.06');ctx.fill();
+}
+
+// ══════════════════════════════════════════
+// SCENE 1: Live Voronoi
+// ══════════════════════════════════════════
+let vorActive=false,vorTick=0,vorRAF;
+const VOR_PALETTE=[
+  [180,80,60,60],[60,100,180,60],[80,160,100,60],[160,80,160,60],
+  [180,140,60,60],[60,140,180,60],[140,60,80,60],[80,180,140,60],
+  [160,160,60,60],[100,60,180,60],[60,180,100,60],[180,100,60,60],
+  [60,60,180,60],[140,180,80,60],[180,60,120,60],[80,80,160,60],
+];
+
+function startVoronoi(){
+  const canvas=document.getElementById('vor-c');if(!canvas)return;
+  const _vr=canvas.getBoundingClientRect();
+  const W=_vr.width||620, H=_vr.height||380;
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  const nSeeds=20;
+  // Seeds start at center, drift outward
+  const seeds=Array.from({length:nSeeds},()=>[
+    W*0.1+Math.random()*W*0.8, H*0.1+Math.random()*H*0.8
+  ]);
+  const velocities=Array.from({length:nSeeds},()=>[
+    (Math.random()-0.5)*0.4, (Math.random()-0.5)*0.4
+  ]);
+  vorActive=true; vorTick=0;
+
+  // Richer color palette
+  const palette=[
+    [180,70,55],[55,95,185],[75,170,90],[165,70,165],
+    [185,145,50],[55,150,190],[145,55,75],[75,185,145],
+    [165,165,55],[95,55,185],[55,185,95],[190,95,55],
+    [55,55,185],[145,185,75],[185,55,120],[75,75,165],
+    [200,110,50],[50,120,200],[110,200,50],[200,50,150],
+  ];
+
+  // Precompute cell pixels once and update only borders
+  const cellSize=3;
+
+  function frame(){
+    if(!vorActive)return;
+    ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,W,H);
+
+    // Drift seeds — bounce off walls
+    seeds.forEach(([sx,sy],i)=>{
+      const vx=velocities[i][0]+Math.sin(vorTick*0.008+i*1.3)*0.15;
+      const vy=velocities[i][1]+Math.cos(vorTick*0.010+i*0.9)*0.12;
+      seeds[i][0]=((sx+vx+W)%W);
+      seeds[i][1]=((sy+vy+H)%H);
+    });
+
+    // Rasterized Voronoi
+    for(let py=0;py<H;py+=cellSize){
+      for(let px=0;px<W;px+=cellSize){
+        let minD=Infinity, secondD=Infinity, closest=0;
+        seeds.forEach(([sx,sy],i)=>{
+          const dx=px-sx, dy=py-sy;
+          const d=dx*dx+dy*dy;
+          if(d<minD){secondD=minD; minD=d; closest=i;}
+          else if(d<secondD) secondD=d;
+        });
+        const [cr,cg,cb]=palette[closest%palette.length];
+        // Edge detection: near Voronoi boundary → bright line
+        const edgeness=Math.max(0,1-(Math.sqrt(secondD)-Math.sqrt(minD))/4);
+        const cellAlpha=0.42+edgeness*0.0;
+        const edgeA=edgeness>0.82?edgeness*0.9:0;
+        if(edgeA>0.05){
+          // Draw boundary
+          ctx.fillStyle=`rgba(201,168,76,${edgeA*0.7})`; ctx.fillRect(px,py,cellSize,cellSize);
+        } else {
+          ctx.fillStyle=`rgba(${cr},${cg},${cb},${cellAlpha})`; ctx.fillRect(px,py,cellSize,cellSize);
+        }
+      }
+    }
+
+    // Draw seed points with glow
+    seeds.forEach(([sx,sy],i)=>{
+      const [cr,cg,cb]=palette[i%palette.length];
+      // Pulse ring
+      const pr=(vorTick*0.5+i*14)%40;
+      ctx.beginPath(); ctx.arc(sx,sy,pr,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(${cr},${cg},${cb},${Math.max(0,0.35-pr/115)})`; ctx.lineWidth=1.0; ctx.stroke();
+      // Seed dot with glow
+      const sg=ctx.createRadialGradient(sx,sy,0,sx,sy,12);
+      sg.addColorStop(0,'rgba(232,210,130,0.95)'); sg.addColorStop(1,'transparent');
+      ctx.fillStyle=sg; ctx.fillRect(sx-12,sy-12,24,24);
+      ctx.beginPath(); ctx.arc(sx,sy,4,0,Math.PI*2);
+      ctx.fillStyle='rgba(232,210,130,1)'; ctx.fill();
+    });
+
+    vorTick++; vorRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopVoronoi(){vorActive=false;cancelAnimationFrame(vorRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 2: Nature pattern canvases
+// ══════════════════════════════════════════
+const natureRenderers={};
+function drawGiraffe(canvas,tick){
+  const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
+  ctx.fillStyle='rgba(140,85,30,0.20)'; ctx.fillRect(0,0,W,H);
+  // Richer giraffe patches — more seeds, proper scale
+  const sc=W/150;
+  const seeds=[[25,22],[72,16],[120,40],[35,72],[88,65],[132,90],[18,108],[68,102],[118,122],[48,140],[100,145]];
+  seeds.forEach(([sx0,sy0],i)=>{
+    const sx=sx0*sc, sy=sy0*sc;
+    ctx.beginPath();
+    const n=7+i%3;
+    for(let j=0;j<=n;j++){
+      const a=(j/n)*Math.PI*2;
+      const jitter=(W*0.12)+(W*0.04)*Math.sin(a*3+i+tick*0.008);
+      const x=sx+Math.cos(a)*jitter, y=sy+Math.sin(a)*jitter;
+      j===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.closePath();
+    // Dark brown patch with slight variation
+    const darkness=55+i*8;
+    ctx.fillStyle=`rgba(${darkness},${Math.floor(darkness*0.45)},${Math.floor(darkness*0.08)},0.72)`;ctx.fill();
+    ctx.strokeStyle=`rgba(${190+i*3},${120+i*2},50,0.25)`;ctx.lineWidth=1.2*sc;ctx.stroke();
+  });
+  // Tan background shows through as "connective tissue"
+  ctx.font=`${Math.round(H*0.09)}px Cinzel,serif`; ctx.textAlign='center';
+  ctx.fillStyle='rgba(210,165,90,0.45)';
+  ctx.fillText('长颈鹿', W/2, H*0.96);
+}
+function drawHoney(canvas,tick){
+  const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
+  ctx.fillStyle='rgba(40,20,5,0.85)'; ctx.fillRect(0,0,W,H);
+  const r=W*0.095, h=r*Math.sqrt(3);
+  const cols2=Math.ceil(W/(r*3))+2, rows2=Math.ceil(H/h)+2;
+  for(let row=-1;row<rows2;row++){
+    for(let col=-1;col<cols2;col++){
+      const ox=col*r*3+(row%2)*r*1.5;
+      const oy=row*h;
+      const pulse=Math.sin(tick*0.025+row*0.6+col*0.8)*1.2;
+      const bright=(Math.sin(tick*0.018+row+col)+1)/2;
+      ctx.beginPath();
+      for(let i=0;i<6;i++){
+        const a=(i/6)*Math.PI*2+Math.PI/6;
+        const rr=r-1.5+pulse;
+        i===0?ctx.moveTo(ox+Math.cos(a)*rr,oy+Math.sin(a)*rr):ctx.lineTo(ox+Math.cos(a)*rr,oy+Math.sin(a)*rr);
+      }
+      ctx.closePath();
+      // Richer honey gradient fill
+      const fillR=Math.floor(190+bright*45), fillG=Math.floor(130+bright*25);
+      ctx.fillStyle=`rgba(${fillR},${fillG},35,${0.55+bright*0.30})`;ctx.fill();
+      ctx.strokeStyle=`rgba(232,180,60,${0.55+bright*0.25})`;ctx.lineWidth=1.2;ctx.stroke();
+      // Specular glint
+      if(bright>0.7){
+        const gx=ox-r*0.2, gy=oy-r*0.3;
+        const gg=ctx.createRadialGradient(gx,gy,0,gx,gy,r*0.5);
+        gg.addColorStop(0,`rgba(255,240,180,${(bright-0.7)*0.6})`); gg.addColorStop(1,'transparent');
+        ctx.fillStyle=gg; ctx.fillRect(gx-r*0.5,gy-r*0.5,r,r);
+      }
+    }
+  }
+  ctx.font=`${Math.round(H*0.09)}px Cinzel,serif`; ctx.textAlign='center';
+  ctx.fillStyle='rgba(232,180,60,0.50)'; ctx.fillText('蜂巢', W/2, H*0.96);
+}
+function drawCrack(canvas,tick){
+  const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
+  ctx.fillStyle='rgba(75,52,28,0.88)'; ctx.fillRect(0,0,W,H);
+  const sc=W/150;
+  // More seeds for realistic cracked mud
+  const seeds=[[22,20],[72,12],[125,32],[12,72],[62,62],[118,52],[32,112],[82,98],[132,118],[52,142],[105,138],[18,42]];
+  // Fill cells with slight color variation
+  seeds.forEach(([s1x,s1y],i)=>{
+    const sx=s1x*sc, sy=s1y*sc;
+    // Find approximate cell polygon from midpoints
+    const pts=[];
+    seeds.forEach(([s2x,s2y],j)=>{
+      if(j===i)return;
+      const ox=s2x*sc, oy=s2y*sc;
+      const d=Math.sqrt((sx-ox)**2+(sy-oy)**2);
+      if(d>W*0.55) return;
+      pts.push({x:(sx+ox)/2, y:(sy+oy)/2, d});
+    });
+    pts.sort((a,b)=>Math.atan2(a.y-sy,a.x-sx)-Math.atan2(b.y-sy,b.x-sx));
+    if(pts.length<3) return;
+    ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y);
+    pts.forEach(p=>ctx.lineTo(p.x,p.y)); ctx.closePath();
+    const heat=0.6+0.4*Math.sin(tick*0.015+i*0.8);
+    ctx.fillStyle=`rgba(${Math.floor(88+i*4)},${Math.floor(56+i*2)},${Math.floor(24+i)},${heat*0.55})`; ctx.fill();
+  });
+  // Crack lines along Voronoi boundaries
+  seeds.forEach(([s1x,s1y],i)=>{
+    seeds.forEach(([s2x,s2y],j)=>{
+      if(j<=i)return;
+      const ax=s1x*sc, ay=s1y*sc, bx=s2x*sc, by=s2y*sc;
+      const d=Math.sqrt((ax-bx)**2+(ay-by)**2);
+      if(d>W*0.55)return;
+      const mx=(ax+bx)/2, my=(ay+by)/2;
+      const ndx=-(by-ay)/d, ndy=(bx-ax)/d;
+      const len=d*0.38;
+      // Crack with slight wiggle
+      const wl=Math.sin(tick*0.01+i*0.7)*2;
+      ctx.beginPath();
+      ctx.moveTo(mx-ndx*len+wl,my-ndy*len);
+      ctx.lineTo(mx+ndx*len-wl,my+ndy*len);
+      ctx.strokeStyle=`rgba(30,18,8,${0.75+Math.sin(tick*0.02+i)*0.15})`;
+      ctx.lineWidth=1.5+0.5*Math.sin(tick*0.018+j); ctx.stroke();
+      // Lighter edge highlight
+      ctx.strokeStyle=`rgba(140,100,55,0.18)`; ctx.lineWidth=0.5; ctx.stroke();
+    });
+  });
+  ctx.font=`${Math.round(H*0.09)}px Cinzel,serif`; ctx.textAlign='center';
+  ctx.fillStyle='rgba(180,130,70,0.45)'; ctx.fillText('干裂土地', W/2, H*0.96);
+}
+function drawCell(canvas,tick){
+  const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
+  ctx.fillStyle='rgba(5,3,12,0.90)'; ctx.fillRect(0,0,W,H);
+  const sc=W/150;
+  const seeds=[[38,32],[92,22],[128,58],[18,78],[68,72],[118,88],[42,118],[88,112],[20,38],[115,32]];
+  const cellColors=[
+    [180,60,80],[80,140,200],[120,200,100],[200,120,60],
+    [100,80,200],[200,80,140],[60,180,180],[180,160,60],
+    [140,60,180],[80,200,120],
+  ];
+  seeds.forEach(([sx0,sy0],i)=>{
+    const sx=sx0*sc, sy=sy0*sc;
+    const jitter=W*0.014*Math.sin(tick*0.02+i);
+    const cx2=sx+jitter, cy2=sy+jitter;
+    const baseR=W*0.155+W*0.04*Math.sin(tick*0.022+i*0.8);
+    const [cr,cg,cb]=cellColors[i%cellColors.length];
+
+    // Outer membrane glow
+    const mg=ctx.createRadialGradient(cx2,cy2,baseR*0.7,cx2,cy2,baseR*1.3);
+    mg.addColorStop(0,`rgba(${cr},${cg},${cb},0.08)`); mg.addColorStop(1,'transparent');
+    ctx.fillStyle=mg; ctx.fillRect(cx2-baseR*1.4,cy2-baseR*1.4,baseR*2.8,baseR*2.8);
+
+    // Cell membrane — slightly irregular circle
+    ctx.beginPath();
+    const n=20;
+    for(let j=0;j<=n;j++){
+      const a=(j/n)*Math.PI*2;
+      const r2=baseR*(0.9+0.1*Math.sin(a*4+tick*0.015+i));
+      j===0?ctx.moveTo(cx2+Math.cos(a)*r2,cy2+Math.sin(a)*r2)
+           :ctx.lineTo(cx2+Math.cos(a)*r2,cy2+Math.sin(a)*r2);
+    }
+    ctx.closePath();
+    ctx.fillStyle=`rgba(${cr},${cg},${cb},0.10)`; ctx.fill();
+    ctx.strokeStyle=`rgba(${cr},${cg},${cb},0.60)`; ctx.lineWidth=1.5; ctx.stroke();
+
+    // Nucleus
+    const nR=baseR*0.28;
+    const ng=ctx.createRadialGradient(cx2,cy2,0,cx2,cy2,nR);
+    ng.addColorStop(0,`rgba(${cr},${cg},${cb},0.75)`); ng.addColorStop(1,`rgba(${cr},${cg},${cb},0.15)`);
+    ctx.beginPath(); ctx.arc(cx2,cy2,nR,0,Math.PI*2); ctx.fillStyle=ng; ctx.fill();
+    ctx.strokeStyle=`rgba(${cr},${cg},${cb},0.45)`; ctx.lineWidth=1; ctx.stroke();
+
+    // Organelles (small dots)
+    for(let oi=0;oi<3;oi++){
+      const oa=(oi/3)*Math.PI*2+tick*0.008+i;
+      const or2=baseR*(0.45+oi*0.12);
+      ctx.beginPath(); ctx.arc(cx2+Math.cos(oa)*or2,cy2+Math.sin(oa)*or2,W*0.018,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${cr},${cg},${cb},0.35)`; ctx.fill();
+    }
+  });
+  ctx.font=`${Math.round(H*0.09)}px Cinzel,serif`; ctx.textAlign='center';
+  ctx.fillStyle='rgba(160,120,200,0.45)'; ctx.fillText('生物细胞', W/2, H*0.96);
+}
+
+function startNatureRenderers(){
+  const fns=[
+    {id:'nc-giraffe',fn:drawGiraffe},
+    {id:'nc-honey',fn:drawHoney},
+    {id:'nc-crack',fn:drawCrack},
+    {id:'nc-cell',fn:drawCell},
+  ];
+  fns.forEach(({id,fn})=>{
+    const c=document.getElementById(id);if(!c)return;
+    // Proper size init
+    const rr=c.getBoundingClientRect();
+    const S=Math.max(rr.width,rr.height,150);
+    c.width=S; c.height=S;
+    let t=0,active=true,raf;
+    function loop(){c&&fn(c,t++);raf=active?requestAnimationFrame(loop):0;}
+    loop();
+    natureRenderers[id]={stop(){active=false;cancelAnimationFrame(raf);}};
+  });
+}
+function stopNatureRenderers(){Object.values(natureRenderers).forEach(r=>r.stop());}
+
+// ══════════════════════════════════════════
+// SCENE 3: Grand Islamic Geometry Mandala
+// ══════════════════════════════════════════
+let araIntroActive=false,araIntroRAF,araIntroTick=0;
+function startAraIntro(){
+  const canvas=document.getElementById('ara-intro');if(!canvas)return;
+  const _ar=canvas.getBoundingClientRect();
+  const W=_ar.width||620, H=_ar.height||360;
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  araIntroActive=true;
+
+  function frame(){
+    if(!araIntroActive)return;
+    ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,W,H);
+    const t=araIntroTick;
+    const cx=W/2, cy=H/2;
+    const R=Math.min(W,H)*0.46;
+
+    // ── Full Islamic star tile pattern ──
+    // Draw a 3×3 grid of star-tile units centered on canvas
+    const tileSize=R*0.65;
+    for(let trow=-2;trow<=2;trow++){
+      for(let tcol=-2;tcol<=2;tcol++){
+        const tx=cx+tcol*tileSize, ty=cy+trow*tileSize;
+        const dist=Math.sqrt((tx-cx)**2+(ty-cy)**2);
+        const fade=Math.max(0,1-dist/(R*1.15));
+        if(fade<0.05) continue;
+        const phase=t*0.022-dist*0.012;
+        const alpha=(0.35+0.20*Math.sin(phase))*fade;
+
+        // 8-pointed star
+        const sr=tileSize*0.38;
+        const rot=t*0.005*((tcol+trow)%2===0?1:-1);
+        ctx.beginPath();
+        for(let i=0;i<16;i++){
+          const a=(i/8)*Math.PI+rot;
+          const rr=i%2===0?sr:sr*0.42;
+          i===0?ctx.moveTo(tx+Math.cos(a)*rr,ty+Math.sin(a)*rr)
+               :ctx.lineTo(tx+Math.cos(a)*rr,ty+Math.sin(a)*rr);
+        }
+        ctx.closePath();
+        // Color: gold center → blue outer
+        const colorFrac=dist/(R*1.2);
+        const cr=Math.floor(232*(1-colorFrac)+90*colorFrac);
+        const cg=Math.floor(204*(1-colorFrac)+187*colorFrac);
+        const cb=Math.floor(80*(1-colorFrac)+232*colorFrac);
+        ctx.fillStyle=`rgba(${cr},${cg},${cb},${alpha*0.25})`; ctx.fill();
+        ctx.strokeStyle=`rgba(${cr},${cg},${cb},${alpha*0.85})`; ctx.lineWidth=1.1; ctx.stroke();
+
+        // Corner 4-fold stars
+        [[-1,-1],[-1,1],[1,-1],[1,1]].forEach(([dx,dy])=>{
+          const qx=tx+dx*tileSize*0.5, qy=ty+dy*tileSize*0.5;
+          const qr=tileSize*0.16;
+          ctx.beginPath();
+          for(let i=0;i<8;i++){
+            const a=(i/4)*Math.PI+rot*1.5;
+            const rr=i%2===0?qr:qr*0.40;
+            i===0?ctx.moveTo(qx+Math.cos(a)*rr,qy+Math.sin(a)*rr)
+                 :ctx.lineTo(qx+Math.cos(a)*rr,qy+Math.sin(a)*rr);
+          }
+          ctx.closePath();
+          ctx.strokeStyle=`rgba(90,187,232,${alpha*0.50})`; ctx.lineWidth=0.7; ctx.stroke();
+        });
+      }
+    }
+
+    // ── Grand center piece: 12-pointed star with rings ══
+    [0.12,0.22,0.36,0.50].forEach((fr,ri)=>{
+      ctx.beginPath(); ctx.arc(cx,cy,R*fr,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(201,168,76,${0.10-ri*0.02})`; ctx.lineWidth=0.7; ctx.stroke();
+    });
+
+    // 12-star center, large and glowing
+    const pulse=0.8+0.2*Math.sin(t*0.06);
+    const cR=R*0.22;
+    ctx.beginPath();
+    for(let i=0;i<24;i++){
+      const a=(i/12)*Math.PI+t*0.006;
+      const rr=i%2===0?cR:cR*0.40;
+      i===0?ctx.moveTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr)
+           :ctx.lineTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr);
+    }
+    ctx.closePath();
+    const cGlow=ctx.createRadialGradient(cx,cy,0,cx,cy,cR*1.1);
+    cGlow.addColorStop(0,`rgba(232,204,122,${pulse*0.25})`); cGlow.addColorStop(1,'transparent');
+    ctx.fillStyle=cGlow; ctx.fill();
+    ctx.strokeStyle=`rgba(232,204,122,${pulse*0.85})`; ctx.lineWidth=1.6; ctx.stroke();
+
+    // Jewel center
+    const jg=ctx.createRadialGradient(cx,cy,0,cx,cy,R*0.055);
+    jg.addColorStop(0,`rgba(232,210,130,${pulse})`); jg.addColorStop(1,'transparent');
+    ctx.fillStyle=jg; ctx.fillRect(cx-R*0.06,cy-R*0.06,R*0.12,R*0.12);
+    ctx.beginPath(); ctx.arc(cx,cy,6*pulse,0,Math.PI*2); ctx.fillStyle='rgba(232,210,130,1)'; ctx.fill();
+
+    araIntroTick++; araIntroRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopAraIntro(){araIntroActive=false;cancelAnimationFrame(araIntroRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 4: Full-screen Tessellation
+// ══════════════════════════════════════════
+let tessActive=false,tessRAF,tessTick=0;
+function startTessellation(){
+  const canvas=document.getElementById('tess-full');if(!canvas)return;
+  const W=canvas.width=window.innerWidth;
+  const H=canvas.height=window.innerHeight;
+  const ctx=canvas.getContext('2d');
+  tessActive=true;
+
+  function frame(){
+    if(!tessActive)return;
+    ctx.clearRect(0,0,W,H);
+    const t=tessTick;
+    const tileSize=70;
+    const cols=Math.ceil(W/tileSize)+2,rows=Math.ceil(H/tileSize)+2;
+    const offX=(t*0.15)%tileSize,offY=(t*0.08)%tileSize;
+
+    // Draw Islamic star pattern tiles
+    for(let row=-1;row<rows;row++){
+      for(let col=-1;col<cols;col++){
+        const cx=-offX+col*tileSize+tileSize/2;
+        const cy=-offY+row*tileSize+tileSize/2;
+        const dist=Math.sqrt((cx-W/2)**2+(cy-H/2)**2);
+        const phase=t*0.025-dist*0.015;
+        const alpha=0.35+0.2*Math.sin(phase);
+
+        // Background tile
+        ctx.fillStyle=`rgba(8,6,20,0.6)`;ctx.fillRect(cx-tileSize/2,cy-tileSize/2,tileSize,tileSize);
+
+        // 8-pointed star
+        const sr=tileSize*0.36;
+        ctx.beginPath();
+        for(let i=0;i<16;i++){
+          const a=(i/8)*Math.PI+t*0.004*(col%2===0?1:-1);
+          const rr=i%2===0?sr:sr*0.42;
+          i===0?ctx.moveTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr):ctx.lineTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr);
+        }
+        ctx.closePath();
+        // Color by position
+        const hue=(col+row)*37+t*0.2;
+        const r=Math.floor(40+Math.sin(hue*0.017)*60);
+        const g=Math.floor(30+Math.sin(hue*0.013+1)*50);
+        const b=Math.floor(80+Math.sin(hue*0.011+2)*80);
+        ctx.fillStyle=`rgba(${r+40},${g+40},${b+80},${alpha*0.5})`;ctx.fill();
+        ctx.strokeStyle=`rgba(201,168,76,${alpha*0.7})`;ctx.lineWidth=0.7;ctx.stroke();
+
+        // Corner squares
+        const cr=tileSize*0.12;
+        [[cx-tileSize/2,cy-tileSize/2],[cx+tileSize/2,cy-tileSize/2],[cx-tileSize/2,cy+tileSize/2],[cx+tileSize/2,cy+tileSize/2]].forEach(([qx,qy])=>{
+          ctx.beginPath();
+          for(let i=0;i<8;i++){
+            const a=(i/4)*Math.PI+(t*0.006)*(row%2===0?-1:1);
+            const rr=i%2===0?cr:cr*0.5;
+            i===0?ctx.moveTo(qx+Math.cos(a)*rr,qy+Math.sin(a)*rr):ctx.lineTo(qx+Math.cos(a)*rr,qy+Math.sin(a)*rr);
+          }
+          ctx.closePath();
+          ctx.strokeStyle=`rgba(90,187,232,${alpha*0.45})`;ctx.lineWidth=0.5;ctx.stroke();
+        });
+      }
+    }
+    // Center glow
+    const grd=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,300);
+    grd.addColorStop(0,'rgba(20,10,40,0.5)');grd.addColorStop(1,'transparent');
+    ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);
+
+    tessTick++;tessRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopTessellation(){tessActive=false;cancelAnimationFrame(tessRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 5: Full Girih Tile Pattern
+// ══════════════════════════════════════════
+let starActive=false,starRAF,starTick=0;
+function startStarPattern(){
+  const canvas=document.getElementById('star-c');if(!canvas)return;
+  const _sr2=canvas.getBoundingClientRect();
+  const S=Math.min(_sr2.width||460,_sr2.height||460);
+  canvas.width=S; canvas.height=S;
+  const ctx=canvas.getContext('2d');
+  starActive=true;
+
+  function frame(){
+    if(!starActive)return;
+    ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,S,S);
+    const t=starTick;
+    const cx=S/2, cy=S/2;
+    const R=S*0.46;
+
+    // ── Background: tiled 10-pointed stars ──
+    const tileR=S*0.32;
+    for(let trow=-1;trow<=1;trow++){
+      for(let tcol=-1;tcol<=1;tcol++){
+        if(trow===0&&tcol===0) continue; // skip center (drawn later)
+        const tx=cx+tcol*tileR*1.82, ty=cy+trow*tileR*1.82;
+        if(tx<-tileR||tx>S+tileR||ty<-tileR||ty>S+tileR) continue;
+        const dist=Math.sqrt((tx-cx)**2+(ty-cy)**2);
+        const fade=Math.max(0,1-dist/(S*0.75));
+        const rOuter=tileR*0.85;
+        const rot2=t*0.004*((trow+tcol)%2===0?1:-1);
+        ctx.beginPath();
+        for(let i=0;i<20;i++){
+          const a=(i/10)*Math.PI+rot2;
+          const rr=i%2===0?rOuter:rOuter*0.38;
+          i===0?ctx.moveTo(tx+Math.cos(a)*rr,ty+Math.sin(a)*rr)
+               :ctx.lineTo(tx+Math.cos(a)*rr,ty+Math.sin(a)*rr);
+        }
+        ctx.closePath();
+        ctx.fillStyle=`rgba(50,120,180,${fade*0.12})`; ctx.fill();
+        ctx.strokeStyle=`rgba(90,187,232,${fade*0.45})`; ctx.lineWidth=0.9; ctx.stroke();
+        // Rhombi inside
+        for(let i=0;i<5;i++){
+          const a=(i/5)*Math.PI*2+rot2*0.7;
+          const ir=rOuter*0.55;
+          const bx=tx+Math.cos(a)*ir, by=ty+Math.sin(a)*ir;
+          const da=0.32;
+          ctx.beginPath();
+          ctx.moveTo(tx+Math.cos(a)*ir*0.2,ty+Math.sin(a)*ir*0.2);
+          ctx.lineTo(bx+Math.cos(a+da)*ir*0.55,by+Math.sin(a+da)*ir*0.55);
+          ctx.lineTo(bx,by);
+          ctx.lineTo(bx+Math.cos(a-da)*ir*0.55,by+Math.sin(a-da)*ir*0.55);
+          ctx.closePath();
+          ctx.fillStyle=`rgba(232,204,122,${fade*0.08})`; ctx.fill();
+          ctx.strokeStyle=`rgba(232,204,122,${fade*0.35})`; ctx.lineWidth=0.7; ctx.stroke();
+        }
+      }
+    }
+
+    // ── Central Grand 10-pointed Girih Star ──
+    const rot=t*0.006;
+    const pulse=0.75+0.25*Math.sin(t*0.055);
+
+    // Outer glow
+    const og=ctx.createRadialGradient(cx,cy,R*0.3,cx,cy,R*1.1);
+    og.addColorStop(0,`rgba(90,187,232,${0.08*pulse})`); og.addColorStop(1,'transparent');
+    ctx.fillStyle=og; ctx.fillRect(0,0,S,S);
+
+    // 10-pointed star
+    ctx.beginPath();
+    for(let i=0;i<20;i++){
+      const a=(i/10)*Math.PI+rot;
+      const rr=i%2===0?R:R*0.38;
+      i===0?ctx.moveTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr)
+           :ctx.lineTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr);
+    }
+    ctx.closePath();
+    const starGrd=ctx.createRadialGradient(cx,cy,0,cx,cy,R);
+    starGrd.addColorStop(0,`rgba(90,187,232,${pulse*0.30})`);
+    starGrd.addColorStop(0.5,`rgba(50,130,180,${pulse*0.15})`);
+    starGrd.addColorStop(1,'transparent');
+    ctx.fillStyle=starGrd; ctx.fill();
+    ctx.strokeStyle=`rgba(90,187,232,${pulse*0.80})`; ctx.lineWidth=1.8; ctx.stroke();
+
+    // 5 Golden rhombi inside
+    for(let i=0;i<5;i++){
+      const a=(i/5)*Math.PI*2+rot*0.7;
+      const ir=R*0.55;
+      const bx=cx+Math.cos(a)*ir, by=cy+Math.sin(a)*ir;
+      const da=0.32;
+      ctx.beginPath();
+      ctx.moveTo(cx+Math.cos(a)*ir*0.18,cy+Math.sin(a)*ir*0.18);
+      ctx.lineTo(bx+Math.cos(a+da)*ir*0.55,by+Math.sin(a+da)*ir*0.55);
+      ctx.lineTo(bx,by);
+      ctx.lineTo(bx+Math.cos(a-da)*ir*0.55,by+Math.sin(a-da)*ir*0.55);
+      ctx.closePath();
+      const ralpha=(0.35+0.20*Math.sin(t*0.04+i))*pulse;
+      ctx.fillStyle=`rgba(232,204,122,${ralpha*0.35})`; ctx.fill();
+      ctx.strokeStyle=`rgba(232,204,122,${ralpha*0.90})`; ctx.lineWidth=1.3; ctx.stroke();
+    }
+
+    // 5 connecting 6-pointed stars at midpoints
+    for(let i=0;i<5;i++){
+      const a=(i/5)*Math.PI*2+Math.PI/5+rot*0.55;
+      const px=cx+Math.cos(a)*R*0.70, py=cy+Math.sin(a)*R*0.70;
+      const sr2=R*0.135;
+      ctx.beginPath();
+      for(let j=0;j<12;j++){
+        const sa=(j/6)*Math.PI+rot*0.85;
+        const rr=j%2===0?sr2:sr2*0.40;
+        j===0?ctx.moveTo(px+Math.cos(sa)*rr,py+Math.sin(sa)*rr)
+             :ctx.lineTo(px+Math.cos(sa)*rr,py+Math.sin(sa)*rr);
+      }
+      ctx.closePath();
+      const salpha=(0.40+0.25*Math.sin(t*0.05+i*1.2))*pulse;
+      ctx.fillStyle=`rgba(232,124,164,${salpha*0.18})`; ctx.fill();
+      ctx.strokeStyle=`rgba(232,124,164,${salpha*0.75})`; ctx.lineWidth=1.0; ctx.stroke();
+    }
+
+    // Decorative border ring
+    ctx.beginPath(); ctx.arc(cx,cy,R*1.04,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(201,168,76,0.20)`; ctx.lineWidth=1; ctx.stroke();
+
+    // ── Animated corner ornaments ──
+    [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([dx,dy],qi)=>{
+      const qx=cx+dx*S*0.42, qy=cy+dy*S*0.42;
+      const qr=S*0.065;
+      ctx.beginPath();
+      for(let i=0;i<16;i++){
+        const a=(i/8)*Math.PI+rot*(qi%2===0?1:-1.3);
+        const rr=i%2===0?qr:qr*0.40;
+        i===0?ctx.moveTo(qx+Math.cos(a)*rr,qy+Math.sin(a)*rr)
+             :ctx.lineTo(qx+Math.cos(a)*rr,qy+Math.sin(a)*rr);
+      }
+      ctx.closePath();
+      const qa=0.30+0.20*Math.sin(t*0.04+qi);
+      ctx.strokeStyle=`rgba(90,187,232,${qa*0.70})`; ctx.lineWidth=0.9; ctx.stroke();
+      ctx.fillStyle=`rgba(90,187,232,${qa*0.10})`; ctx.fill();
+    });
+
+    // ── Jewel center ──
+    const jg=ctx.createRadialGradient(cx,cy,0,cx,cy,R*0.07);
+    jg.addColorStop(0,`rgba(232,210,130,${pulse})`);
+    jg.addColorStop(0.6,`rgba(90,187,232,0.40)`);
+    jg.addColorStop(1,'transparent');
+    ctx.fillStyle=jg; ctx.fillRect(cx-R*0.08,cy-R*0.08,R*0.16,R*0.16);
+    ctx.beginPath(); ctx.arc(cx,cy,7*pulse,0,Math.PI*2);
+    ctx.fillStyle='rgba(232,210,130,1)'; ctx.fill();
+
+    starTick++; starRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopStarPattern(){starActive=false;cancelAnimationFrame(starRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 6 OUTRO — Grand Finale Triptych
+// ══════════════════════════════════════════
+const c6=document.getElementById('c6');
+let t6=0,c6Active=false,c6Raf;
+function resizeC6(){ const r=c6.getBoundingClientRect(); c6.width=r.width||660; c6.height=r.height||260; }
+function drawC6(){
+  if(!c6Active)return;
+  resizeC6();
+  const CW=c6.width, CH=c6.height, ctx=c6.getContext('2d');
+  ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,CW,CH);
+  const t=t6, n=3, unitW=CW/n;
+
+  // ── Panel 1: Voronoi ──
+  {
+    const px=unitW*0.5, py=CH*0.46;
+    const nS=9, panelR=Math.min(unitW,CH)*0.39;
+    const seeds=Array.from({length:nS},(_,i)=>{
+      const a=(i/nS)*Math.PI*2+i*0.4;
+      return [px+Math.cos(a)*panelR*(0.3+0.5*((i*7)%10)/10),
+              py+Math.sin(a)*panelR*0.55*(0.3+0.5*((i*5)%8)/8)];
+    });
+    const pal=[[180,70,55],[55,95,185],[75,170,90],[165,70,165],[185,145,50],[55,150,190],[145,55,75],[75,185,145],[165,165,55]];
+    // Rasterized voronoi mini
+    const cs=4;
+    for(let ry=Math.floor(py-panelR*1.1);ry<py+panelR*1.1;ry+=cs){
+      for(let rx=Math.floor(px-unitW*0.45);rx<px+unitW*0.45;rx+=cs){
+        let md=Infinity, cl=0, sd=Infinity;
+        seeds.forEach(([sx,sy],i)=>{
+          const ax=sx+Math.sin(t*0.012+i)*8, ay=sy+Math.cos(t*0.015+i*1.3)*6;
+          const d=(rx-ax)**2+(ry-ay)**2;
+          if(d<md){sd=md;md=d;cl=i;}else if(d<sd)sd=d;
+        });
+        const [cr,cg,cb]=pal[cl%pal.length];
+        const edge=Math.max(0,1-(Math.sqrt(sd)-Math.sqrt(md))/5);
+        if(edge>0.8) ctx.fillStyle=`rgba(201,168,76,${edge*0.65})`;
+        else ctx.fillStyle=`rgba(${cr},${cg},${cb},0.40)`;
+        ctx.fillRect(rx,ry,cs,cs);
+      }
+    }
+    seeds.forEach(([sx,sy],i)=>{
+      const ax=sx+Math.sin(t*0.012+i)*8, ay=sy+Math.cos(t*0.015+i*1.3)*6;
+      ctx.beginPath(); ctx.arc(ax,ay,3.5,0,Math.PI*2);
+      ctx.fillStyle='rgba(232,210,130,0.90)'; ctx.fill();
+    });
+    ctx.font=`${Math.round(CH*0.08)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle='rgba(232,124,90,0.60)';
+    ctx.fillText('Voronoi', px, CH*0.93);
+  }
+
+  // Divider 1
+  {
+    const dg=ctx.createLinearGradient(unitW,0,unitW,CH);
+    dg.addColorStop(0,'transparent'); dg.addColorStop(0.5,'rgba(201,168,76,0.28)'); dg.addColorStop(1,'transparent');
+    ctx.fillStyle=dg; ctx.fillRect(unitW-1,0,2,CH);
+  }
+
+  // ── Panel 2: Tessellation ──
+  {
+    const px=unitW*1.5, py=CH*0.46;
+    const tileS=Math.min(unitW,CH)*0.28;
+    const cols2=Math.ceil(unitW/tileS)+2;
+    const rows2=Math.ceil(CH/tileS)+2;
+    const offX=(t*0.15)%tileS, offY=(t*0.09)%tileS;
+    for(let row=-1;row<rows2;row++){
+      for(let col=-1;col<cols2;col++){
+        const tx2=px-unitW*0.5-offX+col*tileS+tileS/2;
+        const ty2=-offY+row*tileS+tileS/2;
+        if(tx2<0||tx2>unitW*2) continue;
+        const dist=Math.sqrt((tx2-px)**2+(ty2-py)**2);
+        const fade=Math.max(0,1-dist/(Math.min(unitW,CH)*0.65));
+        if(fade<0.05) continue;
+        const phase=t*0.025-dist*0.015;
+        const alpha=(0.35+0.20*Math.sin(phase))*fade;
+        const sr=tileS*0.38;
+        const rot=t*0.004*((col+row)%2===0?1:-1);
+        ctx.beginPath();
+        for(let i=0;i<16;i++){
+          const a=(i/8)*Math.PI+rot;
+          const rr=i%2===0?sr:sr*0.42;
+          i===0?ctx.moveTo(tx2+Math.cos(a)*rr,ty2+Math.sin(a)*rr)
+               :ctx.lineTo(tx2+Math.cos(a)*rr,ty2+Math.sin(a)*rr);
+        }
+        ctx.closePath();
+        const hue=(col+row)*37+t*0.2;
+        const fr=Math.floor(40+Math.sin(hue*0.017)*60+40);
+        const fg=Math.floor(30+Math.sin(hue*0.013+1)*50+40);
+        const fb=Math.floor(80+Math.sin(hue*0.011+2)*80+80);
+        ctx.fillStyle=`rgba(${fr},${fg},${fb},${alpha*0.45})`; ctx.fill();
+        ctx.strokeStyle=`rgba(201,168,76,${alpha*0.70})`; ctx.lineWidth=0.7; ctx.stroke();
+      }
+    }
+    ctx.font=`${Math.round(CH*0.08)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle='rgba(201,168,76,0.60)';
+    ctx.fillText('镶嵌', px, CH*0.93);
+  }
+
+  // Divider 2
+  {
+    const dg=ctx.createLinearGradient(unitW*2,0,unitW*2,CH);
+    dg.addColorStop(0,'transparent'); dg.addColorStop(0.5,'rgba(201,168,76,0.28)'); dg.addColorStop(1,'transparent');
+    ctx.fillStyle=dg; ctx.fillRect(unitW*2-1,0,2,CH);
+  }
+
+  // ── Panel 3: Islamic star ──
+  {
+    const px=unitW*2.5, py=CH*0.46;
+    const R=Math.min(unitW,CH)*0.39;
+    const pulse=0.75+0.25*Math.sin(t*0.055);
+    const rot=t*0.007;
+    // Outer glow
+    const og=ctx.createRadialGradient(px,py,0,px,py,R*1.1);
+    og.addColorStop(0,`rgba(90,187,232,${0.10*pulse})`); og.addColorStop(1,'transparent');
+    ctx.fillStyle=og; ctx.fillRect(px-R*1.2,py-R*1.2,R*2.4,R*2.4);
+    // 10-star
+    ctx.beginPath();
+    for(let i=0;i<20;i++){
+      const a=(i/10)*Math.PI+rot;
+      const rr=i%2===0?R:R*0.38;
+      i===0?ctx.moveTo(px+Math.cos(a)*rr,py+Math.sin(a)*rr)
+           :ctx.lineTo(px+Math.cos(a)*rr,py+Math.sin(a)*rr);
+    }
+    ctx.closePath();
+    ctx.fillStyle=`rgba(90,187,232,${pulse*0.15})`; ctx.fill();
+    ctx.strokeStyle=`rgba(90,187,232,${pulse*0.80})`; ctx.lineWidth=1.5; ctx.stroke();
+    // 5 gold rhombi
+    for(let i=0;i<5;i++){
+      const a=(i/5)*Math.PI*2+rot*0.7;
+      const ir=R*0.55, bx=px+Math.cos(a)*ir, by=py+Math.sin(a)*ir, da=0.32;
+      ctx.beginPath();
+      ctx.moveTo(px+Math.cos(a)*ir*0.2,py+Math.sin(a)*ir*0.2);
+      ctx.lineTo(bx+Math.cos(a+da)*ir*0.55,by+Math.sin(a+da)*ir*0.55);
+      ctx.lineTo(bx,by);
+      ctx.lineTo(bx+Math.cos(a-da)*ir*0.55,by+Math.sin(a-da)*ir*0.55);
+      ctx.closePath();
+      ctx.strokeStyle=`rgba(232,204,122,${(0.4+0.2*Math.sin(t*0.04+i))*pulse})`; ctx.lineWidth=1.1; ctx.stroke();
+    }
+    // Jewel
+    ctx.beginPath(); ctx.arc(px,py,6*pulse,0,Math.PI*2);
+    ctx.fillStyle='rgba(232,210,130,0.95)'; ctx.fill();
+    ctx.font=`${Math.round(CH*0.08)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle='rgba(90,187,232,0.60)';
+    ctx.fillText('Girih', px, CH*0.93);
+  }
+
+  t6++; c6Raf=requestAnimationFrame(drawC6);
+}
+
+// ══════════════════════════════════════════
+// SCENE MANAGER
+// ══════════════════════════════════════════
+const scenes=document.querySelectorAll('.scene');
+const totalScenes=scenes.length;
+let current=0,isTransitioning=false;
+const dotsEl=document.getElementById('nav-dots');
+for(let i=0;i<totalScenes;i++){
+  const d=document.createElement('div');d.className='nav-dot'+(i===0?' active':'');
+  d.addEventListener('click',()=>goTo(i));dotsEl.appendChild(d);
+}
+function updateDots(){document.querySelectorAll('.nav-dot').forEach((d,i)=>d.classList.toggle('active',i===current));}
+function updateProgress(){document.getElementById('progress').style.width=(current/(totalScenes-1)*100)+'%';}
+
+function onEnterScene(idx){
+  if(idx===0){
+    ['s0-b','s0-t','s0-s','s0-body'].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add('show');},200+i*280));
+    c0.style.opacity='1'; setTimeout(()=>{ t0=0; if(c0Raf)cancelAnimationFrame(c0Raf); drawC0(); },380);
+  }
+  if(idx===1){
+    document.getElementById('vor-c').style.opacity='1';
+    const vt=document.getElementById('vor-text');if(vt)vt.style.opacity='1';
+    setTimeout(startVoronoi,380);
+  }
+  if(idx===2){
+    startNatureRenderers();
+    ['n0','n1','n2','n3'].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add('show');},300+i*250));
+  }
+  if(idx===3){
+    document.getElementById('ara-intro').style.opacity='1';
+    setTimeout(startAraIntro,380);
+  }
+  if(idx===4){
+    document.getElementById('tess-full').style.opacity='1';
+    setTimeout(startTessellation,200);
+  }
+  if(idx===5){
+    document.getElementById('star-c').style.opacity='1';
+    const st=document.getElementById('star-text');if(st)st.style.opacity='1';
+    setTimeout(startStarPattern,380);
+  }
+  if(idx===6){
+    ['e-t','e-q','e-a'].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add('show');},300+i*500));
+    c6.style.opacity='1'; setTimeout(()=>{ t6=0; c6Active=true; if(c6Raf)cancelAnimationFrame(c6Raf); drawC6(); },380);
+  }
+}
+function onLeaveScene(idx){
+  if(idx===0){ if(c0Raf)cancelAnimationFrame(c0Raf); }
+  if(idx===1)stopVoronoi();
+  if(idx===2)stopNatureRenderers();
+  if(idx===3)stopAraIntro();
+  if(idx===4)stopTessellation();
+  if(idx===5)stopStarPattern();
+  if(idx===6){ c6Active=false; if(c6Raf)cancelAnimationFrame(c6Raf); }
+}
+function goTo(idx){
+  if(isTransitioning||idx===current)return;
+  isTransitioning=true;onLeaveScene(current);
+  scenes[current].classList.remove('active');current=idx;scenes[current].classList.add('active');
+  updateDots();updateProgress();
+  setTimeout(()=>{onEnterScene(current);isTransitioning=false;},600);
+}
+function next(){if(current<totalScenes-1)goTo(current+1);}
+function prev(){if(current>0)goTo(current-1);}
+document.getElementById('btn-next').addEventListener('click',next);
+document.getElementById('btn-prev').addEventListener('click',prev);
+// Click anywhere to advance (document-level for reliability)
+document.addEventListener('click', (e) => {
+  if(e.target.closest('#nav')) return;
+  if(e.target.closest('a')) return;
+  if(e.target.closest('button')) return;
+  if(e.target.closest('#home-btn')) return;
+  if(e.target.closest('#ch-lang-bar')) return;
+  next();
+});
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')next();if(e.key==='ArrowLeft')prev();});
+setTimeout(()=>{document.getElementById('ornament').classList.add('visible');document.getElementById('hint').classList.add('visible');},1500);
+updateProgress();onEnterScene(0);
+</script>
+
+<div id="ch-lang-bar">
+  <button class="ch-lb" id="ch-btn-zh" onclick="chLang('zh')">中文</button>
+  <div class="ch-lb-sep"></div>
+  <button class="ch-lb on" id="ch-btn-en" onclick="chLang('en')">EN</button>
+</div>
+<script id="bilingual-js">
+(function(){
+  var D={"ornament": "Chapter V · Voronoi & Islamic Tessellation · Mathematics of Art & Nature", "badges": ["Chapter V", "§ 5.1 · Voronoi Diagrams", "§ 5.1 · Nature's Voronoi", "§ 5.2 · Islamic Geometric Art", "§ 5.2 · Regular Tessellations", "§ 5.3 · Penrose Tiling", "Epilogue · Chapter V"], "titles": ["Voronoi & Islamic Tessellation", "Voronoi Diagrams: The Geometry of Territory", "Nature's Voronoi Patterns", "Islamic Geometric Art: Geometry as Theology", "Only Three Regular Tessellations", "Penrose Tiling: Aperiodic Order", "One Principle, Infinite Beauty"], "bodies": ["Nature never wastes space, and never permits chaos.<br>Between these two constraints, a beautiful mathematics emerges.", "When nature needs to <strong>cover space uniformly and minimize overlap</strong>, Voronoi diagrams emerge spontaneously.", "Giraffe skin, dragonfly wings, soap bubbles, city districts —<br>all are Voronoi diagrams drawn with different materials.", "Between the 8th and 14th centuries, Islamic artists elevated geometry into a theological language —<br>infinite patterns pointing toward the infinite nature of God.", "Only three regular polygons tile the plane perfectly:<br><strong>triangles, squares, and hexagons.</strong><br>The hexagon is the most efficient — the same principle as the honeycomb.", "Penrose tiling uses only two tile shapes, yet <strong>never repeats</strong>.<br>It has five-fold symmetry — impossible in periodic crystals.", "The same mathematical principle writes the beauty of both nature and art.<br><strong>Voronoi and tessellation are the universe's aesthetic blueprint.</strong>"]};
+  var orig=null;
+  function save(){
+    if(orig)return;
+    var os=document.querySelector('.ornament-line span');
+    orig={
+      ornament:os?os.textContent:'',
+      badges:[].map.call(document.querySelectorAll('.chapter-badge'),function(e){return e.innerHTML;}),
+      titles:[].map.call(document.querySelectorAll('.scene-title'),function(e){return e.innerHTML;}),
+      bodies:[].map.call(document.querySelectorAll('.scene-body'),function(e){return e.innerHTML;}),
+    };
+  }
+  function applyEn(){
+    save();
+    applyPatchEn();
+    var os=document.querySelector('.ornament-line span');
+    if(os&&D.ornament)os.textContent=D.ornament;
+    [].forEach.call(document.querySelectorAll('.chapter-badge'),function(el,i){if(D.badges[i]!=null)el.innerHTML=D.badges[i];});
+    [].forEach.call(document.querySelectorAll('.scene-title'),function(el,i){if(D.titles[i]!=null)el.innerHTML=D.titles[i];});
+    [].forEach.call(document.querySelectorAll('.scene-body'),function(el,i){if(D.bodies[i]!=null)el.innerHTML=D.bodies[i];});
+  
+    /* zwOrig save */
+    if(!window._zwOrig){window._zwOrig={};['vor-p0','vor-p1','vor-p2','st-p0','st-p1','st-p2','e-q','e-a','e-t'].forEach(function(id){var e=document.getElementById(id);if(e)window._zwOrig[id]=e.innerHTML;});}
+    /* __direct_wires__ */
+    var _w=document.getElementById('e-t');if(_w)_w.innerHTML='Space is never empty';
+    var _w=document.getElementById('e-q');if(_w)_w.innerHTML='Voronoi tells us every inch of space <strong style=\"color:var(--vor-col);">has its owner</strong>;<br>Tessellation art tells us that finite patterns can <strong style=\"color:var(--ara-col);">extend infinitely</strong>.<br><br>Nature and art both use geometry to answer the same question:<br><strong style=\"color:var(--gold-light);">How can the fewest rules fill the entire universe?</strong>';
+    var _w=document.getElementById('e-a');if(_w)_w.innerHTML='&mdash; Chapter V &middot; End';
+    var _w=document.getElementById('vor-p0');if(_w)_w.innerHTML='Scatter <strong>seed points</strong> randomly in space; each seed &ldquo;claims&rdquo; the nearest region, forming natural boundaries.';
+    var _w=document.getElementById('vor-p1');if(_w)_w.innerHTML='This is nature&#39;s ultimate solution to <strong>efficient spatial coverage</strong> &mdash; giraffe patterns, honeycombs, and cell membranes all follow this law.';
+    var _w=document.getElementById('vor-p2');if(_w)_w.innerHTML='Mathematical definition: the Voronoi diagram of a point set S partitions the plane into |S| regions, each containing all points closer to its seed than to any other.';
+    var _w=document.getElementById('st-p0');if(_w)_w.innerHTML='<strong style="color:var(--ara-col);">Girih tiles</strong> are the five basic tessellation units of Islamic architecture.';
+    var _w=document.getElementById('st-p1');if(_w)_w.innerHTML='In 2007, physicist Peter Lu discovered:<br>Islamic craftsmen used quasi-crystal aperiodic tilings &mdash; Penrose tiles &mdash; 500 years before modern science.';
+    var _w=document.getElementById('st-p2');if(_w)_w.innerHTML='This discovery astonished physicists:<br>medieval artisans\' intuition surpassed 20th-century mathematics.';
+  }
+  function applyZh(){
+    if(!orig)return;
+    if(window._zwOrig){['vor-p0','vor-p1','vor-p2','st-p0','st-p1','st-p2','e-q','e-a','e-t'].forEach(function(id){var e=document.getElementById(id);if(e&&window._zwOrig[id]!==undefined)e.innerHTML=window._zwOrig[id];});}
+    applyPatchZh();
+    var os=document.querySelector('.ornament-line span');
+    if(os)os.textContent=orig.ornament;
+    [].forEach.call(document.querySelectorAll('.chapter-badge'),function(el,i){if(orig.badges[i]!=null)el.innerHTML=orig.badges[i];});
+    [].forEach.call(document.querySelectorAll('.scene-title'),function(el,i){if(orig.titles[i]!=null)el.innerHTML=orig.titles[i];});
+    [].forEach.call(document.querySelectorAll('.scene-body'),function(el,i){if(orig.bodies[i]!=null)el.innerHTML=orig.bodies[i];});
+  }
+  
+  // Extended EN patches for elements not covered by D.badges/titles/bodies
+  var enPatches=[["#s0-s", 0, "The Infinite of Repetition"], [".cmp-label", 0, "Giraffe Patterns"], [".cmp-desc", 0, "Skin pigment spreads as seed points during embryonic development"], [".cmp-label", 1, "Honeycomb Structure"], [".cmp-desc", 1, "Hexagons are the limit of circular seed-point Voronoi diagrams"], [".cmp-label", 2, "Mud Crack Texture"], [".cmp-desc", 2, "Voronoi boundary release of soil shrinkage tension"], [".cmp-label", 3, "Cell Tissue"], [".cmp-desc", 3, "Competing cell growth forms natural territorial divisions"]];
+  var patchOrig=null;
+  function savePatch(){
+    if(patchOrig)return;
+    patchOrig=enPatches.map(function(p){
+      var els=document.querySelectorAll(p[0]);
+      return els[p[1]]?els[p[1]].innerHTML:null;
+    });
+  }
+  function applyPatchEn(){
+    savePatch();
+    enPatches.forEach(function(p){
+      var els=document.querySelectorAll(p[0]);
+      if(els[p[1]]!=null)els[p[1]].innerHTML=p[2];
+    });
+  }
+  function applyPatchZh(){
+    if(!patchOrig)return;
+    enPatches.forEach(function(p,i){
+      var els=document.querySelectorAll(p[0]);
+      if(els[p[1]]!=null&&patchOrig[i]!=null)els[p[1]].innerHTML=patchOrig[i];
+    });
+  }
+  window.chLang=function(l){
+    window.__currentLang=l;
+    try{localStorage.setItem('mathsite_lang',l);}catch(e){}
+    document.getElementById('ch-btn-zh').classList.toggle('on',l==='zh');
+    document.getElementById('ch-btn-en').classList.toggle('on',l==='en');
+    if(l==='en')applyEn();else applyZh();
+  };
+  // Auto-switch based on ?lang=en in URL
+  window.addEventListener('DOMContentLoaded',function(){
+    // Read language from localStorage or ?lang URL param, default English
+    var _lp=(new URLSearchParams(location.search)).get('lang');
+    var _ls=null;try{_ls=localStorage.getItem('mathsite_lang');}catch(e){}
+    var _l=_lp||_ls||'en';
+    window.__currentLang=_l;
+    document.getElementById('ch-btn-zh').classList.toggle('on',_l==='zh');
+    document.getElementById('ch-btn-en').classList.toggle('on',_l==='en');
+    // Always run applyEn first to populate orig/patchOrig caches,
+    // then switch to Chinese if needed
+    applyEn();
+    if(_l==='zh')applyZh();
+  });
+})();
+
+/* Mobile touch swipe */
+(function(){
+  var ts=null,tx=null;
+  document.addEventListener('touchstart',function(e){ts=e.touches[0].clientX;tx=e.touches[0].clientY;},{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(ts===null)return;
+    var dx=e.changedTouches[0].clientX-ts, dy=e.changedTouches[0].clientY-tx;
+    if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>40){
+      if(dx<0&&typeof next==='function')next();
+      else if(dx>0&&typeof prev==='function')prev();
+    }
+    ts=null;tx=null;
+  },{passive:true});
+})();
+
+/* Mobile: add stack class to inline-flex children on narrow screens */
+(function(){
+  function applyMobileLayout(){
+    var isMobile = window.innerWidth <= 700;
+    document.querySelectorAll('.scene > div, .scene > section').forEach(function(el){
+      var s = el.getAttribute('style') || '';
+      if(s.includes('display:flex') || s.includes('display: flex')){
+        if(isMobile){ el.style.flexDirection='column'; el.style.alignItems='center'; }
+        else { el.style.flexDirection=''; el.style.alignItems=''; }
+      }
+    });
+  }
+  applyMobileLayout();
+  window.addEventListener('resize', applyMobileLayout);
+})();
+</script>
+</body>
+</html>

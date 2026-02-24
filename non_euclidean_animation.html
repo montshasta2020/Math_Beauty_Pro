@@ -1,0 +1,1798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第六章：非欧几何</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700&family=Cinzel:wght@400;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+  :root{
+    --gold:#c9a84c;--gold-light:#e8cc7a;--gold-dim:#7a5f2a;
+    --ink:#030508;--cream:#e8dfc8;
+    --hyp:#5ae8b4;  /* hyperbolic: teal-green */
+    --ell:#e85a7e;  /* elliptic: rose */
+    --euc:#c9a84c;  /* euclidean: gold */
+  }
+  body{background:var(--ink);font-family:'Noto Serif SC',serif;overflow:hidden;width:100vw;height:100vh;cursor:default;}
+  #bg-canvas{position:fixed;inset:0;z-index:0;}
+  #vignette{position:fixed;inset:0;z-index:5;pointer-events:none;
+    background:radial-gradient(ellipse at center,transparent 28%,rgba(0,0,0,0.55) 70%,rgba(0,0,0,0.92) 100%);}
+  .ornament-line{position:fixed;top:32px;left:50%;transform:translateX(-50%);z-index:20;
+    display:flex;align-items:center;gap:14px;opacity:0;transition:opacity 1.2s;}
+  .ornament-line.visible{opacity:1;}
+  .ornament-line span{font-family:'Cinzel',serif;font-size:10px;letter-spacing:5px;color:var(--gold-dim);text-transform:uppercase;}
+  .ornament-line::before,.ornament-line::after{content:'';width:70px;height:1px;}
+  .ornament-line::before{background:linear-gradient(to right,transparent,var(--gold-dim));}
+  .ornament-line::after{background:linear-gradient(to left,transparent,var(--gold-dim));}
+  #progress{position:fixed;bottom:0;left:0;height:2px;
+    background:linear-gradient(to right,var(--gold-dim),var(--gold),var(--gold-light));z-index:100;transition:width 0.4s linear;}
+  .scene{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;opacity:0;pointer-events:none;transition:opacity 1.4s ease;z-index:10;}
+  .scene.active{opacity:1;pointer-events:auto;}
+  .chapter-badge{font-family:'Cinzel',serif;font-size:10px;letter-spacing:5px;color:var(--gold-dim);
+    text-transform:uppercase;display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+  .chapter-badge::before,.chapter-badge::after{content:'';width:28px;height:1px;background:var(--gold-dim);}
+  .scene-title{font-family:'Cinzel',serif;font-size:clamp(24px,4vw,52px);color:var(--gold-light);
+    text-align:center;line-height:1.2;letter-spacing:2px;text-shadow:0 0 50px rgba(201,168,76,0.3);}
+  .scene-body{font-family:'Noto Serif SC',serif;font-size:clamp(13px,1.45vw,17px);color:var(--cream);
+    text-align:center;line-height:1.95;max-width:640px;margin-top:16px;padding:0 24px;font-weight:300;}
+  .scene-body strong{color:var(--gold-light);font-weight:400;}
+  .divider{width:180px;height:1px;background:linear-gradient(to right,transparent,var(--gold-dim),transparent);margin:18px auto;}
+  .fade-up{opacity:0;transform:translateY(16px);transition:all 0.8s ease;}
+  .fade-up.show{opacity:1;transform:translateY(0);}
+
+  /* THREE-WAY COMPARE */
+  .tri-row{display:flex;align-items:flex-start;justify-content:center;
+    gap:clamp(12px,3.5vw,52px);margin-top:20px;flex-wrap: wrap;
+    max-width: 94vw;
+  }
+  .geo-card{display:flex;flex-direction:column;align-items:center;gap:10px;
+    opacity:0;transform:translateY(20px);transition:all 0.7s ease;max-width:200px;}
+  .geo-card.show{opacity:1;transform:translateY(0);}
+  .geo-label{font-family:'Cinzel',serif;font-size:clamp(10px,1vw,13px);
+    letter-spacing:2px;text-align:center;}
+  .geo-sub{font-size:clamp(10px,0.95vw,12px);color:var(--gold-dim);text-align:center;
+    line-height:1.5;max-width:140px;font-weight:300;}
+  .geo-stat{font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(11px,1.1vw,14px);text-align:center;margin-top:2px;}
+
+  /* SPLIT LAYOUT */
+  .split{display:flex;align-items:center;justify-content:center;
+    gap:clamp(18px,4vw,56px);margin-top:18px;flex-wrap:wrap;}
+  .split-info{max-width:280px;}
+  .split-info .tag{display:inline-block;font-family:'Cinzel',serif;font-size:9px;
+    letter-spacing:2px;padding:2px 8px;border:1px solid;margin-bottom:10px;}
+  .split-info p{font-size:clamp(12px,1.3vw,15px);color:var(--cream);line-height:1.85;font-weight:300;}
+  .split-info p+p{margin-top:10px;}
+  .split-info strong{font-weight:400;}
+
+  /* AXIOM STRIKE */
+  .axiom-box{margin-top:20px;padding:16px 28px;border:1px solid rgba(122,95,42,0.3);
+    max-width:560px;position:relative;opacity:0;transition:opacity 0.8s 0.4s;}
+  .axiom-box.show{opacity:1;}
+  .axiom-box::before,.axiom-box::after{content:'';position:absolute;width:8px;height:8px;border:1px solid var(--gold-dim);}
+  .axiom-box::before{top:-4px;left:-4px;border-right:none;border-bottom:none;}
+  .axiom-box::after{bottom:-4px;right:-4px;border-left:none;border-top:none;}
+  .axiom-original{font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(13px,1.4vw,17px);color:var(--cream);text-align:center;position:relative;}
+  .strike-line{position:absolute;top:50%;left:0;right:0;height:1.5px;
+    background:var(--ell);transform:scaleX(0);transform-origin:left;transition:transform 1s 1s;}
+  .axiom-box.show .strike-line{transform:scaleX(1);}
+  .axiom-new{font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(13px,1.4vw,17px);text-align:center;margin-top:12px;
+    opacity:0;transition:opacity 0.8s 1.8s;}
+  .axiom-box.show .axiom-new{opacity:1;}
+
+  /* BIG QUOTE */
+  .big-quote{font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(15px,2vw,25px);color:var(--cream);
+    text-align:center;max-width:580px;line-height:1.78;padding:0 28px;}
+
+  /* NAV */
+  #nav{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
+    z-index:200;display:flex;gap:10px;align-items:center;}
+  .nav-btn{width:34px;height:34px;border:1px solid var(--gold-dim);background:transparent;
+    color:var(--gold);cursor:pointer;font-size:16px;display:flex;align-items:center;
+    justify-content:center;transition:all 0.3s;}
+  .nav-btn:hover{background:rgba(201,168,76,0.1);border-color:var(--gold);}
+  .nav-dots{display:flex;gap:6px;align-items:center;}
+  .nav-dot{width:6px;height:6px;border-radius:50%;background:var(--gold-dim);cursor:pointer;transition:all 0.3s;}
+  .nav-dot.active{background:var(--gold);width:20px;border-radius:3px;}
+  #hint{position:fixed;bottom:22px;right:28px;z-index:100;font-family:'Cinzel',serif;
+    font-size:10px;letter-spacing:2px;color:var(--gold-dim);display:flex;align-items:center;
+    gap:8px;opacity:0;transition:opacity 1s;}
+  #hint.visible{opacity:1;}
+  #hint-dot{width:5px;height:5px;border-radius:50%;background:var(--gold-dim);
+    animation:blink 1.6s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.15}}
+
+  #home-btn {
+    position: fixed; top: 26px; left: 36px; z-index: 9000;
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 3px;
+    color: var(--gold); text-decoration: none;
+    border: 1px solid var(--gold-dim); padding: 8px 16px;
+    background: rgba(6,5,7,0.7); cursor: pointer !important;
+    transition: background .3s, color .3s, border-color .3s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  #home-btn:hover { background: rgba(201,168,76,.15); border-color: var(--gold-light); color: var(--gold-light); }
+</style>
+
+<style id="bilingual-css">
+#ch-lang-bar{position:fixed;top:26px;right:36px;z-index:9000;display:flex;align-items:stretch;border:1px solid rgba(122,95,42,.5);overflow:hidden;}
+.ch-lb{font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;padding:8px 16px;background:transparent;border:none;outline:none;color:#7a5f2a;cursor:pointer;transition:background .3s,color .3s;}
+.ch-lb:hover{background:rgba(201,168,76,.1);}
+.ch-lb.on{background:rgba(201,168,76,.2);color:#e8cc7a;}
+.ch-lb-sep{width:1px;background:rgba(122,95,42,.4);flex-shrink:0;}
+</style>
+
+<style id="mobile-responsive">
+@media (max-width: 700px) {
+  /* tri-row (3 geo-cards) - scale on mobile */
+  .tri-row {
+    gap: 6px !important;
+    margin-top: 14px !important;
+  }
+  .geo-card {
+    max-width: calc(33% - 4px) !important;
+    min-width: 0 !important;
+  }
+  .geo-label { font-size: 8px !important; letter-spacing: 1px !important; }
+  .geo-sub { font-size: 8px !important; max-width: none !important; }
+  .geo-stat { font-size: 9px !important; }
+  /* Core layout - keep centered, handle overflow with scroll wrapper */
+  .scene {
+    padding: 55px 14px 90px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  /* Typography */
+  .scene-title { font-size: clamp(17px, 5.5vw, 28px) !important; letter-spacing: 1px; }
+  .scene-subtitle { font-size: clamp(11px, 3vw, 15px) !important; }
+  .scene-body { font-size: clamp(12px, 3.2vw, 15px) !important; padding: 0 8px; max-width: 96vw; line-height: 1.75 !important; }
+  .chapter-badge { font-size: 7px; letter-spacing: 3px; }
+  .ornament-line span { font-size: 7px; letter-spacing: 1px; max-width: 55vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* UI controls */
+  #home-btn { top: 10px; left: 10px; padding: 5px 10px; font-size: 9px; }
+  #ch-lang-bar { top: 10px; right: 10px; }
+  .ch-lb { padding: 5px 9px; font-size: 8px; letter-spacing: 1px; }
+  #hint { display: none; }
+  .ornament-line { top: 14px; }
+
+  /* Nav - larger touch targets */
+  #nav { bottom: 8px; }
+  .nav-btn { width: 44px; height: 44px; font-size: 22px; }
+
+  /* Force ALL flex row containers to stack */
+  .split-layout,
+  .split-text,
+  .info-row,
+  .sym-row,
+  .law-row,
+  .tl-row,
+  .card-row,
+  .geo-row {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  /* Info panels */
+  .split-info, [id$="-info"], [id$="-text"], [id$="-panel"] {
+    max-width: 94vw !important; width: 94vw !important;
+  }
+  .split-info p, [id$="-info"] p { font-size: clamp(11px, 2.8vw, 14px) !important; }
+
+  /* Only limit standalone full-width canvases, not gallery 3D canvases */
+  canvas#bg-
+
+  /* Grids → two columns, small screens one column */
+  .law-grid, .var-grid, .sym-grid, .const-grid, .card-grid,
+  [class*="grid"] { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+
+  /* Epilogue / poem */
+  .big-quote, #e-q, #fin-q, .poem { 
+    font-size: clamp(13px, 3.5vw, 18px) !important; 
+    padding: 0 16px; 
+    line-height: 1.9 !important;
+  }
+  .ending-quote { font-size: clamp(14px, 3.8vw, 19px) !important; }
+
+  /* Tables */
+  table { font-size: 10px; width: 100%; }
+  td, th { padding: 4px 6px !important; }
+
+  /* Axiom boxes */
+  .axiom-item { padding: 8px 10px !important; }
+  .axiom-body { font-size: 11px !important; }
+
+  /* Divider spacing */
+  .divider { margin: 12px auto !important; }
+}
+
+@media (max-width: 420px) {
+  .scene-title { font-size: clamp(15px, 5vw, 22px) !important; }
+
+  [class*="grid"] { grid-template-columns: 1fr !important; }
+}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div id="vignette"></div>
+<a id="home-btn" href="index.html">&#8962;&nbsp;HOME</a>
+<div class="ornament-line" id="ornament"><span>Chapter V · Non-Euclidean Geometry</span></div>
+<div id="progress"></div>
+<div id="nav">
+  <button class="nav-btn" id="btn-prev">&#8249;</button>
+  <div class="nav-dots" id="nav-dots"></div>
+  <button class="nav-btn" id="btn-next">&#8250;</button>
+</div>
+<div id="hint"><div id="hint-dot"></div>CLICK TO ADVANCE</div>
+
+<!-- ══ SCENE 0: Title ══ -->
+<div class="scene active" id="scene-0">
+  <div class="chapter-badge fade-up" id="s0-b">第六章</div>
+  <div class="scene-title fade-up" id="s0-t">非欧几何</div>
+  <div style="font-family:'IM Fell English',serif;font-style:italic;font-size:clamp(14px,1.9vw,23px);color:var(--gold-dim);text-align:center;margin-top:10px;" class="fade-up" id="s0-s">颠覆直觉的曲面美学</div>
+  <div class="divider" style="margin:24px auto;"></div>
+  <div class="scene-body fade-up" id="s0-body" style="max-width:500px;font-size:clamp(13px,1.4vw,17px);">
+    两千年来，欧几里得的平面被视为唯一的真实。<br>
+    直到有人鼓起勇气追问第五公设——<br>
+    <strong>一个公理的动摇，催生了全新的几何宇宙。</strong>
+  </div>
+  <canvas id="c0" style="margin-top:24px;opacity:0;transition:opacity 1.5s 0.5s;width:min(660px,94vw);height:min(300px,36vh);"></canvas>
+</div>
+
+<!-- ══ SCENE 1: The Fifth Postulate ══ -->
+<div class="scene" id="scene-1">
+  <div class="chapter-badge">§ 5.1 · 平行公理的崩塌</div>
+  <div class="scene-title" style="font-size:clamp(20px,3.2vw,44px);">第五公理的崩塌</div>
+  <div class="scene-body" style="margin-top:12px;max-width:560px;">
+    欧几里得的平行公理从未像其他四条那样"不证自明"。<br>
+    高斯秘密验证了它可以被替换，<br>
+    黎曼与罗巴切夫斯基各自打开了一扇新的宇宙之门。
+  </div>
+  <div class="axiom-box" id="ax-box">
+    <div class="axiom-original">
+      过直线外一点，有且仅有<strong style="color:var(--gold-light);">一条</strong>平行线。
+      <div class="strike-line"></div>
+    </div>
+    <div class="axiom-new" style="color:var(--hyp);">双曲：有<strong>无数条</strong>平行线穿过该点</div>
+    <div class="axiom-new" style="color:var(--ell);transition-delay:2.2s;">椭圆：<strong>不存在</strong>任何平行线</div>
+  </div>
+  <canvas id="c1-par" style="width:min(620px,92vw);height:min(260px,32vh);margin-top:20px;opacity:0;transition:opacity 1s 0.5s;"></canvas>
+</div>
+
+<!-- ══ SCENE 2: Three Geometries Compare ══ -->
+<div class="scene" id="scene-2">
+  <div class="chapter-badge">§ 5.1 · 三种几何世界</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">曲率决定宇宙的形状</div>
+  <div class="scene-body" style="margin-top:8px;margin-bottom:4px;font-size:clamp(12px,1.3vw,16px);">
+    同一个三角形，在三种空间里，内角和完全不同。
+  </div>
+  <div class="tri-row">
+    <div class="geo-card" id="gc0">
+      <canvas id="geo-euc" style="width:min(200px,28vw);height:min(200px,28vw);"></canvas>
+      <div class="geo-label" style="color:var(--euc);">欧氏几何</div>
+      <div class="geo-stat" style="color:var(--euc);">∠A + ∠B + ∠C = 180°</div>
+      <div class="geo-sub">平坦曲面，曲率 K = 0</div>
+    </div>
+    <div class="geo-card" id="gc1">
+      <canvas id="geo-hyp" style="width:min(200px,28vw);height:min(200px,28vw);"></canvas>
+      <div class="geo-label" style="color:var(--hyp);">双曲几何</div>
+      <div class="geo-stat" style="color:var(--hyp);">∠A + ∠B + ∠C &lt; 180°</div>
+      <div class="geo-sub">马鞍面，曲率 K &lt; 0</div>
+    </div>
+    <div class="geo-card" id="gc2">
+      <canvas id="geo-ell" style="width:min(200px,28vw);height:min(200px,28vw);"></canvas>
+      <div class="geo-label" style="color:var(--ell);">椭圆几何</div>
+      <div class="geo-stat" style="color:var(--ell);">∠A + ∠B + ∠C &gt; 180°</div>
+      <div class="geo-sub">球面，曲率 K &gt; 0</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCENE 3: Hyperbolic — Saddle ══ -->
+<div class="scene" id="scene-3">
+  <div class="chapter-badge">§ 5.1 · 双曲几何</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);" >马鞍面上的宇宙</div>
+  <div class="split">
+    <canvas id="saddle-c" style="width:min(340px,52vh);height:min(320px,48vh);opacity:0;transition:opacity 1s 0.3s;flex-shrink:0;"></canvas>
+    <div class="split-info" id="hyp-info" style="opacity:0;transition:opacity 0.8s 0.8s;">
+      <div class="tag" style="color:var(--hyp);border-color:rgba(90,232,180,0.3);">HYPERBOLIC GEOMETRY</div>
+      <p id="hyp-p0"><strong style="color:var(--hyp);">罗巴切夫斯基</strong> 1830年，<strong style="color:var(--hyp);">鲍耶</strong> 1832年，各自独立发现双曲几何——在马鞍形空间里，从一点出发可以画出无数条平行线。</p>
+      <p id="hyp-p1">自然界对此早有答案：<strong style="color:var(--hyp);">珊瑚礁</strong>的分叉结构、<strong style="color:var(--hyp);">生菜叶片</strong>的褶皱边缘，都是以有限体积创造最大表面积的双曲几何解。</p>
+      <p style="margin-top:10px;font-size:clamp(11px,1.1vw,13px);color:var(--gold-dim);" id="hyp-p2">
+        双曲平面无法在三维欧氏空间中无失真嵌入，<br>只能通过<strong style="color:var(--gold-dim);">庞加莱圆盘</strong>等模型间接呈现。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCENE 4: Poincaré Disk ══ -->
+<div class="scene" id="scene-4">
+  <div class="chapter-badge">§ 5.1 · 庞加莱圆盘</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">无限藏于有限之圆</div>
+  <div class="scene-body" style="margin-top:10px;max-width:520px;font-size:clamp(12px,1.3vw,16px);">
+    庞加莱圆盘是双曲平面的完美比喻：<br>
+    圆内是整个<strong>无限大</strong>的双曲空间，越靠近边界越"遥远"。<br>
+    圆盘内的每一条"直线"，在双曲意义上都是无限长的——<br>
+    但在欧氏眼中，它只是一段弧线。
+  </div>
+  <canvas id="poincare-c" style="width:min(440px,76vh);height:min(440px,76vh);margin-top:14px;opacity:0;transition:opacity 1.2s 0.3s;"></canvas>
+</div>
+
+<!-- ══ SCENE 5: Elliptic — Sphere ══ -->
+<div class="scene" id="scene-5">
+  <div class="chapter-badge">§ 5.1 · 黎曼几何</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">球面上，没有平行线</div>
+  <div class="split">
+    <canvas id="sphere-c" style="width:min(360px,56vh);height:min(360px,56vh);opacity:0;transition:opacity 1s 0.3s;flex-shrink:0;"></canvas>
+    <div class="split-info" id="ell-info" style="opacity:0;transition:opacity 0.8s 0.8s;">
+      <div class="tag" style="color:var(--ell);border-color:rgba(232,90,126,0.3);">RIEMANNIAN GEOMETRY</div>
+      <p id="ell-p0">黎曼1854年指出：空间本身可以<strong style="color:var(--ell);">弯曲</strong>。球面上所有"直线"（大圆）都会相交，从不平行。</p>
+      <p id="ell-p1">北京飞往纽约的<strong style="color:var(--ell);">航线</strong>，看起来弯曲，实际上是球面上的最短路径——测地线。</p>
+      <p style="margin-top:10px;font-size:clamp(11px,1.1vw,13px);color:var(--gold-dim);" id="ell-p2">
+        爱因斯坦广义相对论的数学基础，正是黎曼几何。<br>
+        宇宙的时空，是一块<strong style="color:var(--gold-dim);">被质量弯曲的黎曼流形</strong>。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCENE 6: Einstein connection ══ -->
+<div class="scene" id="scene-6">
+  <div class="chapter-badge">§ 5.1 · 从几何到物理</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">弯曲的时空</div>
+  <div class="scene-body" style="margin-top:14px;max-width:560px;">
+    1915年，爱因斯坦写下广义相对论方程：<br>
+    <strong>质量弯曲时空，弯曲的时空引导质量运动。</strong><br>
+    这一切的数学语言，正是黎曼半个世纪前奠定的非欧几何。<br>
+    纯粹的数学想象，竟成了描述宇宙的最精确语言。
+  </div>
+  <canvas id="spacetime-c" style="width:min(640px,94vw);height:min(340px,42vh);margin-top:16px;opacity:0;transition:opacity 1s 0.3s;"></canvas>
+  <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;color:var(--gold-dim);
+    margin-top:16px;text-align:center;opacity:0;transition:opacity 0.8s 1s;" id="ein-label" class="fade-up">
+    G<sub>μν</sub> + Λg<sub>μν</sub> = 8πG · T<sub>μν</sub> / c⁴ &nbsp;·&nbsp; Einstein Field Equations · 1915
+  </div>
+</div>
+
+<!-- ══ SCENE 7: Ending ══ -->
+<div class="scene" id="scene-7">
+  <div class="chapter-badge">尾声 · 第五章</div>
+  <div class="scene-title fade-up" id="e-t" style="font-size:clamp(20px,3vw,42px);">真实比想象更奇异</div>
+  <div class="divider" style="margin:24px auto;"></div>
+  <div class="big-quote fade-up" id="e-q">
+    欧几里得给了我们一个完美的平坦宇宙，<br>
+    黎曼告诉我们空间可以<strong style="color:var(--ell);">弯曲</strong>，<br>
+    罗巴切夫斯基告诉我们宇宙可以<strong style="color:var(--hyp);">向内扩张</strong>。<br><br>
+    而爱因斯坦最终证明：<br>
+    <strong style="color:var(--gold-light);">我们真正生活在其中的，是一个弯曲的时空。</strong>
+  </div>
+  <div style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;color:var(--gold-dim);
+    margin-top:20px;text-align:center;" class="fade-up" id="e-a">— 第六章 · 终</div>
+  <canvas id="c7" style="margin-top:20px;opacity:0;transition:opacity 2s;width:min(640px,94vw);height:min(280px,34vh);"></canvas>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// BACKGROUND — curved spacetime grid
+// ══════════════════════════════════════════
+const bgC=document.getElementById('bg-canvas');
+const bgX=bgC.getContext('2d');
+let BW,BH,bgTick=0;
+function resizeBg(){BW=bgC.width=window.innerWidth;BH=bgC.height=window.innerHeight;}
+resizeBg();window.addEventListener('resize',resizeBg);
+const stars=Array.from({length:180},()=>({x:Math.random(),y:Math.random(),r:Math.random()*1.1+0.2,a:Math.random(),sp:Math.random()*0.003+0.001}));
+function drawBg(){
+  bgX.clearRect(0,0,BW,BH);
+  const g=bgX.createRadialGradient(BW/2,BH/2,0,BW/2,BH/2,Math.max(BW,BH)*0.75);
+  g.addColorStop(0,'#060412');g.addColorStop(1,'#010208');
+  bgX.fillStyle=g;bgX.fillRect(0,0,BW,BH);
+  // Background grid lines — slightly curved
+  bgX.strokeStyle='rgba(90,180,140,0.04)';bgX.lineWidth=0.8;
+  for(let i=0;i<8;i++){
+    const y=i/7*BH;
+    bgX.beginPath();
+    for(let x=0;x<=BW;x+=4){
+      const warp=Math.sin(x/BW*Math.PI+bgTick*0.004)*12*(1-Math.abs(y/BH-0.5)*2);
+      x===0?bgX.moveTo(x,y+warp):bgX.lineTo(x,y+warp);
+    }
+    bgX.stroke();
+  }
+  stars.forEach(s=>{
+    s.a+=s.sp;
+    const al=(Math.sin(s.a)+1)/2*0.5+0.07;
+    bgX.beginPath();bgX.arc(s.x*BW,s.y*BH,s.r,0,Math.PI*2);
+    bgX.fillStyle=`rgba(180,150,230,${al})`;bgX.fill();
+  });
+  bgTick++;requestAnimationFrame(drawBg);
+}
+drawBg();
+
+// ══════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════
+function rotY(p,a){return[p[0]*Math.cos(a)+p[2]*Math.sin(a),p[1],-p[0]*Math.sin(a)+p[2]*Math.cos(a)];}
+function rotX(p,a){return[p[0],p[1]*Math.cos(a)-p[2]*Math.sin(a),p[1]*Math.sin(a)+p[2]*Math.cos(a)];}
+function proj(p,fov,cx,cy){const z=p[2]+fov,s=fov/z;return[p[0]*s+cx,p[1]*s+cy];}
+
+// ══════════════════════════════════════════
+// SCENE 0: Three Worlds Panorama — flat / hyperbolic / elliptic
+// ══════════════════════════════════════════
+const c0=document.getElementById('c0');
+let t0=0,c0Raf;
+function resizeC0(){const r=c0.getBoundingClientRect();c0.width=r.width||660;c0.height=r.height||300;}
+function drawC0(){
+  resizeC0();
+  const CW=c0.width,CH=c0.height,ctx=c0.getContext('2d');
+  ctx.fillStyle='rgba(4,2,10,0.92)';ctx.fillRect(0,0,CW,CH);
+  const W3=CW/3, t=t0, prog=Math.min(1,t/100);
+
+  // ── WORLD 1: Euclidean flat grid ──────────────────────
+  {
+    const ox=0,gCol='rgba(201,168,76,';
+    const cx=W3/2,cy=CH/2;
+    const step=CH*0.12;
+    const cols=Math.ceil(W3/step)+1, rows=Math.ceil(CH/step)+1;
+    ctx.save();ctx.beginPath();ctx.rect(ox,0,W3,CH);ctx.clip();
+    // Grid lines (perfectly straight — Euclidean)
+    for(let i=-1;i<=cols;i++){
+      const x=cx+(i-cols/2)*step;
+      const p2=Math.max(0,Math.min(1,(t-(i+2)*6)/50));
+      ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CH);
+      ctx.strokeStyle=gCol+(p2*0.14)+')';ctx.lineWidth=0.7;ctx.stroke();
+    }
+    for(let j=-1;j<=rows;j++){
+      const y=cy+(j-rows/2)*step;
+      const p2=Math.max(0,Math.min(1,(t-(j+2)*4)/50));
+      ctx.beginPath();ctx.moveTo(ox,y);ctx.lineTo(ox+W3,y);
+      ctx.strokeStyle=gCol+(p2*0.14)+')';ctx.lineWidth=0.7;ctx.stroke();
+    }
+    // Flat triangle
+    if(prog>0.25){
+      const p2=(prog-0.25)/0.75;
+      const r=CH*0.22,rot=t*0.006;
+      const pts=Array.from({length:3},(_,i)=>{
+        const a=-Math.PI/2+rot+i*Math.PI*2/3;
+        return[cx+Math.cos(a)*r,cy+Math.sin(a)*r];
+      });
+      ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);
+      pts.forEach(p=>ctx.lineTo(p[0],p[1]));ctx.closePath();
+      ctx.strokeStyle=gCol+(p2*0.9)+')';ctx.lineWidth=1.8;ctx.stroke();
+      ctx.fillStyle=gCol+(p2*0.09)+')';ctx.fill();
+      // Vertex dots
+      pts.forEach(([px,py])=>{
+        ctx.beginPath();ctx.arc(px,py,4,0,Math.PI*2);
+        ctx.fillStyle=gCol+(p2*0.85)+')';ctx.fill();
+      });
+    }
+    // "180°" label
+    if(prog>0.6){
+      const lp=(prog-0.6)/0.4;
+      ctx.font=`italic ${Math.round(CH*0.065)}px IM Fell English,serif`;
+      ctx.textAlign='center';ctx.fillStyle=gCol+(lp*0.7)+')';
+      ctx.fillText('∠ = 180°',cx,cy+CH*0.04);
+    }
+    // World label
+    ctx.font=`${Math.round(CH*0.048)}px Cinzel,serif`;ctx.textAlign='center';
+    ctx.fillStyle=gCol+(prog*0.65)+')';ctx.fillText('欧氏几何',cx,CH-14);
+    ctx.restore();
+  }
+
+  // Divider
+  [W3,W3*2].forEach(x=>{
+    const dg=ctx.createLinearGradient(x,0,x,CH);
+    dg.addColorStop(0,'transparent');dg.addColorStop(0.5,'rgba(122,95,42,0.35)');dg.addColorStop(1,'transparent');
+    ctx.fillStyle=dg;ctx.fillRect(x-1,0,2,CH);
+  });
+
+  // ── WORLD 2: Hyperbolic saddle ────────────────────────
+  {
+    const ox=W3;
+    const cx=ox+W3/2,cy=CH/2;
+    const hCol='rgba(90,232,180,';
+    ctx.save();ctx.beginPath();ctx.rect(ox,0,W3,CH);ctx.clip();
+    // Warped grid lines (saddle-shaped)
+    const step=CH*0.12;
+    const cols=Math.ceil(W3/step)+2;
+    const rows=Math.ceil(CH/step)+2;
+    for(let i=0;i<=cols;i++){
+      const frac=(i/cols)*2-1;
+      const p2=Math.max(0,Math.min(1,(t-i*5)/60));
+      ctx.beginPath();
+      for(let sy=0;sy<=CH;sy+=4){
+        const fy=(sy/CH)*2-1;
+        // Saddle warp: x shifts by frac²-fy²
+        const warp=(frac*frac-fy*fy)*W3*0.08;
+        const wx=ox+i/cols*W3+warp;
+        sy===0?ctx.moveTo(wx,sy):ctx.lineTo(wx,sy);
+      }
+      ctx.strokeStyle=hCol+(p2*0.13)+')';ctx.lineWidth=0.7;ctx.stroke();
+    }
+    for(let j=0;j<=rows;j++){
+      const frac=(j/rows)*2-1;
+      const p2=Math.max(0,Math.min(1,(t-j*4)/60));
+      ctx.beginPath();
+      for(let sx=ox;sx<=ox+W3;sx+=4){
+        const fx=(sx-cx)/(W3/2);
+        const warp=(fx*fx-frac*frac)*CH*0.08;
+        const wy=j/rows*CH+warp;
+        sx===ox?ctx.moveTo(sx,wy):ctx.lineTo(sx,wy);
+      }
+      ctx.strokeStyle=hCol+(p2*0.13)+')';ctx.lineWidth=0.7;ctx.stroke();
+    }
+    // Hyperbolic triangle (sides curve inward)
+    if(prog>0.3){
+      const p2=(prog-0.3)/0.7;
+      const r=CH*0.22;
+      const verts=[
+        [cx,cy-r],
+        [cx-r*0.87,cy+r*0.5],
+        [cx+r*0.87,cy+r*0.5],
+      ];
+      ctx.strokeStyle=hCol+(p2*0.9)+')';ctx.lineWidth=2;
+      for(let i=0;i<3;i++){
+        const a=verts[i],b=verts[(i+1)%3];
+        const mx2=(a[0]+b[0])/2,my2=(a[1]+b[1])/2;
+        // Pull midpoint inward (toward center)
+        const cpx=mx2+(cx-mx2)*0.45,cpy=my2+(cy-my2)*0.45;
+        ctx.beginPath();ctx.moveTo(a[0],a[1]);
+        ctx.quadraticCurveTo(cpx,cpy,b[0],b[1]);ctx.stroke();
+      }
+      verts.forEach(([px,py])=>{
+        ctx.beginPath();ctx.arc(px,py,4,0,Math.PI*2);
+        ctx.fillStyle=hCol+(p2*0.85)+')';ctx.fill();
+      });
+    }
+    if(prog>0.65){
+      const lp=(prog-0.65)/0.35;
+      ctx.font=`italic ${Math.round(CH*0.065)}px IM Fell English,serif`;
+      ctx.textAlign='center';ctx.fillStyle=hCol+(lp*0.7)+')';
+      ctx.fillText('∠ < 180°',cx,cy+CH*0.04);
+    }
+    ctx.font=`${Math.round(CH*0.048)}px Cinzel,serif`;ctx.textAlign='center';
+    ctx.fillStyle=hCol+(prog*0.65)+')';ctx.fillText('双曲几何',cx,CH-14);
+    ctx.restore();
+  }
+
+  // ── WORLD 3: Elliptic sphere ──────────────────────────
+  {
+    const ox=W3*2;
+    const cx=ox+W3/2,cy=CH/2;
+    const eCol='rgba(232,90,126,';
+    ctx.save();ctx.beginPath();ctx.rect(ox,0,W3,CH);ctx.clip();
+    const r=Math.min(W3,CH)*0.36;
+    // Concentric bulging rings (sphere-like curves)
+    const nRings=7;
+    for(let ri=0;ri<nRings;ri++){
+      const fr=(ri+1)/nRings;
+      const p2=Math.max(0,Math.min(1,(t-ri*8)/55));
+      // Latitude rings (ellipses)
+      const lat=fr*Math.PI/2;
+      const ry=r*Math.cos(lat)*0.45;
+      const py=cy+r*Math.sin(lat)*(ri<nRings/2?-1:1)*(ri===0?0:1);
+      if(ri!==0){
+        ctx.beginPath();ctx.ellipse(cx,cy,r*Math.cos(lat),r*Math.cos(lat)*0.45,0,0,Math.PI*2);
+        ctx.strokeStyle=eCol+(p2*0.12)+')';ctx.lineWidth=0.7;ctx.stroke();
+      }
+    }
+    // Longitude lines (great circles as ellipses)
+    for(let li=0;li<6;li++){
+      const p2=Math.max(0,Math.min(1,(t-li*6)/55));
+      const angle=(li/6)*Math.PI;
+      ctx.beginPath();ctx.ellipse(cx,cy,r*Math.sin(angle)||r*0.05,r,Math.PI/2,0,Math.PI*2);
+      ctx.strokeStyle=eCol+(p2*0.12)+')';ctx.lineWidth=0.7;ctx.stroke();
+    }
+    // Sphere outline
+    ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
+    ctx.strokeStyle=eCol+(prog*0.4)+')';ctx.lineWidth=1.2;ctx.stroke();
+    // Spherical triangle (outward-bowing sides)
+    if(prog>0.3){
+      const p2=(prog-0.3)/0.7;
+      const verts=[[cx,cy-r*0.8],[cx-r*0.7,cy+r*0.4],[cx+r*0.7,cy+r*0.4]];
+      ctx.strokeStyle=eCol+(p2*0.9)+')';ctx.lineWidth=2;
+      for(let i=0;i<3;i++){
+        const a=verts[i],b=verts[(i+1)%3];
+        const mx2=(a[0]+b[0])/2,my2=(a[1]+b[1])/2;
+        // Push midpoint outward from center
+        const cpx=mx2+(mx2-cx)*0.55,cpy=my2+(my2-cy)*0.55;
+        ctx.beginPath();ctx.moveTo(a[0],a[1]);
+        ctx.quadraticCurveTo(cpx,cpy,b[0],b[1]);ctx.stroke();
+      }
+      verts.forEach(([px,py])=>{
+        const gg=ctx.createRadialGradient(px,py,0,px,py,8);
+        gg.addColorStop(0,eCol+(p2*0.8)+')');gg.addColorStop(1,'transparent');
+        ctx.fillStyle=gg;ctx.fillRect(px-8,py-8,16,16);
+        ctx.beginPath();ctx.arc(px,py,4,0,Math.PI*2);
+        ctx.fillStyle=eCol+(p2*0.9)+')';ctx.fill();
+      });
+    }
+    if(prog>0.65){
+      const lp=(prog-0.65)/0.35;
+      ctx.font=`italic ${Math.round(CH*0.065)}px IM Fell English,serif`;
+      ctx.textAlign='center';ctx.fillStyle=eCol+(lp*0.7)+')';
+      ctx.fillText('∠ > 180°',cx,cy+CH*0.04);
+    }
+    ctx.font=`${Math.round(CH*0.048)}px Cinzel,serif`;ctx.textAlign='center';
+    ctx.fillStyle=eCol+(prog*0.65)+')';ctx.fillText('椭圆几何',cx,CH-14);
+    ctx.restore();
+  }
+
+  t0++;c0Raf=requestAnimationFrame(drawC0);
+}
+
+// ══════════════════════════════════════════
+// SCENE 1: Parallel Lines Drama — three geometries at scale
+// ══════════════════════════════════════════
+let c1Active=false,c1RAF,c1Tick=0;
+function startParallel(){
+  const canvas=document.getElementById('c1-par');if(!canvas)return;
+  const _r=canvas.getBoundingClientRect();
+  const W=_r.width||620,H=_r.height||260;
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  c1Active=true;c1Tick=0;
+
+  function frame(){
+    if(!c1Active)return;
+    ctx.fillStyle='rgba(4,2,10,0.90)';ctx.fillRect(0,0,W,H);
+    const t=c1Tick;
+    const S=W/3,cy=H/2;
+
+    // ── SECTION 1: Euclidean — exactly 1 parallel ──────────
+    {
+      ctx.save();ctx.beginPath();ctx.rect(0,0,S,H);ctx.clip();
+      const cx=S/2;
+      const gCol='rgba(201,168,76,';
+      // Reference line (solid)
+      const refY=cy+H*0.12;
+      ctx.beginPath();ctx.moveTo(18,refY);ctx.lineTo(S-18,refY);
+      ctx.strokeStyle=gCol+'0.75)';ctx.lineWidth=2;ctx.stroke();
+      // Point above
+      const ptY=cy-H*0.12;
+      ctx.beginPath();ctx.arc(cx,ptY,5,0,Math.PI*2);
+      ctx.fillStyle=gCol+'0.85)';ctx.fill();
+      // The ONE parallel line through the point
+      const pAngle=Math.sin(t*0.015)*0.04; // gentle wobble to show it's exact
+      ctx.beginPath();
+      ctx.moveTo(18,ptY+Math.tan(pAngle)*S*0.45);
+      ctx.lineTo(S-18,ptY-Math.tan(pAngle)*S*0.45);
+      ctx.strokeStyle=gCol+'0.85)';ctx.lineWidth=1.8;ctx.stroke();
+      // "Only 1" label
+      ctx.font=`${Math.round(H*0.048)}px Cinzel,serif`;ctx.textAlign='center';
+      ctx.fillStyle=gCol+'0.6)';ctx.fillText('恰好 1 条',cx,H-28);
+      ctx.fillStyle=gCol+'0.4)';ctx.font=`${Math.round(H*0.038)}px Cinzel,serif`;
+      ctx.fillText('平行线',cx,H-12);
+      ctx.restore();
+    }
+
+    // Dividers
+    [S,S*2].forEach(x=>{
+      const dg=ctx.createLinearGradient(x,0,x,H);
+      dg.addColorStop(0,'transparent');dg.addColorStop(0.5,'rgba(122,95,42,0.4)');dg.addColorStop(1,'transparent');
+      ctx.fillStyle=dg;ctx.fillRect(x-1,0,2,H);
+    });
+
+    // ── SECTION 2: Hyperbolic — infinitely many parallels ──
+    {
+      ctx.save();ctx.beginPath();ctx.rect(S,0,S,H);ctx.clip();
+      const cx=S*1.5;
+      const hCol='rgba(90,232,180,';
+      // Reference line
+      const refY=cy+H*0.12;
+      ctx.beginPath();ctx.moveTo(S+18,refY);ctx.lineTo(S*2-18,refY);
+      ctx.strokeStyle=hCol+'0.75)';ctx.lineWidth=2;ctx.stroke();
+      // Point
+      const ptY=cy-H*0.12;
+      ctx.beginPath();ctx.arc(cx,ptY,5,0,Math.PI*2);
+      ctx.fillStyle=hCol+'0.85)';ctx.fill();
+      // Fan of parallel lines (all don't intersect the reference)
+      const nLines=11;
+      for(let i=0;i<nLines;i++){
+        const frac=(i/(nLines-1)-0.5)*2; // -1 to 1
+        const spread=0.55;
+        const angle=frac*spread+Math.sin(t*0.012+i)*0.018;
+        const isCenter=(i===Math.floor(nLines/2));
+        ctx.beginPath();
+        ctx.moveTo(S+18,ptY+Math.tan(angle)*(S/2-18));
+        ctx.lineTo(S*2-18,ptY-Math.tan(angle)*(S/2-18));
+        ctx.strokeStyle=isCenter?hCol+'0.85)':hCol+(0.12+Math.abs(frac)*0.05)+')';
+        ctx.lineWidth=isCenter?1.8:0.7;ctx.stroke();
+      }
+      ctx.font=`${Math.round(H*0.048)}px Cinzel,serif`;ctx.textAlign='center';
+      ctx.fillStyle=hCol+'0.6)';ctx.fillText('无数条',cx,H-28);
+      ctx.fillStyle=hCol+'0.4)';ctx.font=`${Math.round(H*0.038)}px Cinzel,serif`;
+      ctx.fillText('平行线',cx,H-12);
+      ctx.restore();
+    }
+
+    // ── SECTION 3: Elliptic — zero parallels, all lines meet ──
+    {
+      ctx.save();ctx.beginPath();ctx.rect(S*2,0,S,H);ctx.clip();
+      const cx=S*2.5;
+      const eCol='rgba(232,90,126,';
+      // Convergence point (all lines meet = "great circles all intersect")
+      const meetY=cy+H*0.35;
+      // Reference line
+      const refY=cy+H*0.12;
+      ctx.beginPath();ctx.moveTo(S*2+18,refY);ctx.lineTo(W-18,refY);
+      ctx.strokeStyle=eCol+'0.75)';ctx.lineWidth=2;ctx.stroke();
+      // Point
+      const ptY=cy-H*0.12;
+      ctx.beginPath();ctx.arc(cx,ptY,5,0,Math.PI*2);
+      ctx.fillStyle=eCol+'0.85)';ctx.fill();
+      // Fan of lines all converging to same vanishing point
+      const nLines=9;
+      const vanishX=cx+Math.sin(t*0.01)*S*0.08;
+      const vanishY=cy+H*0.42;
+      for(let i=0;i<nLines;i++){
+        const frac=i/(nLines-1)-0.5;
+        const startX=S*2+18+frac*(S-36)*0.8+cx-S*2;
+        const isCenter=(i===Math.floor(nLines/2));
+        ctx.beginPath();ctx.moveTo(startX,ptY);ctx.lineTo(vanishX,vanishY);
+        ctx.strokeStyle=isCenter?eCol+'0.85)':eCol+(0.18+Math.abs(frac)*0.1)+')';
+        ctx.lineWidth=isCenter?1.8:0.8;ctx.stroke();
+      }
+      // Convergence glow
+      const cg=ctx.createRadialGradient(vanishX,vanishY,0,vanishX,vanishY,18);
+      cg.addColorStop(0,eCol+'0.5)');cg.addColorStop(1,'transparent');
+      ctx.fillStyle=cg;ctx.fillRect(vanishX-18,vanishY-18,36,36);
+      ctx.font=`${Math.round(H*0.048)}px Cinzel,serif`;ctx.textAlign='center';
+      ctx.fillStyle=eCol+'0.6)';ctx.fillText('零条',cx,H-28);
+      ctx.fillStyle=eCol+'0.4)';ctx.font=`${Math.round(H*0.038)}px Cinzel,serif`;
+      ctx.fillText('平行线',cx,H-12);
+      ctx.restore();
+    }
+
+    c1Tick++;c1RAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopParallel(){c1Active=false;cancelAnimationFrame(c1RAF);}
+
+// ══════════════════════════════════════════
+// SCENE 2: Three geometry canvases
+// ══════════════════════════════════════════
+const geoRenderers={};
+function drawEuclidean(canvas,tick){
+  const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
+  ctx.fillStyle='rgba(4,2,10,0.92)';ctx.fillRect(0,0,W,H);
+  const cx=W/2,cy=H/2;
+  const gCol='rgba(201,168,76,';
+  // Flat square grid
+  const step=Math.min(W,H)*0.13;
+  const cols=Math.ceil(W/step)+1,rows=Math.ceil(H/step)+1;
+  for(let i=-1;i<=cols;i++){
+    ctx.beginPath();ctx.moveTo(cx+(i-cols/2)*step,0);ctx.lineTo(cx+(i-cols/2)*step,H);
+    ctx.strokeStyle=gCol+'0.13)';ctx.lineWidth=0.6;ctx.stroke();
+  }
+  for(let j=-1;j<=rows;j++){
+    ctx.beginPath();ctx.moveTo(0,cy+(j-rows/2)*step);ctx.lineTo(W,cy+(j-rows/2)*step);
+    ctx.strokeStyle=gCol+'0.13)';ctx.lineWidth=0.6;ctx.stroke();
+  }
+  // Rotating triangle
+  const r=Math.min(W,H)*0.33,rot=tick*0.006;
+  const pts=Array.from({length:3},(_,i)=>[
+    cx+Math.cos(-Math.PI/2+rot+i*Math.PI*2/3)*r,
+    cy+Math.sin(-Math.PI/2+rot+i*Math.PI*2/3)*r
+  ]);
+  ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);
+  pts.forEach(p=>ctx.lineTo(p[0],p[1]));ctx.closePath();
+  ctx.strokeStyle=gCol+'0.85)';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle=gCol+'0.09)';ctx.fill();
+  // Vertex glow dots
+  const glow=0.7+0.3*Math.sin(tick*0.04);
+  pts.forEach(([px,py])=>{
+    const gg=ctx.createRadialGradient(px,py,0,px,py,9);
+    gg.addColorStop(0,gCol+(glow*0.7)+')');gg.addColorStop(1,'transparent');
+    ctx.fillStyle=gg;ctx.fillRect(px-9,py-9,18,18);
+    ctx.beginPath();ctx.arc(px,py,4,0,Math.PI*2);
+    ctx.fillStyle=gCol+(glow*0.9)+')';ctx.fill();
+  });
+  // Label
+  ctx.font=`italic ${Math.round(H*0.08)}px IM Fell English,serif`;
+  ctx.textAlign='center';ctx.fillStyle=gCol+'0.65)';
+  ctx.fillText('∠ = 180°',cx,cy+H*0.06);
+}
+
+function drawHyperbolic(canvas,tick){
+  const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
+  ctx.fillStyle='rgba(4,2,10,0.92)';ctx.fillRect(0,0,W,H);
+  const cx=W/2,cy=H/2;
+  const r=Math.min(W,H)*0.42;
+  const hCol='rgba(90,232,180,';
+  const rot=tick*0.005;
+  
+  // Disk fill
+  const bg=ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+  bg.addColorStop(0,'rgba(10,6,22,0.98)');bg.addColorStop(1,'rgba(4,2,10,1)');
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle=bg;ctx.fill();
+  
+  // Mini geodesic tessellation (3 rings)
+  function hGeo(ax,ay,bx,by){
+    const dax=ax-cx,day=ay-cy,dbx=bx-cx,dby=by-cy;
+    const ra2=dax*dax+day*day,rb2=dbx*dbx+dby*dby;
+    if(ra2<1||rb2<1){ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke();return;}
+    const inv=r*r;
+    const iax=cx+dax*inv/ra2,iay=cy+day*inv/ra2;
+    const ax2=ax*ax+ay*ay,bx2=bx*bx+by*by,ia2=iax*iax+iay*iay;
+    // Correct circumcenter formula for three points (ax,ay),(bx,by),(iax,iay)
+    const D=2*(ax*(by-iay)+bx*(iay-ay)+iax*(ay-by));
+    if(Math.abs(D)<0.5){ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke();return;}
+    const ux=(ax2*(by-iay)+bx2*(iay-ay)+ia2*(ay-by))/D;
+    const uy=(ax2*(iax-bx)+bx2*(ax-iax)+ia2*(bx-ax))/D;
+    const arcR=Math.sqrt((ax-ux)**2+(ay-uy)**2);
+    if(!isFinite(arcR)||arcR>W*3){ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke();return;}
+    const a1=Math.atan2(ay-uy,ax-ux),a2=Math.atan2(by-uy,bx-ux);
+    let diff=((a2-a1)%(Math.PI*2)+Math.PI*3)%(Math.PI*2)-Math.PI;
+    ctx.beginPath();ctx.arc(ux,uy,arcR,a1,a1+diff,diff<0);ctx.stroke();
+  }
+  function dpt(fr,a){return[cx+Math.cos(a)*fr*r,cy+Math.sin(a)*fr*r];}
+  
+  // 4 layers of tessellation
+  [0.22,0.42,0.62,0.80].forEach((fr,li)=>{
+    const n=(li+1)*4;
+    for(let i=0;i<n;i++){
+      const a=(i/n)*Math.PI*2+rot*(li%2===0?1:-1)*0.5;
+      const [ax,ay]=dpt(fr,a);
+      const [bx,by]=dpt(fr,a+Math.PI/n);
+      const innerFr=Math.max(0,fr-0.18);
+      const [ix,iy]=dpt(innerFr,a+Math.PI/n/2);
+      ctx.strokeStyle=hCol+(0.07*(1-fr))+')';ctx.lineWidth=0.5;
+      hGeo(ax,ay,bx,by);
+      if(innerFr>0.05)hGeo(ax,ay,ix,iy);
+    }
+  });
+
+  // Highlighted rotating triangle
+  const glow=0.7+0.3*Math.sin(tick*0.04);
+  const verts=Array.from({length:3},(_,i)=>dpt(0.58,(i/3)*Math.PI*2+rot));
+  ctx.strokeStyle=hCol+(glow*0.85)+')';ctx.lineWidth=2;
+  for(let i=0;i<3;i++) hGeo(verts[i][0],verts[i][1],verts[(i+1)%3][0],verts[(i+1)%3][1]);
+  verts.forEach(([vx,vy])=>{
+    ctx.beginPath();ctx.arc(vx,vy,4,0,Math.PI*2);
+    ctx.fillStyle=hCol+(glow*0.9)+')';ctx.fill();
+  });
+
+  // Boundary
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.strokeStyle=hCol+'0.45)';ctx.lineWidth=1.5;ctx.stroke();
+  
+  // Label
+  ctx.font=`italic ${Math.round(H*0.08)}px IM Fell English,serif`;
+  ctx.textAlign='center';ctx.fillStyle=hCol+'0.65)';
+  ctx.fillText('∠ < 180°',cx,cy+H*0.06);
+}
+
+function drawElliptic(canvas,tick){
+  const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
+  ctx.fillStyle='rgba(4,2,10,0.92)';ctx.fillRect(0,0,W,H);
+  const cx=W/2,cy=H/2;
+  const r=Math.min(W,H)*0.38;
+  const eCol='rgba(232,90,126,';
+  const rot=tick*0.007;
+  
+  // Sphere glow fill
+  const sg=ctx.createRadialGradient(cx-r*0.25,cy-r*0.25,0,cx,cy,r);
+  sg.addColorStop(0,'rgba(80,18,36,0.65)');sg.addColorStop(1,'rgba(18,4,10,0.9)');
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle=sg;ctx.fill();
+  
+  // Latitude rings
+  for(let lat=1;lat<=4;lat++){
+    const a=lat/5*Math.PI*0.9;
+    ctx.beginPath();ctx.ellipse(cx,cy,r*Math.cos(a),r*Math.cos(a)*0.4,0,0,Math.PI*2);
+    ctx.strokeStyle=eCol+'0.10)';ctx.lineWidth=0.5;ctx.stroke();
+    ctx.beginPath();ctx.ellipse(cx,cy,r*Math.cos(a),r*Math.cos(a)*0.4,0,Math.PI,Math.PI*2);
+    ctx.strokeStyle=eCol+'0.10)';ctx.lineWidth=0.5;ctx.stroke();
+  }
+  // Longitude meridians
+  for(let lon=0;lon<5;lon++){
+    const a=(lon/5)*Math.PI;
+    ctx.beginPath();ctx.ellipse(cx,cy,r*Math.sin(a)||r*0.05,r,rot+a-Math.PI/2,0,Math.PI*2);
+    ctx.strokeStyle=eCol+'0.10)';ctx.lineWidth=0.5;ctx.stroke();
+  }
+  
+  // Sphere outline
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.strokeStyle=eCol+'0.35)';ctx.lineWidth=1.3;ctx.stroke();
+  
+  // Spherical triangle (outward-bowing arcs)
+  const pole=[cx,cy-r*0.85];
+  const eq1=[cx-r*0.72,cy+r*0.3];
+  const eq2=[cx+r*0.72,cy+r*0.3];
+  const glow=0.7+0.3*Math.sin(tick*0.04);
+  ctx.strokeStyle=eCol+(glow*0.85)+')';ctx.lineWidth=2;
+  [[pole,eq1],[pole,eq2],[eq1,eq2]].forEach(([a,b])=>{
+    const mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2;
+    const cpx=mx+(mx-cx)*0.55,cpy=my+(my-cy)*0.55;
+    ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.quadraticCurveTo(cpx,cpy,b[0],b[1]);ctx.stroke();
+  });
+  [pole,eq1,eq2].forEach(([px,py])=>{
+    const gg=ctx.createRadialGradient(px,py,0,px,py,9);
+    gg.addColorStop(0,eCol+(glow*0.7)+')');gg.addColorStop(1,'transparent');
+    ctx.fillStyle=gg;ctx.fillRect(px-9,py-9,18,18);
+    ctx.beginPath();ctx.arc(px,py,4,0,Math.PI*2);
+    ctx.fillStyle=eCol+(glow*0.9)+')';ctx.fill();
+  });
+  // Specular
+  const hl=ctx.createRadialGradient(cx-r*0.28,cy-r*0.28,0,cx,cy,r*0.6);
+  hl.addColorStop(0,'rgba(255,180,200,0.15)');hl.addColorStop(1,'transparent');
+  ctx.fillStyle=hl;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+  
+  ctx.font=`italic ${Math.round(H*0.08)}px IM Fell English,serif`;
+  ctx.textAlign='center';ctx.fillStyle=eCol+'0.65)';
+  ctx.fillText('∠ > 180°',cx,cy+H*0.06);
+}
+
+function startGeoRenderers(){
+  [{id:'geo-euc',fn:drawEuclidean},{id:'geo-hyp',fn:drawHyperbolic},{id:'geo-ell',fn:drawElliptic}].forEach(({id,fn})=>{
+    const c=document.getElementById(id);if(!c)return;
+    // Delay slightly so scene layout is fully painted before measuring
+    setTimeout(()=>{
+      const r=c.getBoundingClientRect();
+      const S=Math.max(r.width,r.height,180);
+      c.width=S;c.height=S;
+      let t=0,active=true,raf;
+      function loop(){
+        if(!active)return;
+        try{fn(c,t++);}catch(e){/* absorb draw errors */}
+        raf=requestAnimationFrame(loop);
+      }
+      loop();
+      geoRenderers[id]={stop(){active=false;cancelAnimationFrame(raf);}};
+    },80);
+  });
+}
+function stopGeoRenderers(){Object.values(geoRenderers).forEach(r=>r.stop());}
+
+// ══════════════════════════════════════════
+// SCENE 3: 3D Saddle surface
+// ══════════════════════════════════════════
+let saddleActive=false,saddleRAF,saddleTick=0;
+function startSaddle(){
+  const canvas=document.getElementById('saddle-c');if(!canvas)return;
+  const _sr=canvas.getBoundingClientRect();
+  const W=_sr.width||340,H=_sr.height||320;
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  saddleActive=true;
+  const N=26,range=1.5;
+
+  function frame(){
+    if(!saddleActive)return;
+    ctx.clearRect(0,0,W,H);
+    const t=saddleTick;
+    const ry=t*0.012,rx=0.52;
+    const pts=[];
+    for(let i=0;i<=N;i++){
+      pts.push([]);
+      for(let j=0;j<=N;j++){
+        const x2=(i/N*2-1)*range,z2=(j/N*2-1)*range;
+        const y2=x2*x2-z2*z2;// saddle z=x²-y²
+        let p=[x2*36,y2*22,-z2*36];
+        p=rotX(p,rx);p=rotY(p,ry);
+        const pp=proj(p,320,W/2,H/2);
+        pts[i].push({p:pp,z:p[2],y2});
+      }
+    }
+    // Draw grid lines
+    for(let i=0;i<=N;i++){
+      ctx.beginPath();
+      for(let j=0;j<=N;j++){
+        const {p,y2}=pts[i][j];
+        const h=Math.max(0,Math.min(1,(y2+2)/4));
+        j===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]);
+      }
+      const hue=Math.floor(120+i/N*100);
+      ctx.strokeStyle=`rgba(90,${hue},180,${0.18+i/N*0.2})`;ctx.lineWidth=0.9;ctx.stroke();
+    }
+    for(let j=0;j<=N;j++){
+      ctx.beginPath();
+      for(let i=0;i<=N;i++){
+        const {p}=pts[i][j];
+        i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]);
+      }
+      ctx.strokeStyle=`rgba(90,232,180,0.25)`;ctx.lineWidth=0.8;ctx.stroke();
+    }
+    // Draw a geodesic triangle on the saddle
+    const triPts=[[[0.8,0,-0.8]],[[-0.8,0,-0.8]],[[0,0,0.8]]].map(([v])=>{
+      const x2=v[0],z2=v[2],y2=x2*x2-z2*z2;
+      let p=[x2*36,y2*22,-z2*36];
+      p=rotX(p,rx);p=rotY(p,ry);
+      return proj(p,320,W/2,H/2);
+    });
+    ctx.beginPath();ctx.moveTo(triPts[0][0],triPts[0][1]);
+    triPts.forEach(p=>ctx.lineTo(p[0],p[1]));ctx.closePath();
+    ctx.strokeStyle='rgba(90,232,180,0.9)';ctx.lineWidth=1.8;ctx.stroke();
+    ctx.fillStyle='rgba(90,232,180,0.06)';ctx.fill();
+    saddleTick++;saddleRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopSaddle(){saddleActive=false;cancelAnimationFrame(saddleRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 4: Poincaré Disk — Escher-like infinite hyperbolic tessellation
+// ══════════════════════════════════════════
+let poincareActive=false,poincareRAF,poincareTick=0;
+function startPoincare(){
+  const canvas=document.getElementById('poincare-c');if(!canvas)return;
+  const _pr=canvas.getBoundingClientRect();
+  const S=Math.min(_pr.width||440,_pr.height||440);
+  canvas.width=S;canvas.height=S;
+  const ctx=canvas.getContext('2d');
+  poincareActive=true;poincareTick=0;
+  const R=S*0.46,cx=S/2,cy=S/2;
+
+  // ── Hyperbolic geodesic: circular arc orthogonal to boundary ──
+  function hyperGeodesic(ctx,ax,ay,bx,by){
+    const dax=ax-cx,day=ay-cy;
+    const dbx=bx-cx,dby=by-cy;
+    const ra2=dax*dax+day*day,rb2=dbx*dbx+dby*dby;
+    // If either point is at center, draw a line
+    if(ra2<0.01||rb2<0.01){
+      ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke();return;
+    }
+    // Inversion through boundary circle
+    const inv=R*R;
+    const iax=cx+dax*inv/ra2,iay=cy+day*inv/ra2;
+    // Circumcircle of (ax,ay),(bx,by),(iax,iay)
+    const ax2=ax*ax+ay*ay,bx2=bx*bx+by*by,ia2=iax*iax+iay*iay;
+    const D=2*(ax*(ay-iay)+iax*(iay-ay)+bx*(iay-ay));
+    if(Math.abs(D)<0.5){
+      ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke();return;
+    }
+    const ux=(ax2*(ay-iay)+ia2*(iay-ay)+bx2*(iay-ay))/D;
+    const uy=(ax2*(iax-ax)+ia2*(ax-iax)+bx2*(ax-iax))/D;
+    const arcR=Math.sqrt((ax-ux)**2+(ay-uy)**2);
+    if(arcR>S*4){
+      ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke();return;
+    }
+    const a1=Math.atan2(ay-uy,ax-ux);
+    const a2=Math.atan2(by-uy,bx-ux);
+    let diff=((a2-a1)%(Math.PI*2)+Math.PI*3)%(Math.PI*2)-Math.PI;
+    ctx.beginPath();ctx.arc(ux,uy,arcR,a1,a1+diff,diff<0);ctx.stroke();
+  }
+
+  // ── Möbius transformation (disk automorphism) ──
+  function mobius(px,py,ax,ay){
+    // Translate by -a, then Möbius: z → (z-a)/(1-ā·z)
+    const dx=px-ax,dy=py-ay;
+    const qx=-ax,qy=-ay;
+    // (dx+i*dy) / (1 - (-ax-i*ay)(dx+i*dy))
+    // denominator: 1 - ((-ax)*dx - (-ay)*dy) - i*((-ax)*dy + (-ay)*dx)... 
+    // Simplified: move a to origin in disk coords
+    const bx=ax/R*R,by=ay/R*R; // normalized to disk
+    const ra2=(ax*ax+ay*ay)/(R*R);
+    const denom_x=1-(-ax/R)*(dx/R)-(-ay/R)*(dy/R);
+    const denom_y=-(-ax/R)*(dy/R)+(-ay/R)*(dx/R);
+    const d2=denom_x*denom_x+denom_y*denom_y;
+    const nx=(dx/R*denom_x+dy/R*denom_y)/d2*R;
+    const ny=(dy/R*denom_x-dx/R*denom_y)/d2*R;
+    return[cx+nx,cy+ny];
+  }
+
+  // ── Disk point helper ──
+  function dpt(r,a){return[cx+Math.cos(a)*r*R,cy+Math.sin(a)*r*R];}
+  
+  // Precompute tessellation triangle vertices at 3 levels
+  // Using {6,4} tiling: 6 triangles meet at each vertex
+  // Approximate with layered rings
+  const BASE_ANGLES=6; // hexagonal base
+  
+  function drawTiling(rotOffset){
+    const levels=5;
+    // Level 0: center hexagon
+    const hCol='rgba(90,232,180,';
+    const hCol2='rgba(90,180,232,';
+    
+    for(let level=1;level<=levels;level++){
+      const n=level*BASE_ANGLES;
+      const rFrac=0.15+(level-1)*0.14;
+      if(rFrac>=0.97)continue;
+      
+      for(let i=0;i<n;i++){
+        const a=(i/n)*Math.PI*2+rotOffset*(level%2===0?1:-1)*(1/(level+1));
+        const r=rFrac*R;
+        const [ax,ay]=dpt(rFrac,a);
+        const [bx,by]=dpt(rFrac,a+Math.PI/n);
+        // Inner vertex
+        const innerR=Math.max(0,(rFrac-0.13)*R);
+        const [ix,iy]=dpt((rFrac-0.13),a+Math.PI/(n*2));
+        
+        const alpha=0.09*(1-rFrac)*Math.max(0,(1-rFrac/0.97)*2);
+        const alt=(i%2===0)?hCol:hCol2;
+        
+        ctx.strokeStyle=alt+alpha+')';
+        ctx.lineWidth=0.7*(1-rFrac*0.7);
+        hyperGeodesic(ctx,ax,ay,bx,by);
+        if(innerR>5){
+          hyperGeodesic(ctx,ax,ay,ix,iy);
+        }
+      }
+    }
+  }
+
+  function frame(){
+    if(!poincareActive)return;
+    ctx.fillStyle='rgba(6,3,14,0.95)';ctx.fillRect(0,0,S,S);
+    const t=poincareTick;
+    const rotOffset=t*0.004;
+
+    // ── Boundary disk fill + glow ──
+    const bgGrad=ctx.createRadialGradient(cx,cy,0,cx,cy,R);
+    bgGrad.addColorStop(0,'rgba(15,8,35,0.98)');
+    bgGrad.addColorStop(0.7,'rgba(8,4,20,0.99)');
+    bgGrad.addColorStop(1,'rgba(4,2,10,1)');
+    ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);
+    ctx.fillStyle=bgGrad;ctx.fill();
+
+    // ── Tessellation layers ──
+    drawTiling(rotOffset);
+
+    // ── More detailed geodesic lines at multiple radii ──
+    const nLines=12;
+    for(let i=0;i<nLines;i++){
+      const a=(i/nLines)*Math.PI*2+rotOffset*0.7;
+      const r1=0.25,r2=0.88;
+      const [ax,ay]=dpt(r1,a);
+      const [bx,by]=dpt(r2,a+Math.PI/nLines);
+      const pulse=0.07+0.04*Math.sin(t*0.03+i);
+      ctx.strokeStyle=`rgba(90,232,180,${pulse})`;
+      ctx.lineWidth=0.8;
+      hyperGeodesic(ctx,ax,ay,bx,by);
+    }
+
+    // ── Highlighted rotating triangle trio ──
+    {
+      const n=3,glow=0.7+0.3*Math.sin(t*0.04);
+      const r0=0.55;
+      const verts=Array.from({length:n},(_,i)=>{
+        const a=(i/n)*Math.PI*2+rotOffset;
+        return dpt(r0,a);
+      });
+      ctx.strokeStyle=`rgba(90,232,180,${glow*0.6})`;
+      ctx.lineWidth=1.8;
+      for(let i=0;i<n;i++){
+        const[ax,ay]=verts[i],[bx,by]=verts[(i+1)%n];
+        hyperGeodesic(ctx,ax,ay,bx,by);
+      }
+      // Vertex glows
+      verts.forEach(([vx,vy])=>{
+        const gg=ctx.createRadialGradient(vx,vy,0,vx,vy,12);
+        gg.addColorStop(0,`rgba(90,232,180,${glow*0.7})`);
+        gg.addColorStop(1,'transparent');
+        ctx.fillStyle=gg;ctx.fillRect(vx-12,vy-12,24,24);
+        ctx.beginPath();ctx.arc(vx,vy,4*glow,0,Math.PI*2);
+        ctx.fillStyle=`rgba(90,232,180,${glow*0.9})`;ctx.fill();
+      });
+    }
+
+    // ── Counter-rotating second triangle ──
+    {
+      const n=3,glow=0.5+0.3*Math.sin(t*0.04+1.5);
+      const r0=0.32;
+      const verts=Array.from({length:n},(_,i)=>{
+        const a=(i/n)*Math.PI*2-rotOffset*1.4+Math.PI/3;
+        return dpt(r0,a);
+      });
+      ctx.strokeStyle=`rgba(90,180,248,${glow*0.55})`;
+      ctx.lineWidth=1.4;
+      for(let i=0;i<n;i++){
+        hyperGeodesic(ctx,verts[i][0],verts[i][1],verts[(i+1)%n][0],verts[(i+1)%n][1]);
+      }
+    }
+
+    // ── Boundary circle ──
+    ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);
+    const bGrad=ctx.createLinearGradient(cx-R,cy,cx+R,cy);
+    bGrad.addColorStop(0,'rgba(90,232,180,0.15)');
+    bGrad.addColorStop(0.5,'rgba(90,232,180,0.55)');
+    bGrad.addColorStop(1,'rgba(90,232,180,0.15)');
+    ctx.strokeStyle=bGrad;ctx.lineWidth=2;ctx.stroke();
+
+    // Outer ring glow
+    const og=ctx.createRadialGradient(cx,cy,R-4,cx,cy,R+10);
+    og.addColorStop(0,'rgba(90,232,180,0.12)');og.addColorStop(1,'transparent');
+    ctx.fillStyle=og;ctx.fillRect(0,0,S,S);
+
+    // ── Center glow ──
+    const cg=ctx.createRadialGradient(cx,cy,0,cx,cy,R*0.18);
+    cg.addColorStop(0,'rgba(90,232,180,0.15)');cg.addColorStop(1,'transparent');
+    ctx.fillStyle=cg;ctx.fillRect(0,0,S,S);
+    ctx.beginPath();ctx.arc(cx,cy,4,0,Math.PI*2);
+    ctx.fillStyle='rgba(90,232,180,0.7)';ctx.fill();
+
+    poincareTick++;poincareRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopPoincare(){poincareActive=false;cancelAnimationFrame(poincareRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 5: Glowing 3D Sphere — geodesics, triangles, spherical excess
+// ══════════════════════════════════════════
+let sphereActive=false,sphereRAF,sphereTick=0;
+function startSphere(){
+  const canvas=document.getElementById('sphere-c');if(!canvas)return;
+  const _spr=canvas.getBoundingClientRect();
+  const S=Math.min(_spr.width||360,_spr.height||360);
+  canvas.width=S;canvas.height=S;
+  const ctx=canvas.getContext('2d');
+  sphereActive=true;sphereTick=0;
+  const r=S*0.38,cx=S/2,cy=S/2;
+
+  function rotY2(p,a){return[p[0]*Math.cos(a)+p[2]*Math.sin(a),p[1],-p[0]*Math.sin(a)+p[2]*Math.cos(a)];}
+  function rotX2(p,a){return[p[0],p[1]*Math.cos(a)-p[2]*Math.sin(a),p[1]*Math.sin(a)+p[2]*Math.cos(a)];}
+  function proj2(p,fov){const z=p[2]+fov,s=fov/z;return[p[0]*s+cx,p[1]*s+cy,p[2]];}
+
+  // Convert spherical coords to 3D point on sphere
+  function sph(lat,lon){
+    return[Math.cos(lat)*Math.cos(lon)*r, Math.sin(lat)*r, -Math.cos(lat)*Math.sin(lon)*r];
+  }
+
+  // Draw great circle arc between two 3D points
+  function greatArc(ctx,p1,p2,steps,ry,rx){
+    const pts=[];
+    for(let i=0;i<=steps;i++){
+      const t2=i/steps;
+      const x=p1[0]*(1-t2)+p2[0]*t2;
+      const y=p1[1]*(1-t2)+p2[1]*t2;
+      const z=p1[2]*(1-t2)+p2[2]*t2;
+      const len=Math.sqrt(x*x+y*y+z*z)||1;
+      let p=[x/len*r,y/len*r,z/len*r];
+      p=rotY2(p,ry);p=rotX2(p,rx);
+      pts.push(proj2(p,500));
+    }
+    ctx.beginPath();
+    pts.forEach((p,i)=>{
+      if(p[2]<-r*0.1&&i>0){ctx.beginPath();return;} // back-face culling
+      i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]);
+    });
+    ctx.stroke();
+    return pts;
+  }
+
+  function frame(){
+    if(!sphereActive)return;
+    ctx.clearRect(0,0,S,S);
+    const t=sphereTick;
+    const ry=t*0.009,rx=0.38;
+
+    // ── Sphere fill with radial gradient ──
+    const grd=ctx.createRadialGradient(cx-r*0.28,cy-r*0.28,0,cx,cy,r);
+    grd.addColorStop(0,'rgba(100,25,50,0.7)');
+    grd.addColorStop(0.6,'rgba(50,10,25,0.85)');
+    grd.addColorStop(1,'rgba(18,4,10,0.95)');
+    ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
+    ctx.fillStyle=grd;ctx.fill();
+
+    const eCol='rgba(232,90,126,';
+
+    // ── Latitude grid lines ──
+    for(let lat=-80;lat<=80;lat+=20){
+      const pts=[];
+      for(let lon=0;lon<=360;lon+=5){
+        let p=sph(lat*Math.PI/180,lon*Math.PI/180);
+        p=rotY2(p,ry);p=rotX2(p,rx);
+        pts.push(proj2(p,500));
+      }
+      ctx.beginPath();let first=true;
+      pts.forEach(p=>{
+        if(p[2]<-r*0.05){first=true;return;}
+        if(first){ctx.moveTo(p[0],p[1]);first=false;}else ctx.lineTo(p[0],p[1]);
+      });
+      ctx.strokeStyle=eCol+'0.12)';ctx.lineWidth=0.6;ctx.stroke();
+    }
+    // ── Longitude grid lines ──
+    for(let lon=0;lon<180;lon+=20){
+      const pts=[];
+      for(let lat=-90;lat<=90;lat+=5){
+        let p=sph(lat*Math.PI/180,lon*Math.PI/180);
+        p=rotY2(p,ry);p=rotX2(p,rx);
+        pts.push(proj2(p,500));
+      }
+      ctx.beginPath();let first=true;
+      pts.forEach(p=>{
+        if(p[2]<-r*0.05){first=true;return;}
+        if(first){ctx.moveTo(p[0],p[1]);first=false;}else ctx.lineTo(p[0],p[1]);
+      });
+      ctx.strokeStyle=eCol+'0.12)';ctx.lineWidth=0.6;ctx.stroke();
+    }
+
+    // ── Sphere outline ──
+    ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
+    ctx.strokeStyle=eCol+'0.35)';ctx.lineWidth=1.4;ctx.stroke();
+
+    // ── Two large spherical triangles ──
+    // Triangle 1: equatorial + north pole (large excess)
+    const tri1=[sph(0,0),sph(0,Math.PI*2/3),sph(Math.PI/2,0)];
+    const tri2=[sph(0,Math.PI/3),sph(0,Math.PI),sph(-Math.PI/2,0)];
+
+    [tri1,tri2].forEach((tri,ti)=>{
+      const sides=[[0,1],[1,2],[2,0]];
+      const glow=0.7+0.3*Math.sin(t*0.04+ti*Math.PI);
+      ctx.strokeStyle=eCol+(glow*0.85)+')';ctx.lineWidth=2.2;
+      sides.forEach(([a,b])=>greatArc(ctx,tri[a],tri[b],32,ry,rx));
+      // Vertex dots
+      tri.forEach(v=>{
+        let p=rotY2(v,ry);p=rotX2(p,rx);const pp=proj2(p,500);
+        if(pp[2]<-r*0.1)return;
+        const vg=ctx.createRadialGradient(pp[0],pp[1],0,pp[0],pp[1],10);
+        vg.addColorStop(0,eCol+(glow*0.9)+')');vg.addColorStop(1,'transparent');
+        ctx.fillStyle=vg;ctx.fillRect(pp[0]-10,pp[1]-10,20,20);
+        ctx.beginPath();ctx.arc(pp[0],pp[1],5,0,Math.PI*2);
+        ctx.fillStyle=eCol+(glow)+')';ctx.fill();
+      });
+    });
+
+    // ── Equator highlighted ──
+    {
+      const pts=[];
+      for(let lon=0;lon<=360;lon+=4){
+        let p=sph(0,lon*Math.PI/180);
+        p=rotY2(p,ry);p=rotX2(p,rx);
+        pts.push(proj2(p,500));
+      }
+      ctx.beginPath();let first=true;
+      pts.forEach(p=>{
+        if(p[2]<-r*0.05){first=true;return;}
+        if(first){ctx.moveTo(p[0],p[1]);first=false;}else ctx.lineTo(p[0],p[1]);
+      });
+      ctx.strokeStyle=eCol+'0.30)';ctx.lineWidth=1.0;ctx.setLineDash([4,6]);ctx.stroke();ctx.setLineDash([]);
+    }
+
+    // ── Specular highlight ──
+    const hlGrad=ctx.createRadialGradient(cx-r*0.3,cy-r*0.3,0,cx-r*0.3,cy-r*0.3,r*0.5);
+    hlGrad.addColorStop(0,'rgba(255,200,220,0.18)');
+    hlGrad.addColorStop(1,'transparent');
+    ctx.fillStyle=hlGrad;
+    ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+
+    // ── Angle sum label ──
+    const pulse=0.65+0.35*Math.sin(t*0.04);
+    ctx.font=`italic ${Math.round(S*0.07)}px IM Fell English,serif`;
+    ctx.textAlign='center';ctx.fillStyle=eCol+(pulse*0.8)+')';
+    ctx.fillText('∑∠ > 180°',cx,cy+r*0.22);
+
+    sphereTick++;sphereRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopSphere(){sphereActive=false;cancelAnimationFrame(sphereRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 6: Spacetime warping
+// ══════════════════════════════════════════
+let stActive=false,stRAF,stTick=0;
+function startSpacetime(){
+  const canvas=document.getElementById('spacetime-c');if(!canvas)return;
+  const _str=canvas.getBoundingClientRect();
+  const W=_str.width||640,H=_str.height||340;
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  stActive=true;
+  function frame(){
+    if(!stActive)return;
+    ctx.clearRect(0,0,W,H);
+    const t=stTick,mx=W/2,my=H/2;
+    const mass=22+Math.sin(t*0.02)*4;
+    // Grid lines warped by central mass
+    const cols=20,rows=12;
+    for(let row=0;row<=rows;row++){
+      ctx.beginPath();
+      for(let col=0;col<=cols;col++){
+        const gx=col/cols*W,gy=row/rows*H;
+        const dx=gx-mx,dy=gy-my,dist=Math.sqrt(dx*dx+dy*dy)||1;
+        const pull=Math.min(mass*mass/(dist*0.8),my*0.7);
+        const wx=gx-dx/dist*pull*(1/(1+dist/40)),wy=gy-dy/dist*pull*(1/(1+dist/40));
+        col===0?ctx.moveTo(wx,wy):ctx.lineTo(wx,wy);
+      }
+      const rowAlpha=0.15+0.09*Math.abs(row/rows-0.5)*2;
+      ctx.strokeStyle=`rgba(160,110,255,${rowAlpha})`;ctx.lineWidth=0.8;ctx.stroke();
+    }
+    for(let col=0;col<=cols;col++){
+      ctx.beginPath();
+      for(let row=0;row<=rows;row++){
+        const gx=col/cols*W,gy=row/rows*H;
+        const dx=gx-mx,dy=gy-my,dist=Math.sqrt(dx*dx+dy*dy)||1;
+        const pull=Math.min(mass*mass/(dist*0.8),my*0.7);
+        const wx=gx-dx/dist*pull*(1/(1+dist/40)),wy=gy-dy/dist*pull*(1/(1+dist/40));
+        row===0?ctx.moveTo(wx,wy):ctx.lineTo(wx,wy);
+      }
+      const colAlpha=0.15+0.09*Math.abs(col/cols-0.5)*2;
+      ctx.strokeStyle=`rgba(160,110,255,${colAlpha})`;ctx.lineWidth=0.8;ctx.stroke();
+    }
+    // Central mass glow
+    const pulse=Math.sin(t*0.04)*0.2+0.8;
+    const mg=ctx.createRadialGradient(mx,my,0,mx,my,mass*1.5);
+    mg.addColorStop(0,`rgba(232,200,80,${pulse*0.8})`);
+    mg.addColorStop(0.4,`rgba(232,140,60,${pulse*0.4})`);
+    mg.addColorStop(1,'transparent');
+    ctx.fillStyle=mg;ctx.fillRect(mx-mass*2,my-mass*2,mass*4,mass*4);
+    ctx.beginPath();ctx.arc(mx,my,mass*0.55,0,Math.PI*2);
+    ctx.fillStyle=`rgba(232,200,80,${pulse})`;ctx.fill();
+    // Multiple geodesic light paths at different radii
+    [0.5,0.7,0.9].forEach((fr,li)=>{
+      const baseR=Math.min(W,H)*fr*0.32;
+      ctx.beginPath();
+      for(let a=0;a<Math.PI*2;a+=0.04){
+        const warp=Math.sin(a*3+t*0.02+li)*baseR*0.05;
+        const lx=mx+Math.cos(a)*(baseR+warp);
+        const ly=my+Math.sin(a)*(baseR+warp)*(0.4+fr*0.1);
+        a<0.04?ctx.moveTo(lx,ly):ctx.lineTo(lx,ly);
+      }
+      ctx.strokeStyle=`rgba(90,232,180,${0.2+li*0.1})`;
+      ctx.lineWidth=0.8+li*0.3;
+      ctx.setLineDash([4,8]);ctx.stroke();ctx.setLineDash([]);
+    });
+    // Animated photon on innermost path
+    const photonAngle=t*0.04;
+    const photonR=Math.min(W,H)*0.16;
+    const photonX=mx+Math.cos(photonAngle)*photonR;
+    const photonY=my+Math.sin(photonAngle)*photonR*0.42;
+    const pg2=ctx.createRadialGradient(photonX,photonY,0,photonX,photonY,10);
+    pg2.addColorStop(0,'rgba(90,232,180,0.9)');pg2.addColorStop(1,'transparent');
+    ctx.fillStyle=pg2;ctx.fillRect(photonX-10,photonY-10,20,20);
+    ctx.beginPath();ctx.arc(photonX,photonY,4,0,Math.PI*2);
+    ctx.fillStyle='rgba(90,232,180,1)';ctx.fill();
+    stTick++;stRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopSpacetime(){stActive=false;cancelAnimationFrame(stRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 7 OUTRO: Three Geometries Unite — light traveling all worlds
+// ══════════════════════════════════════════
+const c7=document.getElementById('c7');
+let t7=0,c7Active=false,c7Raf;
+function resizeC7(){const r=c7.getBoundingClientRect();c7.width=r.width||640;c7.height=r.height||280;}
+function drawC7(){
+  if(!c7Active)return;
+  resizeC7();
+  const CW=c7.width,CH=c7.height,ctx=c7.getContext('2d');
+  ctx.fillStyle='rgba(4,2,10,0.90)';ctx.fillRect(0,0,CW,CH);
+  const t=t7,W3=CW/3,cy=CH/2;
+
+  // ── Three worlds side by side ──────────────────
+  const worlds=[
+    {col:'rgba(201,168,76,',name:'欧氏',label:'曲率 = 0'},
+    {col:'rgba(90,232,180,', name:'双曲',label:'曲率 < 0'},
+    {col:'rgba(232,90,126,', name:'椭圆',label:'曲率 > 0'},
+  ];
+  worlds.forEach(({col,name,label},wi)=>{
+    const ox=wi*W3,cx=ox+W3/2;
+    ctx.save();ctx.beginPath();ctx.rect(ox,0,W3,CH);ctx.clip();
+    // World-specific grid
+    if(wi===0){
+      // Flat grid
+      for(let i=0;i<7;i++){
+        const gy=cy-CH*0.35+i*CH*0.12;
+        ctx.beginPath();ctx.moveTo(ox+10,gy);ctx.lineTo(ox+W3-10,gy);
+        ctx.strokeStyle=col+'0.10)';ctx.lineWidth=0.6;ctx.stroke();
+      }
+      for(let i=0;i<5;i++){
+        const gx=ox+W3*0.15+i*W3*0.18;
+        ctx.beginPath();ctx.moveTo(gx,CH*0.12);ctx.lineTo(gx,CH*0.88);
+        ctx.strokeStyle=col+'0.10)';ctx.lineWidth=0.6;ctx.stroke();
+      }
+    } else if(wi===1){
+      // Warped hyperbolic grid
+      for(let i=0;i<7;i++){
+        const frac=(i/6)*2-1;
+        ctx.beginPath();
+        for(let sx=ox+10;sx<=ox+W3-10;sx+=3){
+          const fx=(sx-cx)/(W3/2);
+          const wy=cy+frac*CH*0.35*(1+fx*fx*0.4);
+          sx===ox+10?ctx.moveTo(sx,wy):ctx.lineTo(sx,wy);
+        }
+        ctx.strokeStyle=col+'0.10)';ctx.lineWidth=0.6;ctx.stroke();
+      }
+    } else {
+      // Spherical longitude/latitude
+      const r=Math.min(W3,CH)*0.34;
+      for(let li=0;li<5;li++){
+        const a=(li/5)*Math.PI;
+        ctx.beginPath();ctx.ellipse(cx,cy,r*Math.sin(a)||r*0.04,r,Math.PI/2,0,Math.PI*2);
+        ctx.strokeStyle=col+'0.10)';ctx.lineWidth=0.6;ctx.stroke();
+      }
+      for(let la=-2;la<=2;la++){
+        const lat=la/2.5*Math.PI*0.45;
+        ctx.beginPath();ctx.ellipse(cx,cy,r*Math.cos(lat),r*Math.cos(lat)*0.45,0,0,Math.PI*2);
+        ctx.strokeStyle=col+'0.10)';ctx.lineWidth=0.6;ctx.stroke();
+      }
+    }
+    // World name + label
+    ctx.font=`italic ${Math.round(CH*0.08)}px IM Fell English,serif`;
+    ctx.textAlign='center';ctx.fillStyle=col+'0.75)';
+    ctx.fillText(name,cx,CH*0.26);
+    ctx.font=`${Math.round(CH*0.044)}px Cinzel,serif`;
+    ctx.fillStyle=col+'0.45)';ctx.fillText(label,cx,CH*0.40);
+    ctx.restore();
+  });
+
+  // Dividers
+  [W3,W3*2].forEach(x=>{
+    const dg=ctx.createLinearGradient(x,0,x,CH);
+    dg.addColorStop(0,'transparent');dg.addColorStop(0.5,'rgba(122,95,42,0.3)');dg.addColorStop(1,'transparent');
+    ctx.fillStyle=dg;ctx.fillRect(x-1,0,2,CH);
+  });
+
+  // ── Light ray traveling across all three worlds ──
+  const lt=(t*0.008)%1;
+  const lx=lt*CW;
+  // Path curves differently in each world
+  const worldFrac=lx/CW*3;
+  let rayY;
+  if(worldFrac<1){
+    // Flat — straight
+    rayY=cy;
+  } else if(worldFrac<2){
+    // Hyperbolic — bows outward
+    const f=worldFrac-1;
+    rayY=cy+Math.sin(f*Math.PI)*CH*0.18;
+  } else {
+    // Elliptic — bows inward
+    const f=worldFrac-2;
+    rayY=cy-Math.sin(f*Math.PI)*CH*0.18;
+  }
+  // Light trail
+  const trailLen=80;
+  for(let j=trailLen;j>0;j--){
+    const tlx=lx-j*3;if(tlx<0)continue;
+    const tFrac=tlx/CW*3;
+    let tY;
+    if(tFrac<1) tY=cy;
+    else if(tFrac<2){ const f=tFrac-1;tY=cy+Math.sin(f*Math.PI)*CH*0.18;}
+    else { const f=tFrac-2;tY=cy-Math.sin(f*Math.PI)*CH*0.18;}
+    const al=(1-j/trailLen)*0.6;
+    // Color based on which world
+    const col2=tFrac<1?`rgba(201,168,76,${al})`:tFrac<2?`rgba(90,232,180,${al})`:`rgba(232,90,126,${al})`;
+    ctx.beginPath();ctx.arc(tlx,tY,2.5*(1-j/trailLen)*1.5,0,Math.PI*2);
+    ctx.fillStyle=col2;ctx.fill();
+  }
+  // Photon glow
+  const photonCol=worldFrac<1?'rgba(201,168,76,':worldFrac<2?'rgba(90,232,180,':'rgba(232,90,126,';
+  const pg=ctx.createRadialGradient(lx,rayY,0,lx,rayY,14);
+  pg.addColorStop(0,photonCol+'0.95)');pg.addColorStop(1,'transparent');
+  ctx.fillStyle=pg;ctx.fillRect(lx-14,rayY-14,28,28);
+  ctx.beginPath();ctx.arc(lx,rayY,5,0,Math.PI*2);
+  ctx.fillStyle=photonCol+'1)';ctx.fill();
+
+  t7++;c7Raf=requestAnimationFrame(drawC7);
+}
+
+// ══════════════════════════════════════════
+// SCENE MANAGER
+// ══════════════════════════════════════════
+const scenes=document.querySelectorAll('.scene');
+const totalScenes=scenes.length;
+let current=0,isTransitioning=false;
+const dotsEl=document.getElementById('nav-dots');
+for(let i=0;i<totalScenes;i++){
+  const d=document.createElement('div');d.className='nav-dot'+(i===0?' active':'');
+  d.addEventListener('click',()=>goTo(i));dotsEl.appendChild(d);
+}
+function updateDots(){document.querySelectorAll('.nav-dot').forEach((d,i)=>d.classList.toggle('active',i===current));}
+function updateProgress(){document.getElementById('progress').style.width=(current/(totalScenes-1)*100)+'%';}
+
+function onEnterScene(idx){
+  if(idx===0){
+    ['s0-b','s0-t','s0-s','s0-body'].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add('show');},200+i*280));
+    c0.style.opacity='1';setTimeout(()=>{t0=0;if(c0Raf)cancelAnimationFrame(c0Raf);drawC0();},380);
+  }
+  if(idx===1){
+    setTimeout(()=>{const a=document.getElementById('ax-box');if(a)a.classList.add('show');},400);
+    const _c1p=document.getElementById('c1-par');if(_c1p)_c1p.style.opacity='1';
+    setTimeout(startParallel,380);
+  }
+  if(idx===2){
+    startGeoRenderers();
+    ['gc0','gc1','gc2'].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add('show');},400+i*300));
+  }
+  if(idx===3){
+    const _sc=document.getElementById('saddle-c');if(_sc)_sc.style.opacity='1';
+    const hi=document.getElementById('hyp-info');if(hi)hi.style.opacity='1';
+    setTimeout(startSaddle,360);
+  }
+  if(idx===4){
+    const _pc=document.getElementById('poincare-c');if(_pc)_pc.style.opacity='1';
+    setTimeout(startPoincare,400);
+  }
+  if(idx===5){
+    const _sp=document.getElementById('sphere-c');if(_sp)_sp.style.opacity='1';
+    const ei=document.getElementById('ell-info');if(ei)ei.style.opacity='1';
+    setTimeout(startSphere,360);
+  }
+  if(idx===6){
+    const _stc=document.getElementById('spacetime-c');if(_stc)_stc.style.opacity='1';
+    const el=document.getElementById('ein-label');if(el)el.classList.add('show');
+    setTimeout(startSpacetime,360);
+  }
+  if(idx===7){
+    ['e-t','e-q','e-a'].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add('show');},300+i*500));
+    c7.style.opacity='1';setTimeout(()=>{t7=0;c7Active=true;if(c7Raf)cancelAnimationFrame(c7Raf);drawC7();},360);
+  }
+}
+function onLeaveScene(idx){
+  if(idx===1)stopParallel();
+  if(idx===2)stopGeoRenderers();
+  if(idx===3)stopSaddle();
+  if(idx===4)stopPoincare();
+  if(idx===5)stopSphere();
+  if(idx===6)stopSpacetime();
+  if(idx===7)c7Active=false;
+  if(idx===1){const a=document.getElementById('ax-box');if(a)a.classList.remove('show');}
+}
+function goTo(idx){
+  if(isTransitioning||idx===current)return;
+  isTransitioning=true;onLeaveScene(current);
+  scenes[current].classList.remove('active');current=idx;scenes[current].classList.add('active');
+  updateDots();updateProgress();
+  setTimeout(()=>{onEnterScene(current);isTransitioning=false;},600);
+}
+function next(){if(current<totalScenes-1)goTo(current+1);}
+function prev(){if(current>0)goTo(current-1);}
+document.getElementById('btn-next').addEventListener('click',next);
+document.getElementById('btn-prev').addEventListener('click',prev);
+// Click anywhere to advance (document-level for reliability)
+document.addEventListener('click', (e) => {
+  if(e.target.closest('#nav')) return;
+  if(e.target.closest('a')) return;
+  if(e.target.closest('button')) return;
+  if(e.target.closest('#home-btn')) return;
+  if(e.target.closest('#ch-lang-bar')) return;
+  next();
+});
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')next();if(e.key==='ArrowLeft')prev();});
+setTimeout(()=>{document.getElementById('ornament').classList.add('visible');document.getElementById('hint').classList.add('visible');},1500);
+updateProgress();onEnterScene(0);
+</script>
+
+<div id="ch-lang-bar">
+  <button class="ch-lb" id="ch-btn-zh" onclick="chLang('zh')">中文</button>
+  <div class="ch-lb-sep"></div>
+  <button class="ch-lb on" id="ch-btn-en" onclick="chLang('en')">EN</button>
+</div>
+<script <script id="bilingual-js">
+(function(){
+  var D={"ornament": "Chapter VI · Non-Euclidean Geometry · The Geometry of Curved Space", "badges": ["Chapter VI", "§ 6.1 · The Fifth Postulate", "§ 6.1 · Hyperbolic Geometry", "§ 6.2 · Spherical Geometry", "§ 6.2 · Poincaré Disk", "§ 6.3 · Spacetime", "Epilogue · Chapter VI", "Epilogue · Chapter VI"], "titles": ["Non-Euclidean Geometry", "The Postulate That Refused to Fall", "Hyperbolic Space: Infinite Expansion", "Spherical Geometry: Angles Sum Beyond 180°", "Poincaré Disk: A Universe in a Circle", "The Universe Has Curvature", "When Parallel Lines Diverge", "Reality Is Stranger Than Imagination"], "bodies": ["For two thousand years, people believed Euclid's plane was the only reality.<br>Then mathematicians asked: what if the fifth postulate is false?", "Euclid's parallel postulate never felt as self-evident as the other four.<br>Centuries of attempts to prove it failed — the failure was the discovery.", "In hyperbolic space, infinitely many parallels pass through a point outside a line.<br>Triangle angle sum is <strong>less than 180°</strong>.", "The same triangle in three different spaces has completely different angle sums.", "The Poincaré disk models hyperbolic space perfectly:<br>the boundary circle is infinitely far away — geodesics are circular arcs.", "In 1915, Einstein wrote general relativity: <strong>mass curves spacetime</strong>,<br>and curved spacetime guides matter's motion.<br>Non-Euclidean geometry is not abstraction — it is the real universe.", "When the fifth postulate fell, a multiverse of geometries was born.<br>Mathematics does not describe one reality — it explores <strong>all possible realities</strong>."]};
+  var orig=null;
+  function save(){
+    if(orig)return;
+    var os=document.querySelector('.ornament-line span');
+    orig={
+      ornament:os?os.textContent:'',
+      badges:[].map.call(document.querySelectorAll('.chapter-badge'),function(e){return e.innerHTML;}),
+      titles:[].map.call(document.querySelectorAll('.scene-title'),function(e){return e.innerHTML;}),
+      bodies:[].map.call(document.querySelectorAll('.scene-body'),function(e){return e.innerHTML;}),
+    };
+  }
+  function applyEn(){
+    save();
+    applyPatchEn();
+    var os=document.querySelector('.ornament-line span');
+    if(os&&D.ornament)os.textContent=D.ornament;
+    [].forEach.call(document.querySelectorAll('.chapter-badge'),function(el,i){if(D.badges[i]!=null)el.innerHTML=D.badges[i];});
+    [].forEach.call(document.querySelectorAll('.scene-title'),function(el,i){if(D.titles[i]!=null)el.innerHTML=D.titles[i];});
+    [].forEach.call(document.querySelectorAll('.scene-body'),function(el,i){if(D.bodies[i]!=null)el.innerHTML=D.bodies[i];});
+  
+  
+
+    /* zwOrig save */
+    if(!window._zwOrig){
+      window._zwOrig={};
+      ['hyp-p0','hyp-p1','hyp-p2','ell-p0','ell-p1','ell-p2','e-q','e-a','e-t'].forEach(function(id){var e=document.getElementById(id);if(e)window._zwOrig[id]=e.innerHTML;});
+    }
+    /* __direct_wires__ */
+    var _w=document.getElementById('e-t');if(_w)_w.innerHTML='Reality is stranger than imagination';
+    var _w=document.getElementById('e-a');if(_w)_w.innerHTML='— Chapter VI · End';
+    var _w=document.getElementById('hyp-p0');if(_w)_w.innerHTML='<strong style="color:var(--hyp);">Lobachevsky</strong> (1830) and <strong style="color:var(--hyp);">Bolyai</strong> (1832) independently discovered hyperbolic geometry &mdash; infinitely many parallels through one point.';
+    var _w=document.getElementById('hyp-p1');if(_w)_w.innerHTML='Nature had the answer: coral reefs and ruffled lettuce leaves are hyperbolic geometry &mdash; maximum surface area in finite volume.';
+    var _w=document.getElementById('hyp-p2');if(_w)_w.innerHTML='A hyperbolic plane can&#39;t embed in 3D Euclidean space without distortion; shown via the Poincar&eacute; disk.';
+    var _w=document.getElementById('ell-p0');if(_w)_w.innerHTML='Riemann (1854): space itself can <strong style="color:var(--ell);">curve</strong>. All &ldquo;straight lines&rdquo; (great circles) on a sphere intersect &mdash; none are parallel.';
+    var _w=document.getElementById('ell-p1');if(_w)_w.innerHTML='The Beijing&ndash;New York flight path looks curved but is the shortest path on the sphere &mdash; a <strong style="color:var(--ell);">geodesic</strong>.';
+    var _w=document.getElementById('ell-p2');if(_w)_w.innerHTML='Einstein&#39;s general relativity is built on Riemannian geometry. The universe&#39;s spacetime is a Riemannian manifold curved by mass.';
+    var _w=document.getElementById('e-q');if(_w)_w.innerHTML='Euclid gave us a perfect flat universe,<br>Riemann told us space can <strong style="color:var(--hyp);">curve</strong>,<br>Lobachevsky told us the universe can <strong style="color:var(--ell);">expand inward</strong>.<br><br>And Einstein finally proved:<br><strong style="color:var(--gold-light);">the universe we truly live in is curved spacetime.</strong>';
+  }
+  function applyZh(){
+    if(!orig)return;
+    /* zwOrig restore */
+    if(window._zwOrig){['hyp-p0','hyp-p1','hyp-p2','ell-p0','ell-p1','ell-p2','e-q','e-a','e-t'].forEach(function(id){var e=document.getElementById(id);if(e&&window._zwOrig[id]!==undefined)e.innerHTML=window._zwOrig[id];});}
+    applyPatchZh();
+    var os=document.querySelector('.ornament-line span');
+    if(os)os.textContent=orig.ornament;
+    [].forEach.call(document.querySelectorAll('.chapter-badge'),function(el,i){if(orig.badges[i]!=null)el.innerHTML=orig.badges[i];});
+    [].forEach.call(document.querySelectorAll('.scene-title'),function(el,i){if(orig.titles[i]!=null)el.innerHTML=orig.titles[i];});
+    [].forEach.call(document.querySelectorAll('.scene-body'),function(el,i){if(orig.bodies[i]!=null)el.innerHTML=orig.bodies[i];});
+  }
+  
+  // Extended EN patches for elements not covered by D.badges/titles/bodies
+  var enPatches=[["#s0-s", 0, "The Aesthetics of Curved Space"], [".axiom-new", 0, "Hyperbolic: <strong>infinitely many</strong> parallel lines through the point"], [".axiom-new", 1, "Elliptic: <strong>no</strong> parallel lines exist"], [".geo-label", 0, "Euclidean Geometry"], [".geo-sub", 0, "Flat surface, curvature K = 0"], [".geo-label", 1, "Hyperbolic Geometry"], [".geo-sub", 1, "Saddle surface, curvature K &lt; 0"], [".geo-label", 2, "Elliptic Geometry"], [".geo-sub", 2, "Spherical surface, curvature K &gt; 0"], ["#hyp-info p", 0, "Lobachevsky in 1830, Bolyai in 1832, independently discovered hyperbolic geometry — in a saddle-shaped space, infinitely many parallel lines pass through a single point."], ["#hyp-info p", 1, "Nature had the answer first: the branching structure of coral reefs and the ruffled edges of lettuce leaves are hyperbolic geometry — maximum surface area in finite volume."], ["#hyp-info p", 2, "A hyperbolic plane cannot be embedded in 3D Euclidean space without distortion; it can only be shown indirectly through models like the Poincaré disk."], ["#ell-info p", 0, "Riemann noted in 1854: space itself can curve. All &ldquo;straight lines&rdquo; (great circles) on a sphere intersect — none are parallel."], ["#ell-info p", 1, "The flight path from Beijing to New York looks curved on a map, but is the shortest path on the sphere — a geodesic."], ["#ell-info p", 2, "The mathematical foundation of Einstein&rsquo;s general relativity is precisely Riemannian geometry. The spacetime of the universe is a Riemannian manifold curved by mass."], ["#e-q", 0, "Euclid gave us a perfect flat universe,<br>Riemann told us space can <strong style='color:var(--hyp);'>curve</strong>,<br>Lobachevsky told us the universe can <strong style='color:var(--ell);'>expand inward</strong>.<br><br>And Einstein finally proved:<br><strong style='color:var(--gold-light);'>the universe we truly live in is curved spacetime.</strong>"]];
+  var patchOrig=null;
+  function savePatch(){
+    if(patchOrig)return;
+    patchOrig=enPatches.map(function(p){
+      var els=document.querySelectorAll(p[0]);
+      return els[p[1]]?els[p[1]].innerHTML:null;
+    });
+  }
+  function applyPatchEn(){
+    savePatch();
+    enPatches.forEach(function(p){
+      var els=document.querySelectorAll(p[0]);
+      if(els[p[1]]!=null)els[p[1]].innerHTML=p[2];
+    });
+  }
+  function applyPatchZh(){
+    if(!patchOrig)return;
+    enPatches.forEach(function(p,i){
+      var els=document.querySelectorAll(p[0]);
+      if(els[p[1]]!=null&&patchOrig[i]!=null)els[p[1]].innerHTML=patchOrig[i];
+    });
+  }
+  window.chLang=function(l){
+    window.__currentLang=l;
+    try{localStorage.setItem('mathsite_lang',l);}catch(e){}
+    document.getElementById('ch-btn-zh').classList.toggle('on',l==='zh');
+    document.getElementById('ch-btn-en').classList.toggle('on',l==='en');
+    if(l==='en')applyEn();else applyZh();
+  };
+  // Auto-switch based on ?lang=en in URL
+  window.addEventListener('DOMContentLoaded',function(){
+    // Read language from localStorage or ?lang URL param, default English
+    var _lp=(new URLSearchParams(location.search)).get('lang');
+    var _ls=null;try{_ls=localStorage.getItem('mathsite_lang');}catch(e){}
+    var _l=_lp||_ls||'en';
+    window.__currentLang=_l;
+    document.getElementById('ch-btn-zh').classList.toggle('on',_l==='zh');
+    document.getElementById('ch-btn-en').classList.toggle('on',_l==='en');
+    // Always run applyEn first to populate orig/patchOrig caches,
+    // then switch to Chinese if needed
+    applyEn();
+    if(_l==='zh')applyZh();
+  });
+})();
+
+/* Mobile touch swipe */
+(function(){
+  var ts=null,tx=null;
+  document.addEventListener('touchstart',function(e){ts=e.touches[0].clientX;tx=e.touches[0].clientY;},{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(ts===null)return;
+    var dx=e.changedTouches[0].clientX-ts, dy=e.changedTouches[0].clientY-tx;
+    if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>40){
+      if(dx<0&&typeof next==='function')next();
+      else if(dx>0&&typeof prev==='function')prev();
+    }
+    ts=null;tx=null;
+  },{passive:true});
+})();
+
+/* Mobile: add stack class to inline-flex children on narrow screens */
+(function(){
+  function applyMobileLayout(){
+    var isMobile = window.innerWidth <= 700;
+    document.querySelectorAll('.scene > div, .scene > section').forEach(function(el){
+      var s = el.getAttribute('style') || '';
+      if(s.includes('display:flex') || s.includes('display: flex')){
+        if(isMobile){ el.style.flexDirection='column'; el.style.alignItems='center'; }
+        else { el.style.flexDirection=''; el.style.alignItems=''; }
+      }
+    });
+  }
+  applyMobileLayout();
+  window.addEventListener('resize', applyMobileLayout);
+})();
+</script>
+</body>
+</html>

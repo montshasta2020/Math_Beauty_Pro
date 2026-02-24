@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第八章：代数之美</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700&family=Cinzel:wght@400;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+  :root{
+    --gold:#c9a84c;--gold-light:#e8cc7a;--gold-dim:#7a5f2a;
+    --ink:#030407;--cream:#e8dfc8;
+    --alg:#f0c040;   /* algebra symbol: bright amber */
+    --var:#60c8f0;   /* variable x,y: sky blue */
+    --eq:#80e890;    /* equation balance: mint */
+    --abs:#d080f8;   /* abstract: violet */
+  }
+  body{background:var(--ink);font-family:'Noto Serif SC',serif;overflow:hidden;width:100vw;height:100vh;cursor:default;}
+  #bg-canvas{position:fixed;inset:0;z-index:0;}
+  #vignette{position:fixed;inset:0;z-index:5;pointer-events:none;
+    background:radial-gradient(ellipse at center,transparent 28%,rgba(0,0,0,0.55) 70%,rgba(0,0,0,0.92) 100%);}
+  .ornament-line{position:fixed;top:32px;left:50%;transform:translateX(-50%);z-index:20;
+    display:flex;align-items:center;gap:14px;opacity:0;transition:opacity 1.2s;}
+  .ornament-line.visible{opacity:1;}
+  .ornament-line span{font-family:'Cinzel',serif;font-size:10px;letter-spacing:5px;color:var(--gold-dim);text-transform:uppercase;}
+  .ornament-line::before,.ornament-line::after{content:'';width:70px;height:1px;}
+  .ornament-line::before{background:linear-gradient(to right,transparent,var(--gold-dim));}
+  .ornament-line::after{background:linear-gradient(to left,transparent,var(--gold-dim));}
+  #progress{position:fixed;bottom:0;left:0;height:2px;
+    background:linear-gradient(to right,var(--gold-dim),var(--gold),var(--gold-light));z-index:100;transition:width 0.4s linear;}
+  .scene{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;opacity:0;pointer-events:none;transition:opacity 1.4s ease;z-index:10;}
+  .scene.active{opacity:1;pointer-events:auto;}
+  .chapter-badge{font-family:'Cinzel',serif;font-size:10px;letter-spacing:5px;color:var(--gold-dim);
+    text-transform:uppercase;display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+  .chapter-badge::before,.chapter-badge::after{content:'';width:28px;height:1px;background:var(--gold-dim);}
+  .scene-title{font-family:'Cinzel',serif;font-size:clamp(24px,4vw,52px);color:var(--gold-light);
+    text-align:center;line-height:1.2;letter-spacing:2px;text-shadow:0 0 50px rgba(201,168,76,0.3);}
+  .scene-body{font-family:'Noto Serif SC',serif;font-size:clamp(13px,1.45vw,17px);color:var(--cream);
+    text-align:center;line-height:1.95;max-width:640px;margin-top:16px;padding:0 24px;font-weight:300;}
+  .scene-body strong{color:var(--gold-light);font-weight:400;}
+  .divider{width:180px;height:1px;background:linear-gradient(to right,transparent,var(--gold-dim),transparent);margin:18px auto;}
+  .fade-up{opacity:0;transform:translateY(16px);transition:all 0.8s ease;}
+  .fade-up.show{opacity:1;transform:translateY(0);}
+
+  /* SYMBOL RAIN overlay */
+  #sym-rain{position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden;}
+  .sym-char{position:absolute;font-family:'IM Fell English',serif;color:rgba(201,168,76,0.07);
+    font-size:clamp(18px,2.5vw,32px);pointer-events:none;user-select:none;}
+
+  /* ALGEBRA IDENTITY BOX */
+  .identity-box{margin-top:22px;padding:20px 44px;border:1px solid rgba(240,192,64,0.3);
+    position:relative;opacity:0;transition:opacity 0.9s 0.4s;text-align:center;}
+  .identity-box.show{opacity:1;}
+  .identity-box::before,.identity-box::after{content:'';position:absolute;width:9px;height:9px;border:1px solid var(--alg);}
+  .identity-box::before{top:-4px;left:-4px;border-right:none;border-bottom:none;}
+  .identity-box::after{bottom:-4px;right:-4px;border-left:none;border-top:none;}
+  .identity-main{font-family:'IM Fell English',serif;font-size:clamp(20px,3vw,40px);
+    color:var(--alg);letter-spacing:6px;}
+  .identity-sub{font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;color:var(--gold-dim);margin-top:8px;}
+
+  /* VARIABLE CARDS */
+  .var-row{display:flex;align-items:stretch;justify-content:center;gap:0;margin-top:22px;max-width:580px;}
+  .var-card{flex:1;padding:14px 12px;border:1px solid rgba(96,200,240,0.2);
+    border-right:none;text-align:center;opacity:0;transform:translateY(12px);transition:all 0.6s ease;}
+  .var-card:last-child{border-right:1px solid rgba(96,200,240,0.2);}
+  .var-card.show{opacity:1;transform:translateY(0);}
+  .var-sym{font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(26px,3.5vw,44px);color:var(--var);margin-bottom:6px;}
+  .var-title{font-family:'Cinzel',serif;font-size:clamp(9px,0.9vw,11px);
+    letter-spacing:2px;color:var(--gold);margin-bottom:5px;}
+  .var-desc{font-size:clamp(11px,1.1vw,13px);color:var(--cream);line-height:1.6;font-weight:300;}
+
+  /* EQUATION SOLVER */
+  .solver-box{max-width:560px;margin-top:20px;width:100%;}
+  .solver-step{display:flex;align-items:center;justify-content:center;gap:16px;
+    padding:10px 24px;border-left:2px solid rgba(128,232,144,0.15);
+    margin-left:24px;margin-bottom:6px;
+    opacity:0;transform:translateX(-14px);transition:all 0.6s ease;}
+  .solver-step.show{opacity:1;transform:translateX(0);}
+  .step-eq{font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(15px,1.8vw,22px);color:var(--cream);flex:1;text-align:center;}
+  .step-eq .hl{color:var(--eq);}
+  .step-eq .x-reveal{color:var(--var);}
+  .step-note{font-family:'Cinzel',serif;font-size:9px;letter-spacing:2px;
+    color:var(--gold-dim);min-width:120px;text-align:right;}
+
+  /* BALANCE SCALE */
+  #balance-wrap{margin-top:20px;opacity:0;transition:opacity 1s 0.3s;}
+  #balance-wrap.show{opacity:1;}
+
+  /* HISTORICAL TIMELINE */
+  .timeline{display:flex;flex-direction:column;gap:12px;margin-top:20px;max-width:580px;width:100%;}
+  .tl-item{display:flex;align-items:flex-start;gap:16px;
+    opacity:0;transform:translateX(-14px);transition:all 0.65s ease;padding:0 16px;}
+  .tl-item.show{opacity:1;transform:translateX(0);}
+  .tl-year{font-family:'Cinzel',serif;font-size:clamp(10px,1vw,12px);
+    letter-spacing:2px;color:var(--alg);min-width:72px;padding-top:2px;}
+  .tl-line{width:1px;background:rgba(240,192,64,0.2);align-self:stretch;flex-shrink:0;margin-top:6px;}
+  .tl-text{font-size:clamp(12px,1.3vw,15px);color:var(--cream);line-height:1.7;font-weight:300;}
+  .tl-text strong{color:var(--gold-light);font-weight:400;}
+
+  /* SPLIT */
+  .split{display:flex;align-items:center;justify-content:center;
+    gap:clamp(18px,4vw,56px);margin-top:16px;flex-wrap:wrap;}
+  .split-info{max-width:280px;}
+  .split-info .tag{display:inline-block;font-family:'Cinzel',serif;font-size:9px;
+    letter-spacing:2px;padding:2px 8px;border:1px solid;margin-bottom:10px;}
+  .split-info p{font-size:clamp(12px,1.25vw,15px);color:var(--cream);line-height:1.85;font-weight:300;}
+  .split-info p+p{margin-top:10px;}
+  .split-info strong{font-weight:400;}
+
+  /* QUOTE */
+  .big-quote{font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(15px,2vw,25px);color:var(--cream);
+    text-align:center;max-width:580px;line-height:1.78;padding:0 28px;}
+
+  /* NAV */
+  #nav{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
+    z-index:200;display:flex;gap:10px;align-items:center;}
+  .nav-btn{width:34px;height:34px;border:1px solid var(--gold-dim);background:transparent;
+    color:var(--gold);cursor:pointer;font-size:16px;display:flex;align-items:center;
+    justify-content:center;transition:all 0.3s;}
+  .nav-btn:hover{background:rgba(201,168,76,0.1);border-color:var(--gold);}
+  .nav-dots{display:flex;gap:6px;align-items:center;}
+  .nav-dot{width:6px;height:6px;border-radius:50%;background:var(--gold-dim);cursor:pointer;transition:all 0.3s;}
+  .nav-dot.active{background:var(--gold);width:20px;border-radius:3px;}
+  #hint{position:fixed;bottom:22px;right:28px;z-index:100;font-family:'Cinzel',serif;
+    font-size:10px;letter-spacing:2px;color:var(--gold-dim);display:flex;align-items:center;
+    gap:8px;opacity:0;transition:opacity 1s;}
+  #hint.visible{opacity:1;}
+  #hint-dot{width:5px;height:5px;border-radius:50%;background:var(--gold-dim);
+    animation:blink 1.6s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.15}}
+
+  #home-btn {
+    position: fixed; top: 26px; left: 36px; z-index: 9000;
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 3px;
+    color: var(--gold); text-decoration: none;
+    border: 1px solid var(--gold-dim); padding: 8px 16px;
+    background: rgba(6,5,7,0.7); cursor: pointer !important;
+    transition: background .3s, color .3s, border-color .3s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  #home-btn:hover { background: rgba(201,168,76,.15); border-color: var(--gold-light); color: var(--gold-light); }
+</style>
+
+<style id="bilingual-css">
+#ch-lang-bar{position:fixed;top:26px;right:36px;z-index:9000;display:flex;align-items:stretch;border:1px solid rgba(122,95,42,.5);overflow:hidden;}
+.ch-lb{font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;padding:8px 16px;background:transparent;border:none;outline:none;color:#7a5f2a;cursor:pointer;transition:background .3s,color .3s;}
+.ch-lb:hover{background:rgba(201,168,76,.1);}
+.ch-lb.on{background:rgba(201,168,76,.2);color:#e8cc7a;}
+.ch-lb-sep{width:1px;background:rgba(122,95,42,.4);flex-shrink:0;}
+</style>
+
+<style id="mobile-responsive">
+@media (max-width: 700px) {
+  /* Core layout - keep centered, handle overflow with scroll wrapper */
+  .scene {
+    padding: 55px 14px 90px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  /* Typography */
+  .scene-title { font-size: clamp(17px, 5.5vw, 28px) !important; letter-spacing: 1px; }
+  .scene-subtitle { font-size: clamp(11px, 3vw, 15px) !important; }
+  .scene-body { font-size: clamp(12px, 3.2vw, 15px) !important; padding: 0 8px; max-width: 96vw; line-height: 1.75 !important; }
+  .chapter-badge { font-size: 7px; letter-spacing: 3px; }
+  .ornament-line span { font-size: 7px; letter-spacing: 1px; max-width: 55vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* UI controls */
+  #home-btn { top: 10px; left: 10px; padding: 5px 10px; font-size: 9px; }
+  #ch-lang-bar { top: 10px; right: 10px; }
+  .ch-lb { padding: 5px 9px; font-size: 8px; letter-spacing: 1px; }
+  #hint { display: none; }
+  .ornament-line { top: 14px; }
+
+  /* Nav - larger touch targets */
+  #nav { bottom: 8px; }
+  .nav-btn { width: 44px; height: 44px; font-size: 22px; }
+
+  /* Force ALL flex row containers to stack */
+  .split-layout,
+  .split-text,
+  .info-row,
+  .sym-row,
+  .law-row,
+  .tl-row,
+  .card-row,
+  .geo-row {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  /* Info panels */
+  .split-info, [id$="-info"], [id$="-text"], [id$="-panel"] {
+    max-width: 94vw !important; width: 94vw !important;
+  }
+  .split-info p, [id$="-info"] p { font-size: clamp(11px, 2.8vw, 14px) !important; }
+
+  /* Only limit standalone full-width canvases, not gallery 3D canvases */
+  canvas#bg-canvas { max-width: 100vw !important; }
+
+  /* Grids → two columns, small screens one column */
+  .law-grid, .var-grid, .sym-grid, .const-grid, .card-grid,
+  [class*="grid"] { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+
+  /* Epilogue / poem */
+  .big-quote, #e-q, #fin-q, .poem { 
+    font-size: clamp(13px, 3.5vw, 18px) !important; 
+    padding: 0 16px; 
+    line-height: 1.9 !important;
+  }
+  .ending-quote { font-size: clamp(14px, 3.8vw, 19px) !important; }
+
+  /* Tables */
+  table { font-size: 10px; width: 100%; }
+  td, th { padding: 4px 6px !important; }
+
+  /* Axiom boxes */
+  .axiom-item { padding: 8px 10px !important; }
+  .axiom-body { font-size: 11px !important; }
+
+  /* Divider spacing */
+  .divider { margin: 12px auto !important; }
+}
+
+@media (max-width: 420px) {
+  .scene-title { font-size: clamp(15px, 5vw, 22px) !important; }
+
+  [class*="grid"] { grid-template-columns: 1fr !important; }
+}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div id="vignette"></div>
+<!-- Floating math symbols background -->
+<div id="sym-rain"></div>
+<a id="home-btn" href="index.html">&#8962;&nbsp;HOME</a>
+<div class="ornament-line" id="ornament"><span>Chapter VI · Algebra · Abstract Reasoning</span></div>
+<div id="progress"></div>
+<div id="nav">
+  <button class="nav-btn" id="btn-prev">&#8249;</button>
+  <div class="nav-dots" id="nav-dots"></div>
+  <button class="nav-btn" id="btn-next">&#8250;</button>
+</div>
+<div id="hint"><div id="hint-dot"></div>CLICK TO ADVANCE</div>
+
+<!-- ══ SCENE 0: Title ══ -->
+<div class="scene active" id="scene-0">
+  <div class="chapter-badge fade-up" id="s0-b">第八章</div>
+  <div class="scene-title fade-up" id="s0-t">代数之美</div>
+  <div style="font-family:'IM Fell English',serif;font-style:italic;font-size:clamp(14px,1.9vw,23px);color:var(--gold-dim);text-align:center;margin-top:10px;" class="fade-up" id="s0-s">隐形骨架的逻辑编织</div>
+  <div class="divider" style="margin:24px auto;"></div>
+  <div class="scene-body fade-up" id="s0-body" style="max-width:500px;font-size:clamp(13px,1.4vw,17px);">
+    几何描述形状，代数描述<strong>关系</strong>。<br>
+    一个变量，一行等式，便能言说无穷多种情形。<br>
+    代数，是数学赋予人类最锋利的思维工具。
+  </div>
+  <canvas id="c0" style="margin-top:32px;opacity:0;transition:opacity 1.5s 0.5s;width:min(560px,90vw);height:min(260px,32vh);"></canvas>
+</div>
+
+<!-- ══ SCENE 1: Before Algebra — word problems ══ -->
+<div class="scene" id="scene-1">
+  <div class="chapter-badge">§ 6.1 · 符号化的革命</div>
+  <div class="scene-title" style="font-size:clamp(20px,3.2vw,44px);">从文字到符号：数学语言的诞生</div>
+  <div class="scene-body" style="margin-top:10px;max-width:560px;">
+    代数诞生前，人们用大段文字描述计算过程——繁琐且无法推广。<br>
+    820年，花拉子米把未知量叫做"物"，写出人类第一本代数书。<br>
+    1637年，笛卡尔引入 <em style="color:var(--var);font-family:'IM Fell English',serif;font-size:1.15em;">x, y, z</em>——<br>
+    数学从此有了通用语言，<strong>一个字母代表一切数字。</strong>
+  </div>
+  <div class="timeline" id="tl">
+    <div class="tl-item"><div class="tl-year">约820年</div><div class="tl-line"></div><div class="tl-text"><strong>花拉子米</strong> 写下《代数学》（Al-Kitāb），"代数"(Algebra)一词源于此，未知数称为"物"</div></div>
+    <div class="tl-item"><div class="tl-year">1637年</div><div class="tl-line"></div><div class="tl-text"><strong>笛卡尔</strong> 在《几何学》中引入 x, y, z 代表未知数，a, b, c 代表已知量——现代符号体系诞生</div></div>
+    <div class="tl-item"><div class="tl-year">1799年</div><div class="tl-line"></div><div class="tl-text"><strong>高斯</strong> 证明代数基本定理：每个 n 次多项式恰好有 n 个复数根，代数与几何在复平面上握手</div></div>
+    <div class="tl-item"><div class="tl-year">1832年</div><div class="tl-line"></div><div class="tl-text"><strong>伽罗瓦</strong> 用群论证明五次方程无根式解——年仅20岁，决斗前夜写完，改变了代数的方向</div></div>
+  </div>
+</div>
+
+<!-- ══ SCENE 2: The Power of Variables ══ -->
+<div class="scene" id="scene-2">
+  <div class="chapter-badge">§ 6.1 · 变量的魔力</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">变量的力量：一个符号，无穷的含义</div>
+  <div class="scene-body" style="margin-top:10px;margin-bottom:4px;font-size:clamp(12px,1.3vw,16px);">
+    一个 x，同时代表所有数字。
+  </div>
+  <div class="var-row" id="var-row">
+    <div class="var-card">
+      <div class="var-sym">x</div>
+      <div class="var-title">未知数</div>
+      <div class="var-desc">方程中待求的真相，一切谜题的藏身之处</div>
+    </div>
+    <div class="var-card">
+      <div class="var-sym">f(x)</div>
+      <div class="var-title">函数</div>
+      <div class="var-desc">关系本身成为操作对象，描述变量间的法则</div>
+    </div>
+    <div class="var-card">
+      <div class="var-sym">n</div>
+      <div class="var-title">任意自然数</div>
+      <div class="var-desc">一个字母，同时代言无穷多个具体的数</div>
+    </div>
+    <div class="var-card">
+      <div class="var-sym">∞</div>
+      <div class="var-title">无穷</div>
+      <div class="var-desc">代数让"无限大"成为可操作的计算对象</div>
+    </div>
+  </div>
+  <canvas id="c2-vars" style="margin-top:20px;opacity:0;transition:opacity 1.2s 0.5s;width:min(520px,88vw);height:min(160px,22vh);"></canvas>
+</div>
+
+<!-- ══ SCENE 3: The Identity (a+b)² ══ -->
+<div class="scene" id="scene-3">
+  <div class="chapter-badge">§ 6.1 · 恒等式之美</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">恒等式之美：对所有的数，永远成立</div>
+  <div class="scene-body" style="margin-top:10px;max-width:560px;">
+    (a+b)² 不只是一道公式——<br>
+    它对<strong>宇宙中所有数字，永远成立</strong>。<br>
+    理解它，就理解了代数的核心：用一行规则，管住无穷多种情况。
+  </div>
+  <div class="identity-box" id="id-box">
+    <div class="identity-main">(a + b)² = a² + 2ab + b²</div>
+    <div class="identity-sub">Binomial Identity · Universal for All Real Numbers</div>
+  </div>
+  <canvas id="c3-geo" style="width:min(480px,86vw);height:min(340px,42vh);margin-top:20px;opacity:0;transition:opacity 1s 0.6s;"></canvas>
+</div>
+
+<!-- ══ SCENE 4: The Equation Balance ══ -->
+<div class="scene" id="scene-4">
+  <div class="chapter-badge">§ 6.2 · 方程的哲学</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">等号，是宇宙的支点</div>
+  <div class="scene-body" style="margin-top:10px;max-width:540px;">
+    等号两边永远平衡。<br>
+    不管左边多复杂，右边必须对等。<br>
+    这个看似简单的规则，<strong>是解一切方程的核心逻辑</strong>——<br>
+    你对一边做什么，另一边也要做什么，天平永远不能倾斜。
+  </div>
+  <div id="balance-wrap">
+    <canvas id="balance-c" style="width:min(500px,88vw);height:min(200px,26vh);opacity:0;transition:opacity 1s 0.3s;"></canvas>
+  </div>
+  <div class="split-info" style="max-width:480px;text-align:center;margin-top:16px;
+    opacity:0;transition:opacity 0.8s 0.8s;" id="bal-text">
+    <p style="font-size:clamp(12px,1.3vw,15px);" id="bal-p0">对方程做任何操作——<strong style="color:var(--eq);">两边同加、同减、同乘</strong>——等号依然成立。<br>
+    这种"操作的对称性"，正是代数的灵魂。</p>
+  </div>
+</div>
+
+<!-- ══ SCENE 5: Equation Solving — the detective ══ -->
+<div class="scene" id="scene-5">
+  <div class="chapter-badge">§ 6.2 · 解方程</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">追踪隐藏的真相：解方程的艺术</div>
+  <div class="scene-body" style="margin-top:8px;max-width:520px;font-size:clamp(12px,1.3vw,16px);">
+    你有一个嫌疑人（未知数 x），你有线索（方程）。<br>每一步推理，都把 x 逼进死角，<strong>直到真相无处可逃。</strong>
+  </div>
+  <div class="solver-box" id="solver">
+    <div class="solver-step"><span class="step-eq">3<em class="hl">x</em> + 7 = 22</span><span class="step-note">原方程</span></div>
+    <div class="solver-step"><span class="step-eq">3<em class="hl">x</em> = 22 - 7</span><span class="step-note">两边减 7</span></div>
+    <div class="solver-step"><span class="step-eq">3<em class="hl">x</em> = 15</span><span class="step-note">化简右边</span></div>
+    <div class="solver-step"><span class="step-eq"><em class="hl">x</em> = 15 ÷ 3</span><span class="step-note">两边除以 3</span></div>
+    <div class="solver-step"><span class="step-eq"><em class="x-reveal">x = 5</em> ✓</span><span class="step-note" style="color:var(--eq);">真相大白</span></div>
+  </div>
+  <canvas id="c5-det" style="margin-top:16px;opacity:0;transition:opacity 1s 0.8s;width:min(560px,90vw);height:min(260px,34vh);"></canvas>
+</div>
+
+<!-- ══ SCENE 6: Quadratic & Complex ══ -->
+<div class="scene" id="scene-6">
+  <div class="chapter-badge">§ 6.2 · 复数的诞生</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">x² + 1 = 0<br>
+    <span style="font-size:0.55em;color:var(--gold-dim);">一个方程，打开了新的宇宙</span>
+  </div>
+  <div class="scene-body" style="margin-top:12px;max-width:560px;">
+    当代数家试图解 x² = -1 时，碰壁了。<br>
+    没有任何实数的平方是负数——<br>
+    于是<strong>虚数</strong> <em style="color:var(--abs);font-family:'IM Fell English',serif;font-size:1.2em;">i = √-1</em> 被"发明"了。<br><br>
+    这个看似荒谬的定义，催生了<strong>复数平面</strong>，<br>
+    最终成为量子力学、电气工程和信号处理的<strong>核心数学语言</strong>。
+  </div>
+  <div class="split" style="margin-top:16px;">
+    <canvas id="complex-c" style="width:min(280px,42vw);height:min(280px,42vw);opacity:0;transition:opacity 1s 0.3s;flex-shrink:0;"></canvas>
+    <div class="split-info" id="cpx-info" style="opacity:0;transition:opacity 0.8s 0.9s;">
+      <div class="tag" style="color:var(--abs);border-color:rgba(208,128,248,0.3);">COMPLEX PLANE</div>
+      <p id="cpx-p0">复数平面将实数（横轴）与虚数（纵轴）统一，每个复数 <strong style="color:var(--abs);">a + bi</strong> 都是平面上的一点。</p>
+      <p id="cpx-p1">欧拉公式 <strong style="color:var(--abs);">e<sup>iπ</sup> + 1 = 0</strong> 将 e、i、π、1、0 五个最重要的常数联系在一起——被誉为"最美的方程"。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCENE 7: Group Theory / Galois ══ -->
+<div class="scene" id="scene-7">
+  <div class="chapter-badge">§ 6.2 · 群论</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">伽罗瓦的绝唱：年仅二十，却改变了代数的方向</div>
+  <div class="scene-body" style="margin-top:10px;max-width:560px;">
+    1832年，伽罗瓦知道第二天要去决斗，很可能活不过去。<br>
+    他用整个晚上，写下颠覆数学史的证明：<br><strong>五次方程根本不可能用根号写出答案</strong>——<br>
+    他不是解出了方程，而是证明了某种解法永远不可能存在。年仅20岁。
+  </div>
+  <canvas id="galois-c" style="width:min(500px,88vw);height:min(340px,42vh);margin-top:18px;opacity:0;transition:opacity 1.2s 0.3s;"></canvas>
+  <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;color:var(--gold-dim);
+    margin-top:14px;text-align:center;opacity:0;transition:opacity 0.7s 1s;" class="fade-up" id="gal-label">
+    Évariste Galois · 1811–1832 · 年仅二十岁
+  </div>
+</div>
+
+<!-- ══ SCENE 8: Ending ══ -->
+<div class="scene" id="scene-8">
+  <div class="chapter-badge">尾声 · 第六章</div>
+  <div class="scene-title fade-up" id="e-t" style="font-size:clamp(20px,3vw,42px);">字母，是思维最锋利的刀</div>
+  <div class="divider" style="margin:24px auto;"></div>
+  <div class="big-quote fade-up" id="e-q">
+    具体的数字是答案，<br>
+    <strong style="color:var(--var);">抽象的变量是法则</strong>。<br><br>
+    代数将数学从"计算"升华为"推理"——<br>
+    一个符号，言说所有数字；<br>
+    <strong style="color:var(--gold-light);">一次推理，解决所有情形。</strong>
+  </div>
+  <div style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;color:var(--gold-dim);
+    margin-top:20px;text-align:center;" class="fade-up" id="e-a">— 第八章 · 终</div>
+  <canvas id="c8" style="margin-top:26px;opacity:0;transition:opacity 2s;width:min(560px,90vw);height:min(220px,28vh);"></canvas>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// BACKGROUND — floating symbol grid
+// ══════════════════════════════════════════
+const bgC=document.getElementById('bg-canvas'),bgX=bgC.getContext('2d');
+let BW,BH,bgTick=0;
+function resizeBg(){BW=bgC.width=window.innerWidth;BH=bgC.height=window.innerHeight;}
+resizeBg();window.addEventListener('resize',resizeBg);
+const stars=Array.from({length:180},()=>({x:Math.random(),y:Math.random(),r:Math.random()*1.1+0.2,a:Math.random(),sp:Math.random()*0.003+0.001}));
+function drawBg(){
+  bgX.clearRect(0,0,BW,BH);
+  const g=bgX.createRadialGradient(BW/2,BH/2,0,BW/2,BH/2,Math.max(BW,BH)*0.75);
+  g.addColorStop(0,'#080610');g.addColorStop(1,'#020108');
+  bgX.fillStyle=g;bgX.fillRect(0,0,BW,BH);
+  stars.forEach(s=>{
+    s.a+=s.sp;const al=(Math.sin(s.a)+1)/2*0.5+0.06;
+    bgX.beginPath();bgX.arc(s.x*BW,s.y*BH,s.r,0,Math.PI*2);
+    bgX.fillStyle=`rgba(220,190,120,${al})`;bgX.fill();
+  });
+  bgTick++;requestAnimationFrame(drawBg);
+}
+drawBg();
+
+// ══════════════════════════════════════════
+// SYMBOL RAIN
+// ══════════════════════════════════════════
+const SYMBOLS=['x','y','z','n','a','b','f(x)','∑','∫','√','π','∞','=','≠','±','α','β','γ','λ','Δ','∂','∇','i'];
+const rain=document.getElementById('sym-rain');
+function spawnSymbol(){
+  const el=document.createElement('div');el.className='sym-char';
+  el.textContent=SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)];
+  el.style.left=Math.random()*100+'vw';
+  el.style.top=Math.random()*100+'vh';
+  el.style.fontSize=(14+Math.random()*20)+'px';
+  el.style.opacity=String(0.03+Math.random()*0.06);
+  el.style.transform=`rotate(${(Math.random()-0.5)*30}deg)`;
+  rain.appendChild(el);
+  if(rain.children.length>80) rain.removeChild(rain.children[0]);
+}
+for(let i=0;i<60;i++) spawnSymbol();
+setInterval(spawnSymbol,600);
+
+// ══════════════════════════════════════════
+// SCENE 0: Algebra Cosmos — equations as star constellations
+// ══════════════════════════════════════════
+const c0=document.getElementById('c0');
+let t0=0,c0Raf;
+const EQUATIONS=[
+  {text:'x² + bx + c = 0', color:'rgba(240,192,64,'},
+  {text:'f(x) = mx + k',   color:'rgba(96,200,240,'},
+  {text:'aⁿ + bⁿ = cⁿ',   color:'rgba(208,128,248,'},
+  {text:'e^(iπ) + 1 = 0',  color:'rgba(128,232,144,'},
+  {text:'∑ xⁿ/n!',         color:'rgba(240,192,64,'},
+  {text:'Δ = b²−4ac',      color:'rgba(96,200,240,'},
+];
+function resizeC0(){
+  const r=c0.getBoundingClientRect();
+  c0.width=r.width||560; c0.height=r.height||260;
+}
+function drawC0(){
+  resizeC0();
+  const CW=c0.width,CH=c0.height;
+  const ctx=c0.getContext('2d');
+  ctx.clearRect(0,0,CW,CH);
+
+  // Dark background
+  ctx.fillStyle='rgba(4,2,10,0.92)';
+  ctx.fillRect(0,0,CW,CH);
+
+  const prog=Math.min(1,t0/80);
+
+  // ── Rose curve: r = cos(3θ) — the "shape" of algebra ──
+  const cx=CW/2, cy=CH/2;
+  const roseR = Math.min(CW,CH)*0.38;
+  const petals=3;
+  ctx.beginPath();
+  let first=true;
+  for(let i=0;i<=600;i++){
+    const theta=(i/600)*Math.PI*2;
+    const drawTheta=theta*Math.min(1,t0/140);
+    const r=roseR*Math.abs(Math.cos(petals*drawTheta));
+    const px=cx+Math.cos(drawTheta)*r;
+    const py=cy+Math.sin(drawTheta)*r;
+    if(first){ctx.moveTo(px,py);first=false;}else ctx.lineTo(px,py);
+    if(theta>Math.min(1,t0/140)*Math.PI*2) break;
+  }
+  const roseGrad=ctx.createLinearGradient(cx-roseR,cy,cx+roseR,cy);
+  roseGrad.addColorStop(0,'rgba(240,192,64,0.22)');
+  roseGrad.addColorStop(0.5,'rgba(208,128,248,0.18)');
+  roseGrad.addColorStop(1,'rgba(96,200,240,0.22)');
+  ctx.strokeStyle=roseGrad;
+  ctx.lineWidth=1.2;
+  ctx.stroke();
+
+  // Fill rose petals softly
+  if(prog>0.5){
+    ctx.beginPath();first=true;
+    for(let i=0;i<=600;i++){
+      const theta=(i/600)*Math.PI*2;
+      const r=roseR*Math.abs(Math.cos(petals*theta));
+      const px=cx+Math.cos(theta)*r, py=cy+Math.sin(theta)*r;
+      if(first){ctx.moveTo(px,py);first=false;}else ctx.lineTo(px,py);
+    }
+    const p=(prog-0.5)*2;
+    const fillGrad=ctx.createRadialGradient(cx,cy,0,cx,cy,roseR);
+    fillGrad.addColorStop(0,`rgba(201,168,76,${p*0.08})`);
+    fillGrad.addColorStop(1,'transparent');
+    ctx.fillStyle=fillGrad;
+    ctx.fill();
+  }
+
+  // ── Floating equations appearing at petal tips ──
+  const tipAngles=Array.from({length:6},(_,i)=>i*Math.PI/3);
+  EQUATIONS.forEach(({text,color},i)=>{
+    const delay=i*20+60;
+    const ep=Math.max(0,Math.min(1,(t0-delay)/40));
+    if(ep<=0) return;
+    const ang=tipAngles[i]+t0*0.003*(i%2===0?1:-1);
+    const dist=roseR*(0.7+0.3*Math.sin(t0*0.02+i));
+    const ex=cx+Math.cos(ang)*dist;
+    const ey=cy+Math.sin(ang)*dist;
+    // Connection spoke
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(ex,ey);
+    ctx.strokeStyle=color+(ep*0.12)+')';ctx.lineWidth=0.5;ctx.stroke();
+    // Dot at tip
+    const pulse=0.6+0.4*Math.sin(t0*0.04+i*1.1);
+    ctx.beginPath();ctx.arc(ex,ey,3*pulse,0,Math.PI*2);
+    ctx.fillStyle=color+(ep*0.8)+')';ctx.fill();
+    // Glow
+    const gg=ctx.createRadialGradient(ex,ey,0,ex,ey,20);
+    gg.addColorStop(0,color+(ep*pulse*0.3)+')');
+    gg.addColorStop(1,'transparent');
+    ctx.fillStyle=gg;ctx.fillRect(ex-20,ey-20,40,40);
+    // Text label
+    ctx.font=`italic ${Math.round(CW*0.022)}px IM Fell English,serif`;
+    ctx.textAlign='center';ctx.fillStyle=color+(ep*0.75)+')';
+    ctx.fillText(text,ex,ey-(3*pulse+10));
+  });
+
+  // Central glow
+  const cpulse=0.5+0.5*Math.sin(t0*0.04);
+  const cg=ctx.createRadialGradient(cx,cy,0,cx,cy,roseR*0.3);
+  cg.addColorStop(0,`rgba(201,168,76,${cpulse*0.15})`);
+  cg.addColorStop(1,'transparent');
+  ctx.fillStyle=cg;ctx.fillRect(0,0,CW,CH);
+  ctx.beginPath();ctx.arc(cx,cy,3,0,Math.PI*2);
+  ctx.fillStyle=`rgba(232,204,122,${0.7+cpulse*0.3})`;ctx.fill();
+
+  t0++;
+  c0Raf=requestAnimationFrame(drawC0);
+}
+
+// ══════════════════════════════════════════
+// SCENE 2: Variable morphing canvas
+// ══════════════════════════════════════════
+const c2=document.getElementById('c2-vars'),x2=c2.getContext('2d');
+let t2=0,c2Active=false;
+const CONCRETES=['3','7','42','100','1','0','-5','√2'];
+let concIdx=0,morphProg=0;
+function drawC2(){
+  if(!c2Active)return;
+  x2.clearRect(0,0,400,90);
+  const t=t2;
+  const cx=200,cy=45;
+  // Show a concrete number morphing into x
+  morphProg+=0.012;
+  if(morphProg>1){morphProg=0;concIdx=(concIdx+1)%CONCRETES.length;}
+  const concrete=CONCRETES[concIdx];
+  // Concrete fading out
+  const fa=Math.max(0,1-morphProg*2.5);
+  if(fa>0){
+    x2.font=`${32}px Cinzel,serif`;x2.textAlign='center';
+    x2.fillStyle=`rgba(232,204,122,${fa})`;x2.fillText(concrete,cx-60,cy+10);
+  }
+  // Arrow
+  x2.font='18px serif';x2.fillStyle=`rgba(122,95,42,${0.5+Math.sin(t*0.06)*0.3})`;
+  x2.fillText('⟶',cx,cy+10);
+  // x appearing
+  const xa=Math.min(1,morphProg*2);
+  x2.font=`italic ${32+xa*6}px IM Fell English,serif`;
+  x2.fillStyle=`rgba(96,200,240,${xa})`;x2.fillText('x',cx+60,cy+12);
+  // Glow around x
+  if(xa>0.5){
+    const gg=x2.createRadialGradient(cx+60,cy,0,cx+60,cy,28*xa);
+    gg.addColorStop(0,`rgba(96,200,240,${xa*0.2})`);gg.addColorStop(1,'transparent');
+    x2.fillStyle=gg;x2.fillRect(cx+32,cy-24,56,48);
+  }
+  // Label
+  x2.font='9px Cinzel,serif';x2.textAlign='center';
+  x2.fillStyle='rgba(122,95,42,0.5)';
+  x2.fillText('Concrete',cx-60,cy+28);
+  x2.fillStyle='rgba(96,200,240,0.4)';
+  x2.fillText('Abstract',cx+60,cy+28);
+  t2++;c2Active&&requestAnimationFrame(drawC2);
+}
+
+// ══════════════════════════════════════════
+// SCENE 3: Geometric proof of (a+b)² — Beautiful large canvas
+// ══════════════════════════════════════════
+let c3Active=false,c3RAF,c3Tick=0;
+function startIdentityCanvas(){
+  const canvas=document.getElementById('c3-geo');if(!canvas)return;
+  const _ir=canvas.getBoundingClientRect();const W=_ir.width||480,H=_ir.height||340;
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  c3Active=true;c3Tick=0;
+
+  function frame(){
+    if(!c3Active)return;
+    ctx.clearRect(0,0,W,H);
+    const t=c3Tick;
+    const prog=Math.min(1,t/110);
+
+    // Layout: large square in center
+    const margin=H*0.12;
+    const maxSz=Math.min(W-margin*2, H-margin*2)*0.88;
+    const ox=(W-maxSz)/2, oy=(H-maxSz)/2;
+    const a=maxSz*0.60, b=maxSz*0.40;
+
+    // Phase timing
+    const p1=Math.min(1,prog/0.18);           // outer square outline
+    const p2=Math.max(0,Math.min(1,(prog-0.18)/0.2));  // a² region
+    const p3=Math.max(0,Math.min(1,(prog-0.38)/0.2));  // b² region
+    const p4=Math.max(0,Math.min(1,(prog-0.58)/0.2));  // ab regions
+    const p5=Math.max(0,Math.min(1,(prog-0.8)/0.2));   // labels + formula
+
+    const fs=Math.round(maxSz*0.072);
+
+    // ── Outer square (a+b)² ──
+    ctx.strokeStyle=`rgba(240,192,64,${p1*0.55})`;ctx.lineWidth=1.5;
+    ctx.strokeRect(ox,oy,maxSz*p1,maxSz);
+    if(p1>0.5) ctx.strokeRect(ox,oy,maxSz,maxSz*p1);
+
+    // ── a² — top-left, gold ──
+    if(p2>0){
+      ctx.fillStyle=`rgba(240,192,64,${p2*0.20})`;
+      ctx.fillRect(ox,oy,a,a*p2);
+      ctx.strokeStyle=`rgba(240,192,64,${p2*0.7})`;ctx.lineWidth=1.2;
+      ctx.strokeRect(ox,oy,a,a*p2);
+      if(p2>0.6){
+        ctx.fillStyle=`rgba(240,192,64,${(p2-0.6)/0.4*0.85})`;
+        ctx.font=`italic ${fs}px IM Fell English,serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('a²',ox+a/2,oy+a*p2/2);
+      }
+    }
+
+    // ── b² — bottom-right, blue ──
+    if(p3>0){
+      ctx.fillStyle=`rgba(96,200,240,${p3*0.22})`;
+      ctx.fillRect(ox+a,oy+a,b*p3,b*p3);
+      ctx.strokeStyle=`rgba(96,200,240,${p3*0.75})`;ctx.lineWidth=1.2;
+      ctx.strokeRect(ox+a,oy+a,b*p3,b*p3);
+      if(p3>0.6){
+        ctx.fillStyle=`rgba(96,200,240,${(p3-0.6)/0.4*0.85})`;
+        ctx.font=`italic ${fs}px IM Fell English,serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('b²',ox+a+b*p3/2,oy+a+b*p3/2);
+      }
+    }
+
+    // ── 2 × ab regions — green ──
+    if(p4>0){
+      // top-right ab
+      ctx.fillStyle=`rgba(128,232,144,${p4*0.22})`;
+      ctx.fillRect(ox+a,oy,b*p4,a);
+      ctx.strokeStyle=`rgba(128,232,144,${p4*0.7})`;ctx.lineWidth=1.2;
+      ctx.strokeRect(ox+a,oy,b*p4,a);
+      // bottom-left ab
+      ctx.fillStyle=`rgba(128,232,144,${p4*0.22})`;
+      ctx.fillRect(ox,oy+a,a*p4,b);
+      ctx.strokeStyle=`rgba(128,232,144,${p4*0.7})`;
+      ctx.strokeRect(ox,oy+a,a*p4,b);
+      if(p4>0.6){
+        const lp=(p4-0.6)/0.4;
+        ctx.fillStyle=`rgba(128,232,144,${lp*0.85})`;
+        ctx.font=`italic ${Math.round(fs*0.78)}px IM Fell English,serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('ab',ox+a+b*p4/2,oy+a/2);
+        ctx.fillText('ab',ox+a*p4/2,oy+a+b/2);
+      }
+    }
+
+    // ── Dimension labels ──
+    if(p5>0){
+      ctx.fillStyle=`rgba(240,192,64,${p5*0.75})`;
+      ctx.font=`italic ${Math.round(fs*0.65)}px IM Fell English,serif`;ctx.textBaseline='middle';
+      ctx.textAlign='center';
+      ctx.fillText('a', ox+a/2, oy-14);
+      ctx.fillText('b', ox+a+b/2, oy-14);
+      ctx.textAlign='right';
+      ctx.fillText('a', ox-8, oy+a/2);
+      ctx.fillText('b', ox-8, oy+a+b/2);
+
+      // ── Formula at bottom ──
+      const fsize=Math.round(fs*1.0);
+      ctx.font=`italic ${fsize}px IM Fell English,serif`;ctx.textAlign='center';ctx.textBaseline='alphabetic';
+      const fy=oy+maxSz+28;
+      const parts=[
+        {text:'(a+b)²',color:`rgba(240,192,64,${p5})`},
+        {text:' = ',   color:`rgba(200,180,140,${p5*0.7})`},
+        {text:'a²',    color:`rgba(240,192,64,${p5})`},
+        {text:' + ',   color:`rgba(200,180,140,${p5*0.7})`},
+        {text:'2ab',   color:`rgba(128,232,144,${p5})`},
+        {text:' + ',   color:`rgba(200,180,140,${p5*0.7})`},
+        {text:'b²',    color:`rgba(96,200,240,${p5})`},
+      ];
+      // measure total width
+      let totalW=0;
+      parts.forEach(p=>{ctx.font=`italic ${fsize}px IM Fell English,serif`;totalW+=ctx.measureText(p.text).width;});
+      let fx=W/2-totalW/2;
+      ctx.textAlign='left';
+      parts.forEach(({text,color})=>{
+        ctx.fillStyle=color;
+        ctx.font=`italic ${fsize}px IM Fell English,serif`;
+        ctx.fillText(text,fx,fy);
+        fx+=ctx.measureText(text).width;
+      });
+    }
+
+    // Divider line at a and b
+    if(p2>0.8){
+      ctx.strokeStyle=`rgba(240,192,64,${(p2-0.8)/0.2*0.35})`;ctx.lineWidth=0.7;ctx.setLineDash([4,5]);
+      ctx.beginPath();ctx.moveTo(ox+a,oy);ctx.lineTo(ox+a,oy+maxSz);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(ox,oy+a);ctx.lineTo(ox+maxSz,oy+a);ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    c3Tick++;c3RAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopIdentity(){c3Active=false;cancelAnimationFrame(c3RAF);}
+
+// ══════════════════════════════════════════
+// SCENE 4: Balance scale
+// ══════════════════════════════════════════
+let balActive=false,balRAF,balTick=0;
+function startBalance(){
+  const canvas=document.getElementById('balance-c');if(!canvas)return;
+  const _br=canvas.getBoundingClientRect();const W=_br.width||400,H=_br.height||180;
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  balActive=true;
+  function frame(){
+    if(!balActive)return;
+    ctx.clearRect(0,0,W,H);
+    const t=balTick;
+    const cx=W/2,cy=H*0.35;
+    // Subtle oscillation = "balance in motion"
+    const tilt=Math.sin(t*0.025)*4;
+    const armLen=W*0.34,panW=60,panH=12;
+    // Fulcrum
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx-10,cy+30);ctx.lineTo(cx+10,cy+30);ctx.closePath();
+    ctx.fillStyle='rgba(201,168,76,0.3)';ctx.fill();
+    ctx.strokeStyle='rgba(201,168,76,0.5)';ctx.lineWidth=1;ctx.stroke();
+    // Beam
+    const r=tilt*Math.PI/180;
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(r);
+    ctx.beginPath();ctx.moveTo(-armLen-panW/2,0);ctx.lineTo(armLen+panW/2,0);
+    ctx.strokeStyle='rgba(201,168,76,0.7)';ctx.lineWidth=1.5;ctx.stroke();
+    // Left pan
+    ctx.fillStyle='rgba(128,232,144,0.15)';ctx.strokeStyle='rgba(128,232,144,0.6)';ctx.lineWidth=1;
+    ctx.fillRect(-armLen-panW/2,-panH,panW,panH);ctx.strokeRect(-armLen-panW/2,-panH,panW,panH);
+    // Left label: complex expression
+    ctx.fillStyle='rgba(128,232,144,0.8)';ctx.font='italic 13px IM Fell English,serif';ctx.textAlign='center';
+    ctx.fillText('3x + 7',-armLen,-panH-6);
+    // Right pan
+    ctx.fillStyle='rgba(96,200,240,0.15)';ctx.strokeStyle='rgba(96,200,240,0.6)';
+    ctx.fillRect(armLen-panW/2,-panH,panW,panH);ctx.strokeRect(armLen-panW/2,-panH,panW,panH);
+    ctx.fillStyle='rgba(96,200,240,0.8)';ctx.fillText('22',armLen,-panH-6);
+    // Center "="
+    ctx.fillStyle='rgba(201,168,76,0.9)';ctx.font='bold 18px serif';ctx.textAlign='center';
+    ctx.fillText('=',0,6);
+    ctx.restore();
+    // Baseline
+    ctx.beginPath();ctx.moveTo(cx-10,cy+30);ctx.lineTo(cx+10,cy+30);
+    ctx.strokeStyle='rgba(201,168,76,0.3)';ctx.lineWidth=2;ctx.stroke();
+    // Caption
+    ctx.font='9px Cinzel,serif';ctx.textAlign='center';ctx.fillStyle='rgba(122,95,42,0.5)';
+    ctx.fillText('Operate on both sides — balance always holds',cx,H-10);
+    balTick++;balRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopBalance(){balActive=false;cancelAnimationFrame(balRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 5: Function Curve Garden — algebra describes shape
+// ══════════════════════════════════════════
+const c5=document.getElementById('c5-det');
+let t5=0,c5Active=false,c5Raf;
+function resizeC5(){
+  const r=c5.getBoundingClientRect();
+  c5.width=r.width||560; c5.height=r.height||260;
+}
+function drawC5(){
+  if(!c5Active)return;
+  resizeC5();
+  const CW=c5.width,CH=c5.height;
+  const ctx=c5.getContext('2d');
+  ctx.clearRect(0,0,CW,CH);
+  ctx.fillStyle='rgba(4,2,10,0.9)';ctx.fillRect(0,0,CW,CH);
+
+  const cx=CW/2,cy=CH/2;
+  const xScale=CW*0.072, yScale=CH*0.18;
+  const xMin=-CW/(2*xScale), xMax=CW/(2*xScale);
+
+  // ── Coordinate axes ──
+  ctx.strokeStyle='rgba(122,95,42,0.35)';ctx.lineWidth=0.8;
+  ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(CW,cy);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,CH);ctx.stroke();
+  // Tick marks
+  for(let x=-6;x<=6;x++){
+    if(x===0)continue;
+    const px=cx+x*xScale;
+    ctx.beginPath();ctx.moveTo(px,cy-4);ctx.lineTo(px,cy+4);
+    ctx.strokeStyle='rgba(122,95,42,0.25)';ctx.stroke();
+  }
+
+  // Curves revealed progressively
+  const prog=Math.min(1,t5/200);
+
+  const curves=[
+    {
+      fn: x=>x,             // y = x (linear)
+      color:'rgba(96,200,240,A)',
+      label:'y = x',
+      delay:0, labelX:3.2
+    },
+    {
+      fn: x=>x*x/4,         // y = x²/4 (parabola)
+      color:'rgba(240,192,64,A)',
+      label:'y = x²',
+      delay:0.22, labelX:3.0
+    },
+    {
+      fn: x=>x*x*x/24,      // y = x³/24 (cubic)
+      color:'rgba(208,128,248,A)',
+      label:'y = x³',
+      delay:0.44, labelX:3.4
+    },
+    {
+      fn: x=>Math.sin(x*0.8)*1.8,  // sine
+      color:'rgba(128,232,144,A)',
+      label:'y = sin x',
+      delay:0.62, labelX:3.8
+    },
+    {
+      fn: x=>Math.exp(x*0.4)*0.3-1, // exponential
+      color:'rgba(240,128,64,A)',
+      label:'y = eˣ',
+      delay:0.78, labelX:3.2
+    },
+  ];
+
+  curves.forEach(({fn,color,label,delay,labelX})=>{
+    const p=Math.max(0,Math.min(1,(prog-delay)/(1-delay+0.01)));
+    if(p<=0) return;
+    const alpha=p*0.85;
+
+    // Draw curve
+    ctx.beginPath();
+    let started=false;
+    const steps=CW*1.5;
+    for(let i=0;i<=steps*p;i++){
+      const x=xMin+(i/steps)*(xMax-xMin);
+      const y=fn(x);
+      const px=cx+x*xScale;
+      const py=cy-y*yScale;
+      if(py<-20||py>CH+20){started=false;continue;}
+      if(!started){ctx.moveTo(px,py);started=true;}else ctx.lineTo(px,py);
+    }
+    ctx.strokeStyle=color.replace('A',alpha.toFixed(2));
+    ctx.lineWidth=1.4;ctx.stroke();
+
+    // Trailing glow
+    if(p>0.5){
+      const ga=(p-0.5)*2;
+      const gx2=cx+labelX*xScale;
+      const gy2=cy-fn(labelX)*yScale;
+      if(gy2>0&&gy2<CH){
+        const gg=ctx.createRadialGradient(gx2,gy2,0,gx2,gy2,18);
+        gg.addColorStop(0,color.replace('A',(ga*0.4).toFixed(2)));
+        gg.addColorStop(1,'transparent');
+        ctx.fillStyle=gg;ctx.fillRect(gx2-18,gy2-18,36,36);
+        ctx.beginPath();ctx.arc(gx2,gy2,3,0,Math.PI*2);
+        ctx.fillStyle=color.replace('A',(ga*0.9).toFixed(2));ctx.fill();
+        // Label
+        ctx.font=`italic ${Math.round(CW*0.021)}px IM Fell English,serif`;
+        ctx.textAlign='left';ctx.fillStyle=color.replace('A',(ga*0.8).toFixed(2));
+        ctx.fillText(label,gx2+8,gy2+4);
+      }
+    }
+  });
+
+  // Scanning vertical line (the "x" detector)
+  const scanX=xMin+((t5*0.6)%(xMax-xMin)*(2))-xMax*0.5;
+  const spx=cx+scanX*xScale;
+  const gr=ctx.createLinearGradient(spx,0,spx+2,0);
+  gr.addColorStop(0,'transparent');
+  gr.addColorStop(0.5,`rgba(232,204,122,0.18)`);
+  gr.addColorStop(1,'transparent');
+  ctx.fillStyle=gr;ctx.fillRect(spx-1,0,3,CH);
+
+  // Central "x = ?" label at scan line
+  ctx.font=`italic ${Math.round(CW*0.019)}px IM Fell English,serif`;
+  ctx.textAlign='center';ctx.fillStyle='rgba(232,204,122,0.3)';
+  ctx.fillText(`x = ${scanX.toFixed(1)}`,spx,CH-12);
+
+  t5++;c5Raf=requestAnimationFrame(drawC5);
+}
+
+// ══════════════════════════════════════════
+// SCENE 6: Complex plane
+// ══════════════════════════════════════════
+let cpxActive=false,cpxRAF,cpxTick=0;
+function startComplex(){
+  const canvas=document.getElementById('complex-c');if(!canvas)return;
+  const _cpxr=canvas.getBoundingClientRect();const S=Math.min(_cpxr.width||240,_cpxr.height||240);
+  canvas.width=S;canvas.height=S;
+  const ctx=canvas.getContext('2d');
+  cpxActive=true;
+  const cx=S/2,cy=S/2,axLen=S*0.42;
+  function frame(){
+    if(!cpxActive)return;
+    ctx.clearRect(0,0,S,S);
+    const t=cpxTick;
+    // Axes
+    ctx.strokeStyle='rgba(122,95,42,0.4)';ctx.lineWidth=0.8;
+    ctx.beginPath();ctx.moveTo(cx-axLen,cy);ctx.lineTo(cx+axLen,cy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx,cy-axLen);ctx.lineTo(cx,cy+axLen);ctx.stroke();
+    ctx.font='9px Cinzel,serif';ctx.fillStyle='rgba(122,95,42,0.5)';ctx.textAlign='center';
+    ctx.fillText('Real',cx+axLen-16,cy+14);ctx.fillText('Imag',cx+14,cy-axLen+12);
+    // Unit circle (where e^iθ lives)
+    ctx.beginPath();ctx.arc(cx,cy,axLen*0.85,0,Math.PI*2);
+    ctx.strokeStyle='rgba(208,128,248,0.2)';ctx.lineWidth=1;ctx.setLineDash([3,6]);ctx.stroke();ctx.setLineDash([]);
+    // Rotating point e^iθ
+    const theta=t*0.025;
+    const px=cx+Math.cos(theta)*axLen*0.85,py=cy-Math.sin(theta)*axLen*0.85;
+    // Radius line
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(px,py);
+    ctx.strokeStyle='rgba(208,128,248,0.5)';ctx.lineWidth=1;ctx.stroke();
+    // Real & imaginary projections
+    ctx.beginPath();ctx.moveTo(px,cy);ctx.lineTo(px,py);
+    ctx.strokeStyle='rgba(96,200,240,0.3)';ctx.setLineDash([3,5]);ctx.stroke();ctx.setLineDash([]);
+    ctx.beginPath();ctx.moveTo(cx,py);ctx.lineTo(px,py);
+    ctx.strokeStyle='rgba(128,232,144,0.3)';ctx.setLineDash([3,5]);ctx.stroke();ctx.setLineDash([]);
+    // Trail
+    ctx.beginPath();
+    for(let i=0;i<60;i++){
+      const a=theta-i*0.025;
+      const tx=cx+Math.cos(a)*axLen*0.85,ty=cy-Math.sin(a)*axLen*0.85;
+      const al=(60-i)/60*0.4;
+      i===0?ctx.moveTo(tx,ty):ctx.lineTo(tx,ty);
+    }
+    ctx.strokeStyle='rgba(208,128,248,0.25)';ctx.lineWidth=1;ctx.stroke();
+    // Point
+    const pg=ctx.createRadialGradient(px,py,0,px,py,8);
+    pg.addColorStop(0,'rgba(208,128,248,0.9)');pg.addColorStop(1,'transparent');
+    ctx.fillStyle=pg;ctx.fillRect(px-8,py-8,16,16);
+    ctx.beginPath();ctx.arc(px,py,4,0,Math.PI*2);
+    ctx.fillStyle='rgba(208,128,248,1)';ctx.fill();
+    // Euler label when near π
+    if(Math.abs(Math.cos(theta)+1)<0.05){
+      ctx.font='italic 11px IM Fell English';ctx.textAlign='center';
+      ctx.fillStyle='rgba(232,204,122,0.9)';
+      ctx.fillText('e^iπ = -1',cx,cy+axLen*0.85+18);
+    }
+    // θ arc
+    ctx.beginPath();ctx.arc(cx,cy,axLen*0.22,0,-theta,theta<0);
+    ctx.strokeStyle='rgba(201,168,76,0.35)';ctx.lineWidth=0.8;ctx.stroke();
+    ctx.font='10px IM Fell English,serif';ctx.fillStyle='rgba(201,168,76,0.5)';
+    ctx.fillText('θ',cx+axLen*0.28*Math.cos(-theta/2),cy+axLen*0.28*Math.sin(-theta/2)+4);
+    // Origin dot
+    ctx.beginPath();ctx.arc(cx,cy,3,0,Math.PI*2);ctx.fillStyle='rgba(201,168,76,0.5)';ctx.fill();
+    cpxTick++;cpxRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopComplex(){cpxActive=false;cancelAnimationFrame(cpxRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 7: Galois Symmetry Garden — quintic roots dance
+// ══════════════════════════════════════════
+let galActive=false,galRAF,galTick=0;
+function startGalois(){
+  const canvas=document.getElementById('galois-c');if(!canvas)return;
+  const _gr=canvas.getBoundingClientRect();const W=_gr.width||500,H=_gr.height||340;
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  galActive=true;galTick=0;
+  const cx=W/2,cy=H/2;
+  const n=5, R=Math.min(W,H)*0.36;
+  const LABELS=['α₁','α₂','α₃','α₄','α₅'];
+  const COLS=[
+    'rgba(240,192,64,A)','rgba(96,200,240,A)',
+    'rgba(128,232,144,A)','rgba(208,128,248,A)','rgba(240,128,64,A)'
+  ];
+
+  function frame(){
+    if(!galActive)return;
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='rgba(4,2,10,0.92)';ctx.fillRect(0,0,W,H);
+    const t=galTick;
+    const baseRot=t*0.006;
+
+    // ── Background: faint orbits ──
+    [0.5,0.7,0.9,1.1].forEach((fr,i)=>{
+      ctx.beginPath();ctx.arc(cx,cy,R*fr,0,Math.PI*2);
+      ctx.strokeStyle='rgba(122,95,42,0.06)';ctx.lineWidth=0.5;ctx.stroke();
+    });
+
+    // ── Current permutation: cycle through S5 permutations ──
+    const permCycle=Math.floor(t/80)%5;
+    const permFrac=(t%80)/80;
+
+    // All n*(n-1)/2 = 10 edges of complete graph K5
+    const verts=Array.from({length:n},(_,i)=>{
+      const a=i/n*Math.PI*2-Math.PI/2+baseRot;
+      return{x:cx+Math.cos(a)*R, y:cy+Math.sin(a)*R, a};
+    });
+
+    // Draw all K5 edges with color based on orbit
+    for(let i=0;i<n;i++){
+      for(let j=i+1;j<n;j++){
+        const isActive=(i===permCycle||j===permCycle);
+        const alpha=isActive?0.35:0.07;
+        ctx.beginPath();ctx.moveTo(verts[i].x,verts[i].y);ctx.lineTo(verts[j].x,verts[j].y);
+        ctx.strokeStyle=isActive
+          ? COLS[i].replace('A',alpha.toFixed(2))
+          : 'rgba(100,80,140,0.07)';
+        ctx.lineWidth=isActive?1.2:0.5;ctx.stroke();
+      }
+    }
+
+    // ── Animated permutation arrow ──
+    const src=permCycle, dst=(permCycle+1)%n;
+    const sv=verts[src], dv=verts[dst];
+    const ax=sv.x+(dv.x-sv.x)*permFrac;
+    const ay=sv.y+(dv.y-sv.y)*permFrac;
+    // Curved path arrow
+    const midx=(sv.x+dv.x)/2+(cy-Math.min(sv.y,dv.y))*0.2;
+    const midy=(sv.y+dv.y)/2;
+    ctx.beginPath();
+    ctx.moveTo(sv.x,sv.y);
+    ctx.quadraticCurveTo(midx,midy,
+      sv.x+(dv.x-sv.x)*permFrac,
+      sv.y+(dv.y-sv.y)*permFrac);
+    ctx.strokeStyle=`rgba(128,232,144,${0.7*Math.sin(permFrac*Math.PI)})`;
+    ctx.lineWidth=2;ctx.stroke();
+    // Arrow head
+    const ht=Math.min(0.99,permFrac+0.01);
+    const hx=sv.x+(dv.x-sv.x)*ht,hy=sv.y+(dv.y-sv.y)*ht;
+    const ang2=Math.atan2(dv.y-sv.y,dv.x-sv.x);
+    ctx.beginPath();
+    ctx.moveTo(ax,ay);
+    ctx.lineTo(ax-10*Math.cos(ang2-0.4),ay-10*Math.sin(ang2-0.4));
+    ctx.lineTo(ax-10*Math.cos(ang2+0.4),ay-10*Math.sin(ang2+0.4));
+    ctx.closePath();ctx.fillStyle='rgba(128,232,144,0.75)';ctx.fill();
+
+    // ── Vertex circles ──
+    verts.forEach((v,i)=>{
+      const isActive=i===permCycle||i===dst;
+      const pulse=0.7+0.3*Math.sin(t*0.05+i*1.2);
+      const radius=isActive?8*pulse:5;
+      // Glow
+      const gg=ctx.createRadialGradient(v.x,v.y,0,v.x,v.y,radius*3);
+      gg.addColorStop(0,COLS[i].replace('A',(isActive?0.4:0.1).toString()));
+      gg.addColorStop(1,'transparent');
+      ctx.fillStyle=gg;ctx.fillRect(v.x-radius*3,v.y-radius*3,radius*6,radius*6);
+      // Circle
+      ctx.beginPath();ctx.arc(v.x,v.y,radius,0,Math.PI*2);
+      ctx.fillStyle=COLS[i].replace('A',(isActive?0.95:0.6).toString());ctx.fill();
+      // Label
+      const lx=v.x+(v.x-cx)*0.28, ly=v.y+(v.y-cy)*0.28+4;
+      ctx.font=`italic ${Math.round(W*0.028)}px IM Fell English,serif`;
+      ctx.textAlign='center';ctx.fillStyle=COLS[i].replace('A','0.85');
+      ctx.fillText(LABELS[i],lx,ly);
+    });
+
+    // ── Central label: current permutation ──
+    const permLabels=['(α₁α₂)','(α₂α₃)','(α₃α₄)','(α₄α₅)','(α₅α₁)'];
+    ctx.font=`${Math.round(W*0.020)}px Cinzel,serif`;ctx.textAlign='center';
+    ctx.fillStyle='rgba(208,128,248,0.5)';
+    ctx.fillText('S₅',cx,cy+4);
+    ctx.font=`${Math.round(W*0.016)}px Cinzel,serif`;
+    ctx.fillStyle='rgba(128,232,144,0.45)';
+    ctx.fillText(permLabels[permCycle],cx,cy+22);
+
+    // ── Outer ring: number labels ──
+    const ringR=R*1.3;
+    for(let i=0;i<120;i++){
+      const a=(i/120)*Math.PI*2+baseRot*0.5;
+      const rx=cx+Math.cos(a)*ringR, ry=cy+Math.sin(a)*ringR;
+      const label=['α','β','σ','π','ε','∘','≅','⟹'][i%8];
+      ctx.font=`${Math.round(W*0.013)}px IM Fell English,serif`;ctx.textAlign='center';
+      ctx.fillStyle=`rgba(122,95,42,${0.06+0.04*Math.sin(t*0.02+i)})`;
+      ctx.fillText(label,rx,ry+4);
+    }
+
+    // Central glow
+    const cpulse=0.5+0.5*Math.sin(t*0.04);
+    const cg=ctx.createRadialGradient(cx,cy,0,cx,cy,R*0.3);
+    cg.addColorStop(0,`rgba(201,168,76,${cpulse*0.1})`);
+    cg.addColorStop(1,'transparent');
+    ctx.fillStyle=cg;ctx.fillRect(0,0,W,H);
+
+    galTick++;galRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopGalois(){galActive=false;cancelAnimationFrame(galRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 8 OUTRO: Algebra Universe — Lissajous + equations
+// ══════════════════════════════════════════
+const c8=document.getElementById('c8');
+let t8=0,c8Active=false,c8Raf;
+function resizeC8(){
+  const r=c8.getBoundingClientRect();
+  c8.width=r.width||560; c8.height=r.height||220;
+}
+function drawC8(){
+  if(!c8Active)return;
+  resizeC8();
+  const CW=c8.width,CH=c8.height;
+  const ctx=c8.getContext('2d');
+  ctx.fillStyle='rgba(4,2,10,0.88)';ctx.fillRect(0,0,CW,CH);
+  const cx=CW/2,cy=CH/2,t=t8;
+  const rX=CW*0.42,rY=CH*0.38;
+
+  // ── Multiple Lissajous curves ──
+  const liss=[
+    {a:1,b:2,delta:Math.PI/2,   color:'rgba(240,192,64,A)',  lw:1.1},
+    {a:3,b:2,delta:Math.PI/4,   color:'rgba(96,200,240,A)',  lw:0.9},
+    {a:3,b:4,delta:Math.PI/2,   color:'rgba(208,128,248,A)', lw:0.85},
+    {a:5,b:4,delta:Math.PI/6,   color:'rgba(128,232,144,A)', lw:0.75},
+    {a:5,b:6,delta:Math.PI/3,   color:'rgba(240,128,64,A)',  lw:0.65},
+  ];
+
+  const prog=Math.min(1,t/180);
+
+  liss.forEach(({a,b,delta,color,lw},li)=>{
+    const delay=li/liss.length;
+    const p=Math.max(0,Math.min(1,(prog-delay*0.5)/(1-delay*0.5+0.01)));
+    if(p<=0) return;
+    const scale=0.45+li*0.11;
+    const anim=t*0.008+li*0.7;
+    ctx.beginPath();
+    let started=false;
+    const steps=600;
+    for(let i=0;i<=steps*p;i++){
+      const theta=(i/steps)*Math.PI*2;
+      const px=cx+Math.cos(a*theta+anim*0.5)*rX*scale;
+      const py=cy+Math.sin(b*theta+delta+anim*0.3)*rY*scale;
+      if(!started){ctx.moveTo(px,py);started=true;}else ctx.lineTo(px,py);
+    }
+    ctx.strokeStyle=color.replace('A',(p*0.6).toFixed(2));
+    ctx.lineWidth=lw;ctx.stroke();
+  });
+
+  // ── Floating algebra symbols ──
+  const SYMS=[
+    {s:'x',   col:'rgba(240,192,64,A)',   r:0.82,speed:0.011,  sz:26},
+    {s:'f(x)',col:'rgba(96,200,240,A)',   r:0.68,speed:-0.009, sz:19},
+    {s:'∑',   col:'rgba(128,232,144,A)', r:0.90,speed:0.007,  sz:24},
+    {s:'∫',   col:'rgba(208,128,248,A)', r:0.75,speed:-0.013, sz:22},
+    {s:'i',   col:'rgba(96,200,240,A)',  r:0.58,speed:0.015,  sz:20},
+    {s:'π',   col:'rgba(240,128,64,A)',  r:0.85,speed:-0.008, sz:21},
+    {s:'√',   col:'rgba(240,192,64,A)',  r:0.65,speed:0.010,  sz:20},
+    {s:'ℝ',   col:'rgba(208,128,248,A)', r:0.78,speed:-0.006, sz:19},
+  ];
+  SYMS.forEach(({s,col,r,speed,sz},i)=>{
+    const a=(i/SYMS.length)*Math.PI*2+t*speed;
+    const px=cx+Math.cos(a)*rX*r;
+    const py=cy+Math.sin(a*0.7)*rY*r;
+    const pulse=0.55+0.45*Math.sin(t*0.04+i*1.1);
+    const alpha=Math.max(0,prog-i*0.08)*pulse;
+    if(alpha<=0)return;
+    // Glow
+    const gg=ctx.createRadialGradient(px,py,0,px,py,sz);
+    gg.addColorStop(0,col.replace('A',(alpha*0.3).toFixed(2)));
+    gg.addColorStop(1,'transparent');
+    ctx.fillStyle=gg;ctx.fillRect(px-sz,py-sz,sz*2,sz*2);
+    ctx.font=`italic ${sz}px IM Fell English,serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle=col.replace('A',alpha.toFixed(2));
+    ctx.fillText(s,px,py);
+  });
+
+  // ── Central "=" with glow ──
+  const cpulse=0.6+0.4*Math.sin(t*0.04);
+  const cg=ctx.createRadialGradient(cx,cy,0,cx,cy,40);
+  cg.addColorStop(0,`rgba(201,168,76,${cpulse*0.25})`);
+  cg.addColorStop(1,'transparent');
+  ctx.fillStyle=cg;ctx.fillRect(cx-40,cy-40,80,80);
+  ctx.font=`italic ${Math.round(CH*0.22)}px IM Fell English,serif`;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle=`rgba(201,168,76,${0.7+cpulse*0.3})`;
+  ctx.fillText('=',cx,cy);
+
+  t8++;c8Raf=requestAnimationFrame(drawC8);
+}
+
+// ══════════════════════════════════════════
+// SCENE MANAGER
+// ══════════════════════════════════════════
+const scenes=document.querySelectorAll('.scene');
+const totalScenes=scenes.length;
+let current=0,isTransitioning=false;
+const dotsEl=document.getElementById('nav-dots');
+for(let i=0;i<totalScenes;i++){
+  const d=document.createElement('div');d.className='nav-dot'+(i===0?' active':'');
+  d.addEventListener('click',()=>goTo(i));dotsEl.appendChild(d);
+}
+function updateDots(){document.querySelectorAll('.nav-dot').forEach((d,i)=>d.classList.toggle('active',i===current));}
+function updateProgress(){document.getElementById('progress').style.width=(current/(totalScenes-1)*100)+'%';}
+
+function onEnterScene(idx){
+  if(idx===0){
+    ['s0-b','s0-t','s0-s','s0-body'].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add('show');},200+i*280));
+    c0.style.opacity='1';setTimeout(drawC0,600);
+  }
+  if(idx===1){
+    document.querySelectorAll('#tl .tl-item').forEach((el,i)=>setTimeout(()=>el.classList.add('show'),300+i*350));
+  }
+  if(idx===2){
+    document.querySelectorAll('#var-row .var-card').forEach((el,i)=>setTimeout(()=>el.classList.add('show'),300+i*250));
+    document.getElementById('c2-vars').style.opacity='1';c2Active=true;drawC2();
+  }
+  if(idx===3){
+    setTimeout(()=>{const el=document.getElementById('id-box');if(el)el.classList.add('show');},400);
+    const _c3geo=document.getElementById('c3-geo');
+    if(_c3geo){_c3geo.style.opacity='1';setTimeout(startIdentityCanvas,400);}
+  }
+  if(idx===4){
+    document.getElementById('balance-wrap').classList.add('show');
+    document.getElementById('balance-c').style.opacity='1';
+    const bt=document.getElementById('bal-text');if(bt)bt.style.opacity='1';
+    setTimeout(startBalance,400);
+  }
+  if(idx===5){
+    document.querySelectorAll('#solver .solver-step').forEach((el,i)=>setTimeout(()=>el.classList.add('show'),300+i*500));
+    const _c5=document.getElementById('c5-det');if(_c5){_c5.style.opacity='1';}
+    setTimeout(()=>{t5=0;c5Active=true;if(c5Raf)cancelAnimationFrame(c5Raf);drawC5();},350);
+  }
+  if(idx===6){
+    document.getElementById('complex-c').style.opacity='1';
+    const ci=document.getElementById('cpx-info');if(ci)ci.style.opacity='1';
+    setTimeout(startComplex,300);
+  }
+  if(idx===7){
+    const _gc=document.getElementById('galois-c');if(_gc)_gc.style.opacity='1';
+    const gl=document.getElementById('gal-label');if(gl)gl.classList.add('show');
+    setTimeout(startGalois,350);
+  }
+  if(idx===8){
+    ['e-t','e-q','e-a'].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add('show');},300+i*500));
+    c8.style.opacity='1';
+    setTimeout(()=>{t8=0;c8Active=true;if(c8Raf)cancelAnimationFrame(c8Raf);drawC8();},300);
+  }
+}
+function onLeaveScene(idx){
+  if(idx===0){if(typeof c0Raf!=='undefined')cancelAnimationFrame(c0Raf);}
+  if(idx===5){c5Active=false;if(typeof c5Raf!=='undefined')cancelAnimationFrame(c5Raf);}
+  if(idx===8){c8Active=false;if(typeof c8Raf!=='undefined')cancelAnimationFrame(c8Raf);}
+  if(idx===2){c2Active=false;morphProg=0;concIdx=0;}
+  if(idx===3)stopIdentity();
+  if(idx===4)stopBalance();
+  if(idx===5)c5Active=false;
+  if(idx===6)stopComplex();
+  if(idx===7)stopGalois();
+  if(idx===8)c8Active=false;
+  if(idx===3){const el=document.getElementById('id-box');if(el)el.classList.remove('show');}
+  if(idx===4){const el=document.getElementById('balance-wrap');if(el)el.classList.remove('show');}
+  if(idx===1) document.querySelectorAll('#tl .tl-item').forEach(el=>el.classList.remove('show'));
+  if(idx===5) document.querySelectorAll('#solver .solver-step').forEach(el=>el.classList.remove('show'));
+  if(idx===2) document.querySelectorAll('#var-row .var-card').forEach(el=>el.classList.remove('show'));
+}
+function goTo(idx){
+  if(isTransitioning||idx===current)return;
+  isTransitioning=true;onLeaveScene(current);
+  scenes[current].classList.remove('active');current=idx;scenes[current].classList.add('active');
+  updateDots();updateProgress();
+  setTimeout(()=>{onEnterScene(current);isTransitioning=false;},600);
+}
+function next(){if(current<totalScenes-1)goTo(current+1);}
+function prev(){if(current>0)goTo(current-1);}
+document.getElementById('btn-next').addEventListener('click',next);
+document.getElementById('btn-prev').addEventListener('click',prev);
+// Click anywhere to advance (document-level for reliability)
+document.addEventListener('click', (e) => {
+  if(e.target.closest('#nav')) return;
+  if(e.target.closest('a')) return;
+  if(e.target.closest('button')) return;
+  if(e.target.closest('#home-btn')) return;
+  if(e.target.closest('#ch-lang-bar')) return;
+  next();
+});
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')next();if(e.key==='ArrowLeft')prev();});
+setTimeout(()=>{document.getElementById('ornament').classList.add('visible');document.getElementById('hint').classList.add('visible');},1500);
+updateProgress();onEnterScene(0);
+</script>
+
+<div id="ch-lang-bar">
+  <button class="ch-lb" id="ch-btn-zh" onclick="chLang('zh')">中文</button>
+  <div class="ch-lb-sep"></div>
+  <button class="ch-lb on" id="ch-btn-en" onclick="chLang('en')">EN</button>
+</div>
+<script i<script id="bilingual-js">
+(function(){
+  var D={"ornament": "Chapter VIII · The Beauty of Algebra · The Invisible Skeleton", "badges": ["Chapter VIII", "§ 8.1 · From Words to Symbols", "§ 8.1 · The Variable x", "§ 8.2 · The Binomial Theorem", "§ 8.2 · Equations", "§ 8.3 · Imaginary Numbers", "§ 8.3 · Galois Theory", "Epilogue · Chapter VIII", "Epilogue · Chapter VI"], "titles": ["The Beauty of Algebra", "Geometry Describes Shape; Algebra Describes Relation", "From Words to Symbols", "One Letter, Infinite Change", "(a + b)² — The Universe's Eternal Template", "The Equal Sign: Algebra's Heart", "x² = -1: Birth of Imaginary Numbers", "Galois Theory: The Beauty of Unsolvability", "Letters Are Thought's Sharpest Blade"], "bodies": ["Geometry describes <strong>shape</strong>; algebra describes <strong>relationship</strong>.<br>The invisible skeleton beneath every visible form is algebraic structure.", "Before algebra, people calculated with words.<br>\"A number, added to twice itself, equals fifteen\" — solved in paragraphs.", "Al-Khwarizmi introduced systematic symbolic thinking in the 9th century.<br>\"Algebra\" comes from his book — <em>al-jabr</em>, the reunion of broken parts.", "One letter subdues infinite variation.<br><strong>x</strong> can represent any number, any quantity, any unknown —<br>the first true universal language of mathematics.", "When you write this identity, you are not counting apples —<br>you are stating a truth that holds in <strong>any universe where multiplication distributes over addition</strong>.", "The equal sign (=) is algebra's heart.<br>It declares that two expressions, however different they look, describe <strong>the same thing</strong>.", "When algebraists tried to solve x² = -1, they hit a wall.<br>Rather than declare it impossible, they <strong>invented a new dimension</strong>: i.<br>This creative courage unlocked the complex plane.", "In 1832, the night before his fatal duel, Galois proved<br>that fifth-degree equations have <strong>no general algebraic solution</strong>.<br>The beauty of mathematics sometimes lies in what is impossible."]};
+  var orig=null;
+  function save(){
+    if(orig)return;
+    var os=document.querySelector('.ornament-line span');
+    orig={
+      ornament:os?os.textContent:'',
+      badges:[].map.call(document.querySelectorAll('.chapter-badge'),function(e){return e.innerHTML;}),
+      titles:[].map.call(document.querySelectorAll('.scene-title'),function(e){return e.innerHTML;}),
+      bodies:[].map.call(document.querySelectorAll('.scene-body'),function(e){return e.innerHTML;}),
+    };
+  }
+  function applyEn(){
+    save();
+    applyPatchEn();
+    var os=document.querySelector('.ornament-line span');
+    if(os&&D.ornament)os.textContent=D.ornament;
+    [].forEach.call(document.querySelectorAll('.chapter-badge'),function(el,i){if(D.badges[i]!=null)el.innerHTML=D.badges[i];});
+    [].forEach.call(document.querySelectorAll('.scene-title'),function(el,i){if(D.titles[i]!=null)el.innerHTML=D.titles[i];});
+    [].forEach.call(document.querySelectorAll('.scene-body'),function(el,i){if(D.bodies[i]!=null)el.innerHTML=D.bodies[i];});
+  
+  
+
+    /* zwOrig save */
+    if(!window._zwOrig){
+      window._zwOrig={};
+      ['bal-p0','cpx-p0','cpx-p1','e-q','e-a','e-t'].forEach(function(id){var e=document.getElementById(id);if(e)window._zwOrig[id]=e.innerHTML;});
+    }
+    /* __direct_wires__ */
+    var _w=document.getElementById('e-t');if(_w)_w.innerHTML='Letters — the sharpest blade of thought';
+    var _w=document.getElementById('e-a');if(_w)_w.innerHTML='— Chapter VIII · End';
+    var _w=document.getElementById('bal-p0');if(_w)_w.innerHTML='Any operation on both sides &mdash; adding, subtracting, multiplying &mdash; the equals sign holds.<br>This &ldquo;symmetry of operations&rdquo; is the soul of algebra.';
+    var _w=document.getElementById('cpx-p0');if(_w)_w.innerHTML='The complex plane unifies reals (horizontal axis) with imaginaries (vertical axis); every complex number a+bi is a point in the plane.';
+    var _w=document.getElementById('cpx-p1');if(_w)_w.innerHTML='Euler&#39;s formula e<sup>i&pi;</sup>+1=0 links the five most important constants &mdash; called &ldquo;the most beautiful equation.&rdquo;';
+    var _w=document.getElementById('e-q');if(_w)_w.innerHTML='Specific numbers are facts,<br>abstract variables are laws.<br>Algebra liberated human intellect from mere counting,<br>granting us the power &mdash;<br><strong style="color:var(--gold-light);">to reason about everything at once.</strong>';
+  }
+  function applyZh(){
+    if(!orig)return;
+    /* zwOrig restore */
+    if(window._zwOrig){['bal-p0','cpx-p0','cpx-p1','e-q','e-a','e-t'].forEach(function(id){var e=document.getElementById(id);if(e&&window._zwOrig[id]!==undefined)e.innerHTML=window._zwOrig[id];});}
+    applyPatchZh();
+    var os=document.querySelector('.ornament-line span');
+    if(os)os.textContent=orig.ornament;
+    [].forEach.call(document.querySelectorAll('.chapter-badge'),function(el,i){if(orig.badges[i]!=null)el.innerHTML=orig.badges[i];});
+    [].forEach.call(document.querySelectorAll('.scene-title'),function(el,i){if(orig.titles[i]!=null)el.innerHTML=orig.titles[i];});
+    [].forEach.call(document.querySelectorAll('.scene-body'),function(el,i){if(orig.bodies[i]!=null)el.innerHTML=orig.bodies[i];});
+  }
+  
+  // Extended EN patches for elements not covered by D.badges/titles/bodies
+  var enPatches=[["#s0-s", 0, "Logic Woven into an Invisible Skeleton"], [".tl-item", 0, "<div class=\"tl-year\">~820 AD</div><div class=\"tl-line\"></div><div class=\"tl-text\"><strong>Al-Khwarizmi</strong> — introduced \"thing\" (Shay) as the unknown</div>"], [".tl-item", 1, "<div class=\"tl-year\">1637</div><div class=\"tl-line\"></div><div class=\"tl-text\"><strong>Descartes</strong> — introduced x, y, z; algebra gains universal language</div>"], [".tl-item", 2, "<div class=\"tl-year\">1799</div><div class=\"tl-line\"></div><div class=\"tl-text\"><strong>Gauss</strong> — fundamental theorem of algebra proved</div>"], [".tl-item", 3, "<div class=\"tl-year\">1832</div><div class=\"tl-line\"></div><div class=\"tl-text\"><strong>Galois</strong> — group theory born; quintic equations have no radical solution</div>"], [".var-title", 0, "Unknown"], [".var-desc", 0, "The truth to be found in an equation — where all mysteries hide"], [".var-title", 1, "Function"], [".var-desc", 1, "The relationship itself becomes an object; describes laws between variables"], [".var-title", 2, "Any Natural Number"], [".var-desc", 2, "One letter stands for infinitely many specific numbers at once"], [".var-title", 3, "Infinity"], [".var-desc", 3, "Algebra makes \"infinitely large\" a computable object"], [".solver-step", 0, "<span class=\"step-eq\">3<em class=\"hl\">x</em> + 7 = 22</span><span class=\"step-note\">Original equation</span>"], [".solver-step", 1, "<span class=\"step-eq\">3<em class=\"hl\">x</em> = 22 - 7</span><span class=\"step-note\">Subtract 7 from both sides</span>"], [".solver-step", 2, "<span class=\"step-eq\">3<em class=\"hl\">x</em> = 15</span><span class=\"step-note\">Simplify right side</span>"], [".solver-step", 3, "<span class=\"step-eq\"><em class=\"hl\">x</em> = 15 ÷ 3</span><span class=\"step-note\">Divide both sides by 3</span>"], [".solver-step", 4, "<span class=\"step-eq\"><em class=\"x-reveal\">x = 5</em> ✓</span><span class=\"step-note\" style=\"color:var(--eq);\">Solved!</span>"], ["#bal-text p", 0, "Any operation applied to both sides of an equation — adding, subtracting, multiplying — the equals sign holds.<br>This &ldquo;symmetry of operations&rdquo; is the soul of algebra."], ["#cpx-info p", 0, "The complex plane unifies real numbers (horizontal axis) with imaginary numbers (vertical axis); every complex number a + bi is a point in the plane."], ["#cpx-info p", 1, "Euler's formula e<sup>iπ</sup> + 1 = 0 links the five most important constants — e, i, π, 1, 0 — earning the title &ldquo;the most beautiful equation.&rdquo;"], ["#e-q", 0, "Specific numbers are facts,<br>abstract variables are laws.<br>Algebra liberated human intellect from mere counting,<br>granting us the power —<br><strong style='color:var(--gold-light);'>to reason about everything at once.</strong>"], ['.tl-date', 0, '~820 CE'], ['.tl-name', 0, 'Al-Khwarizmi'], ['.tl-desc', 0, 'introduced symbolic unknowns, founding algebra'], ['.tl-date', 1, '1637'], ['.tl-name', 1, 'Descartes'], ['.tl-desc', 1, 'introduced x, y, z — coordinates enter mathematics'], ['.tl-date', 2, '1799'], ['.tl-name', 2, 'Gauss'], ['.tl-desc', 2, 'proved the Fundamental Theorem of Algebra'], ['.tl-date', 3, '1832'], ['.tl-name', 3, 'Galois'], ['.tl-desc', 3, 'group theory — the study of symmetries of equations']];
+  var patchOrig=null;
+  function savePatch(){
+    if(patchOrig)return;
+    patchOrig=enPatches.map(function(p){
+      var els=document.querySelectorAll(p[0]);
+      return els[p[1]]?els[p[1]].innerHTML:null;
+    });
+  }
+  function applyPatchEn(){
+    savePatch();
+    enPatches.forEach(function(p){
+      var els=document.querySelectorAll(p[0]);
+      if(els[p[1]]!=null)els[p[1]].innerHTML=p[2];
+    });
+  }
+  function applyPatchZh(){
+    if(!patchOrig)return;
+    enPatches.forEach(function(p,i){
+      var els=document.querySelectorAll(p[0]);
+      if(els[p[1]]!=null&&patchOrig[i]!=null)els[p[1]].innerHTML=patchOrig[i];
+    });
+  }
+  window.chLang=function(l){
+    window.__currentLang=l;
+    try{localStorage.setItem('mathsite_lang',l);}catch(e){}
+    document.getElementById('ch-btn-zh').classList.toggle('on',l==='zh');
+    document.getElementById('ch-btn-en').classList.toggle('on',l==='en');
+    if(l==='en')applyEn();else applyZh();
+  };
+  // Auto-switch based on ?lang=en in URL
+  window.addEventListener('DOMContentLoaded',function(){
+    // Read language from localStorage or ?lang URL param, default English
+    var _lp=(new URLSearchParams(location.search)).get('lang');
+    var _ls=null;try{_ls=localStorage.getItem('mathsite_lang');}catch(e){}
+    var _l=_lp||_ls||'en';
+    window.__currentLang=_l;
+    document.getElementById('ch-btn-zh').classList.toggle('on',_l==='zh');
+    document.getElementById('ch-btn-en').classList.toggle('on',_l==='en');
+    // Always run applyEn first to populate orig/patchOrig caches,
+    // then switch to Chinese if needed
+    applyEn();
+    if(_l==='zh')applyZh();
+  });
+})();
+
+/* Mobile touch swipe */
+(function(){
+  var ts=null,tx=null;
+  document.addEventListener('touchstart',function(e){ts=e.touches[0].clientX;tx=e.touches[0].clientY;},{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(ts===null)return;
+    var dx=e.changedTouches[0].clientX-ts, dy=e.changedTouches[0].clientY-tx;
+    if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>40){
+      if(dx<0&&typeof next==='function')next();
+      else if(dx>0&&typeof prev==='function')prev();
+    }
+    ts=null;tx=null;
+  },{passive:true});
+})();
+
+/* Mobile: add stack class to inline-flex children on narrow screens */
+(function(){
+  function applyMobileLayout(){
+    var isMobile = window.innerWidth <= 700;
+    document.querySelectorAll('.scene > div, .scene > section').forEach(function(el){
+      var s = el.getAttribute('style') || '';
+      if(s.includes('display:flex') || s.includes('display: flex')){
+        if(isMobile){ el.style.flexDirection='column'; el.style.alignItems='center'; }
+        else { el.style.flexDirection=''; el.style.alignItems=''; }
+      }
+    });
+  }
+  applyMobileLayout();
+  window.addEventListener('resize', applyMobileLayout);
+})();
+</script>
+</body>
+</html>

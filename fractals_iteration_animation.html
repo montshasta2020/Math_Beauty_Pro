@@ -1,0 +1,1708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第十一章：分形与迭代</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700&family=Cinzel:wght@400;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+  :root{
+    --gold:#c9a84c;--gold-light:#e8cc7a;--gold-dim:#7a5f2a;
+    --ink:#020306;--cream:#e8dfc8;
+    --frac:#a040f8;   /* fractal violet */
+    --mand:#40c8f8;   /* mandelbrot cyan */
+    --julia:#f84080;  /* julia rose */
+    --sierp:#60e890;  /* sierpinski green */
+    --fern:#80f040;   /* barnsley fern */
+  }
+  body{background:var(--ink);font-family:'Noto Serif SC',serif;overflow:hidden;width:100vw;height:100vh;cursor:default;}
+  #bg-canvas{position:fixed;inset:0;z-index:0;}
+  #vignette{position:fixed;inset:0;z-index:5;pointer-events:none;
+    background:radial-gradient(ellipse at center,transparent 26%,rgba(0,0,0,0.55) 68%,rgba(0,0,0,0.93) 100%);}
+  .ornament-line{position:fixed;top:32px;left:50%;transform:translateX(-50%);z-index:20;
+    display:flex;align-items:center;gap:14px;opacity:0;transition:opacity 1.2s;}
+  .ornament-line.visible{opacity:1;}
+  .ornament-line span{font-family:'Cinzel',serif;font-size:10px;letter-spacing:5px;color:var(--gold-dim);text-transform:uppercase;}
+  .ornament-line::before,.ornament-line::after{content:'';width:70px;height:1px;}
+  .ornament-line::before{background:linear-gradient(to right,transparent,var(--gold-dim));}
+  .ornament-line::after{background:linear-gradient(to left,transparent,var(--gold-dim));}
+  #progress{position:fixed;bottom:0;left:0;height:2px;
+    background:linear-gradient(to right,var(--gold-dim),var(--gold),var(--gold-light));z-index:100;transition:width 0.4s linear;}
+  .scene{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;opacity:0;pointer-events:none;transition:opacity 1.4s ease;z-index:10;}
+  .scene.active{opacity:1;pointer-events:auto;}
+  .chapter-badge{font-family:'Cinzel',serif;font-size:10px;letter-spacing:5px;color:var(--gold-dim);
+    text-transform:uppercase;display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+  .chapter-badge::before,.chapter-badge::after{content:'';width:28px;height:1px;background:var(--gold-dim);}
+  .scene-title{font-family:'Cinzel',serif;font-size:clamp(24px,4vw,52px);color:var(--gold-light);
+    text-align:center;line-height:1.2;letter-spacing:2px;text-shadow:0 0 50px rgba(201,168,76,0.3);}
+  .scene-body{font-family:'Noto Serif SC',serif;font-size:clamp(13px,1.45vw,17px);color:var(--cream);
+    text-align:center;line-height:1.95;max-width:640px;margin-top:16px;padding:0 24px;font-weight:300;}
+  .scene-body strong{color:var(--gold-light);font-weight:400;}
+  .divider{width:180px;height:1px;background:linear-gradient(to right,transparent,var(--gold-dim),transparent);margin:18px auto;}
+  .fade-up{opacity:0;transform:translateY(16px);transition:all 0.8s ease;}
+  .fade-up.show{opacity:1;transform:translateY(0);}
+
+  /* ITERATION STEPS */
+  .iter-chain{display:flex;align-items:center;justify-content:center;
+    gap:clamp(6px,1.5vw,16px);margin-top:20px;flex-wrap:wrap;max-width:680px;}
+  .iter-node{text-align:center;opacity:0;transform:translateY(10px);transition:all 0.5s ease;}
+  .iter-node.show{opacity:1;transform:translateY(0);}
+  .iter-val{font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(15px,1.8vw,22px);color:var(--mand);padding:6px 14px;
+    border:1px solid rgba(64,200,248,0.25);}
+  .iter-arrow{font-size:18px;color:var(--gold-dim);opacity:0;transition:opacity 0.4s ease;}
+  .iter-arrow.show{opacity:1;}
+
+  /* EQ BOX */
+  .eq-box{padding:18px 44px;border:1px solid rgba(160,64,248,0.35);position:relative;
+    opacity:0;transition:opacity 0.9s 0.4s;text-align:center;margin-top:20px;}
+  .eq-box.show{opacity:1;}
+  .eq-box::before,.eq-box::after{content:'';position:absolute;width:9px;height:9px;}
+  .eq-box::before{top:-4px;left:-4px;border-top:1px solid var(--frac);border-left:1px solid var(--frac);}
+  .eq-box::after{bottom:-4px;right:-4px;border-bottom:1px solid var(--frac);border-right:1px solid var(--frac);}
+  .eq-main{font-family:'IM Fell English',serif;font-size:clamp(20px,2.8vw,38px);
+    color:var(--frac);letter-spacing:5px;}
+  .eq-sub{font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;color:var(--gold-dim);margin-top:8px;}
+
+  /* NATURE CARDS */
+  .nature-row{display:flex;align-items:flex-start;justify-content:center;
+    gap:clamp(10px,3vw,40px);margin-top:20px;flex-wrap:wrap;}
+  .nat-card{text-align:center;opacity:0;transform:translateY(16px);transition:all 0.6s ease;width:clamp(100px,14vw,160px);}
+  .nat-card.show{opacity:1;transform:translateY(0);}
+  .nat-label{font-family:'Cinzel',serif;font-size:clamp(9px,0.9vw,11px);letter-spacing:2px;
+    color:var(--sierp);margin-top:8px;}
+  .nat-sub{font-size:clamp(10px,0.95vw,12px);color:var(--gold-dim);margin-top:4px;line-height:1.4;}
+
+  /* SPLIT */
+  .split{display:flex;align-items:center;justify-content:center;
+    gap:clamp(18px,4vw,52px);margin-top:12px;flex-wrap:wrap;}
+  .split-info{max-width:270px;}
+  .split-info .tag{display:inline-block;font-family:'Cinzel',serif;font-size:9px;
+    letter-spacing:2px;padding:2px 8px;border:1px solid;margin-bottom:10px;}
+  .split-info p{font-size:clamp(12px,1.25vw,15px);color:var(--cream);line-height:1.85;font-weight:300;}
+  .split-info p+p{margin-top:10px;}
+  .split-info strong{font-weight:400;}
+
+  /* BIG QUOTE */
+  .big-quote{font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(15px,2vw,25px);color:var(--cream);
+    text-align:center;max-width:580px;line-height:1.78;padding:0 28px;}
+
+  /* NAV */
+  #nav{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
+    z-index:200;display:flex;gap:10px;align-items:center;}
+  .nav-btn{width:34px;height:34px;border:1px solid var(--gold-dim);background:transparent;
+    color:var(--gold);cursor:pointer;font-size:16px;display:flex;align-items:center;
+    justify-content:center;transition:all 0.3s;}
+  .nav-btn:hover{background:rgba(201,168,76,0.1);border-color:var(--gold);}
+  .nav-dots{display:flex;gap:6px;align-items:center;}
+  .nav-dot{width:6px;height:6px;border-radius:50%;background:var(--gold-dim);cursor:pointer;transition:all 0.3s;}
+  .nav-dot.active{background:var(--gold);width:20px;border-radius:3px;}
+  #hint{position:fixed;bottom:22px;right:28px;z-index:100;font-family:'Cinzel',serif;
+    font-size:10px;letter-spacing:2px;color:var(--gold-dim);display:flex;align-items:center;
+    gap:8px;opacity:0;transition:opacity 1s;}
+  #hint.visible{opacity:1;}
+  #hint-dot{width:5px;height:5px;border-radius:50%;background:var(--gold-dim);
+    animation:blink 1.6s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.15}}
+
+  #home-btn {
+    position: fixed; top: 26px; left: 36px; z-index: 9000;
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 3px;
+    color: var(--gold); text-decoration: none;
+    border: 1px solid var(--gold-dim); padding: 8px 16px;
+    background: rgba(6,5,7,0.7); cursor: pointer !important;
+    transition: background .3s, color .3s, border-color .3s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  #home-btn:hover { background: rgba(201,168,76,.15); border-color: var(--gold-light); color: var(--gold-light); }
+</style>
+
+<style id="bilingual-css">
+#ch-lang-bar{position:fixed;top:26px;right:36px;z-index:9000;display:flex;align-items:stretch;border:1px solid rgba(122,95,42,.5);overflow:hidden;}
+.ch-lb{font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;padding:8px 16px;background:transparent;border:none;outline:none;color:#7a5f2a;cursor:pointer;transition:background .3s,color .3s;}
+.ch-lb:hover{background:rgba(201,168,76,.1);}
+.ch-lb.on{background:rgba(201,168,76,.2);color:#e8cc7a;}
+.ch-lb-sep{width:1px;background:rgba(122,95,42,.4);flex-shrink:0;}
+</style>
+
+<style id="mobile-responsive">
+@media (max-width: 700px) {
+  /* Core layout - keep centered, handle overflow with scroll wrapper */
+  .scene {
+    padding: 55px 14px 90px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  /* Typography */
+  .scene-title { font-size: clamp(17px, 5.5vw, 28px) !important; letter-spacing: 1px; }
+  .scene-subtitle { font-size: clamp(11px, 3vw, 15px) !important; }
+  .scene-body { font-size: clamp(12px, 3.2vw, 15px) !important; padding: 0 8px; max-width: 96vw; line-height: 1.75 !important; }
+  .chapter-badge { font-size: 7px; letter-spacing: 3px; }
+  .ornament-line span { font-size: 7px; letter-spacing: 1px; max-width: 55vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* UI controls */
+  #home-btn { top: 10px; left: 10px; padding: 5px 10px; font-size: 9px; }
+  #ch-lang-bar { top: 10px; right: 10px; }
+  .ch-lb { padding: 5px 9px; font-size: 8px; letter-spacing: 1px; }
+  #hint { display: none; }
+  .ornament-line { top: 14px; }
+
+  /* Nav - larger touch targets */
+  #nav { bottom: 8px; }
+  .nav-btn { width: 44px; height: 44px; font-size: 22px; }
+
+  /* Force ALL flex row containers to stack */
+  .split-layout,
+  .split-text,
+  .info-row,
+  .sym-row,
+  .law-row,
+  .tl-row,
+  .card-row,
+  .geo-row {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  /* Info panels */
+  .split-info, [id$="-info"], [id$="-text"], [id$="-panel"] {
+    max-width: 94vw !important; width: 94vw !important;
+  }
+  .split-info p, [id$="-info"] p { font-size: clamp(11px, 2.8vw, 14px) !important; }
+
+  /* Only limit standalone full-width canvases, not gallery 3D canvases */
+  canvas#bg-canvas { max-width: 100vw !important; }
+
+  /* Grids → two columns, small screens one column */
+  .law-grid, .var-grid, .sym-grid, .const-grid, .card-grid,
+  [class*="grid"] { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+
+  /* Epilogue / poem */
+  .big-quote, #e-q, #fin-q, .poem { 
+    font-size: clamp(13px, 3.5vw, 18px) !important; 
+    padding: 0 16px; 
+    line-height: 1.9 !important;
+  }
+  .ending-quote { font-size: clamp(14px, 3.8vw, 19px) !important; }
+
+  /* Tables */
+  table { font-size: 10px; width: 100%; }
+  td, th { padding: 4px 6px !important; }
+
+  /* Axiom boxes */
+  .axiom-item { padding: 8px 10px !important; }
+  .axiom-body { font-size: 11px !important; }
+
+  /* Divider spacing */
+  .divider { margin: 12px auto !important; }
+}
+
+@media (max-width: 420px) {
+  .scene-title { font-size: clamp(15px, 5vw, 22px) !important; }
+
+  [class*="grid"] { grid-template-columns: 1fr !important; }
+}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div id="vignette"></div>
+<a id="home-btn" href="index.html">&#8962;&nbsp;HOME</a>
+<div class="ornament-line" id="ornament"><span>Chapter XI · Fractals · Iteration · Self-Similarity</span></div>
+<div id="progress"></div>
+<div id="nav">
+  <button class="nav-btn" id="btn-prev">&#8249;</button>
+  <div class="nav-dots" id="nav-dots"></div>
+  <button class="nav-btn" id="btn-next">&#8250;</button>
+</div>
+<div id="hint"><div id="hint-dot"></div>CLICK TO ADVANCE</div>
+
+<!-- ══ SCENE 0: Title ══ -->
+<div class="scene active" id="scene-0">
+  <div class="chapter-badge fade-up" id="s0-b">第十一章</div>
+  <div class="scene-title fade-up" id="s0-t">分形与迭代</div>
+  <div style="font-family:'IM Fell English',serif;font-style:italic;font-size:clamp(14px,1.9vw,23px);color:var(--gold-dim);text-align:center;margin-top:10px;" class="fade-up" id="s0-s">从极简到无穷</div>
+  <div class="divider" style="margin:24px auto;"></div>
+  <div class="scene-body fade-up" id="s0-body" style="max-width:500px;font-size:clamp(13px,1.4vw,17px);">
+    这一章问你一个问题：<br>一条公式，能有多复杂？<br><strong>答案：无穷复杂。</strong><br>最简单的数学规则，反复执行，就能生成整个宇宙都容纳不下的细节。
+  </div>
+  <canvas id="c0" style="margin-top:20px;opacity:0;transition:opacity 1.5s 0.5s;width:min(680px,96vw);height:min(300px,38vh);"></canvas>
+</div>
+
+<!-- ══ SCENE 1: Iteration concept ══ -->
+<div class="scene" id="scene-1">
+  <div class="chapter-badge">§ 9.1 · 迭代的魔力</div>
+  <div class="scene-title" style="font-size:clamp(20px,3.2vw,44px);">结果成为输入</div>
+  <div class="scene-body" style="margin-top:10px;max-width:560px;">
+    迭代，就是把答案重新丢回去当问题。<br>听起来很简单——但<strong>这个简单的循环，是宇宙复杂性的秘密</strong>。<br>一遍、两遍、一千遍……细节就这样不断涌现。
+  </div>
+  <div class="iter-chain" id="iter-chain">
+    <div class="iter-node"><div class="iter-val">z₀ = 0</div><div style="font-family:'Cinzel',serif;font-size:9px;letter-spacing:2px;color:var(--gold-dim);margin-top:4px;">Initial value</div></div>
+    <span class="iter-arrow" id="ia0">→</span>
+    <div class="iter-node"><div class="iter-val">z₁ = c</div></div>
+    <span class="iter-arrow" id="ia1">→</span>
+    <div class="iter-node"><div class="iter-val">z₂ = c²+c</div></div>
+    <span class="iter-arrow" id="ia2">→</span>
+    <div class="iter-node"><div class="iter-val">z₃ = …</div></div>
+    <span class="iter-arrow" id="ia3">→</span>
+    <div class="iter-node"><div class="iter-val" style="color:var(--frac);">∞ 步</div><div style="font-family:'Cinzel',serif;font-size:9px;letter-spacing:2px;color:var(--gold-dim);margin-top:4px;">Fractal boundary</div></div>
+  </div>
+  <div class="eq-box" id="eq-iter" style="margin-top:24px;">
+    <div class="eq-main" style="font-size:clamp(18px,2.5vw,32px);">z<sub style="font-size:0.6em">n+1</sub> = z<sub style="font-size:0.6em">n</sub>² + c</div>
+    <div class="eq-sub">Mandelbrot Iteration · c ∈ ℂ · Each value of c determines a fate</div>
+  </div>
+  <canvas id="c1-orbit" style="width:min(660px,96vw);height:min(320px,44vh);margin-top:16px;opacity:0;transition:opacity 1s 0.4s;"></canvas>
+</div>
+
+<!-- ══ SCENE 2: Mandelbrot Set ══ -->
+<div class="scene" id="scene-2">
+  <div class="chapter-badge">§ 9.1 · 曼德博集合</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">无穷复杂，一行公式</div>
+  <div class="split" style="margin-top:10px;">
+    <canvas id="mand-c" style="width:min(460px,84vh);height:min(460px,84vh);opacity:0;transition:opacity 1.2s 0.3s;flex-shrink:0;"></canvas>
+    <div class="split-info" id="mand-info" style="opacity:0;transition:opacity 0.8s 0.9s;">
+      <div class="tag" style="color:var(--mand);border-color:rgba(64,200,248,0.3);">MANDELBROT SET</div>
+      <p id="man-p0">对复平面上每一个点 c，判断 z<sub>n+1</sub>=z<sub>n</sub>²+c 是否<strong style="color:var(--mand);">发散至无穷</strong>——不发散的 c 值，构成曼德博集合。</p>
+      <p id="man-p1">边界是分形的：无论放大多少倍，<strong style="color:var(--mand);">永远有新的细节涌现</strong>，永远不会变成光滑的曲线。</p>
+      <p style="margin-top:10px;font-size:clamp(11px,1.1vw,13px);color:var(--gold-dim);" id="man-p2">
+        1980年，曼德博用计算机首次将它画出。<br>有人称它为"上帝的拇指印"。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCENE 3: Julia Sets ══ -->
+<div class="scene" id="scene-3">
+  <div class="chapter-badge">§ 9.1 · 朱利亚集</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">每个 c，一种命运</div>
+  <div class="scene-body" style="margin-top:10px;max-width:540px;">
+    固定 c，对每个初始点 z₀ 做迭代——<br>
+    不同的 c 值，生出<strong>千变万化的朱利亚集</strong>。<br>
+    同一条公式，孕育了无穷多种美丽的图案。
+  </div>
+  <canvas id="julia-c" style="width:min(640px,96vw);height:min(380px,52vh);margin-top:16px;opacity:0;transition:opacity 1.2s 0.3s;"></canvas>
+  <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;color:var(--gold-dim);
+    margin-top:12px;text-align:center;opacity:0;transition:opacity 0.7s 0.8s;" class="fade-up" id="julia-label">
+    c 值缓缓漂移，朱利亚集随之演化
+  </div>
+</div>
+
+<!-- ══ SCENE 4: Self-Similarity ══ -->
+<div class="scene" id="scene-4">
+  <div class="chapter-badge">§ 9.2 · 自相似性</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">局部，包含整体</div>
+  <div class="scene-body" style="margin-top:10px;max-width:540px;">
+    分形的核心秘密：<strong>自相似</strong>。<br>
+    将局部放大，你看到的是整体的镜像。<br>
+    科赫雪花、谢尔宾斯基三角形——<br>
+    每一个细节，都是同一规则的缩小复刻。
+  </div>
+  <canvas id="sierp-c" style="width:min(560px,96vw);height:min(480px,62vh);margin-top:16px;opacity:0;transition:opacity 1.2s 0.3s;"></canvas>
+  <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;color:var(--gold-dim);
+    margin-top:12px;text-align:center;opacity:0;transition:opacity 0.7s 0.8s;" class="fade-up" id="sierp-label">
+    谢尔宾斯基三角形 · 第 0–6 代 · 无穷递归的展开
+  </div>
+</div>
+
+<!-- ══ SCENE 5: Koch Snowflake ══ -->
+<div class="scene" id="scene-5">
+  <div class="chapter-badge">§ 9.2 · 科赫雪花</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">面积有限，但周长无限——这真的可能吗？</div>
+  <div class="split" style="margin-top:12px;">
+    <canvas id="koch-c" style="width:min(460px,84vh);height:min(460px,84vh);opacity:0;transition:opacity 1.2s 0.3s;flex-shrink:0;"></canvas>
+    <div class="split-info" id="koch-info" style="opacity:0;transition:opacity 0.8s 0.9s;">
+      <div class="tag" style="color:var(--mand);border-color:rgba(64,200,248,0.3);">KOCH SNOWFLAKE</div>
+      <p id="kch-p0">规则极简：每段线段中间三分之一，换成等边三角形的两边。<br>无限重复——<strong style="color:var(--mand);">面积有限，周长无限大</strong>。</p>
+      <p id="kch-p1">这揭示了分形维数的奇异性：科赫曲线的维数约为 <strong style="color:var(--mand);">1.2618</strong>——<br>既不是一维，也不是二维。</p>
+      <p style="margin-top:10px;font-size:clamp(11px,1.1vw,13px);color:var(--gold-dim);" id="kch-p2">
+        这就是"海岸线悖论"：你的尺子越精密，测到的海岸线就越长——没有尽头。英国海岸线理论上是无限长的。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCENE 6: Barnsley Fern ══ -->
+<div class="scene" id="scene-6">
+  <div class="chapter-badge">§ 9.2 · 巴恩斯利蕨</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">四条规则，画一片蕨叶</div>
+  <div class="split" style="margin-top:12px;">
+    <canvas id="fern-c" style="width:min(320px,50vw);height:min(480px,75vh);opacity:0;transition:opacity 1.2s 0.3s;flex-shrink:0;"></canvas>
+    <div class="split-info" id="fern-info" style="opacity:0;transition:opacity 0.8s 0.9s;">
+      <div class="tag" style="color:var(--fern);border-color:rgba(128,240,64,0.3);">BARNSLEY FERN</div>
+      <p>只需<strong style="color:var(--fern);">四个仿射变换</strong>（各有固定概率）不断迭代，就能从一个点出发，描绘出整片蕨叶的轮廓。</p>
+      <p id="fer-p1">大自然中的蕨类植物，其生长编码正是这种<strong style="color:var(--fern);">迭代函数系统（IFS）</strong>的生物实现。</p>
+      <p style="margin-top:10px;font-size:clamp(11px,1.1vw,13px);color:var(--gold-dim);" id="fer-p2">
+        迭代次数越多，蕨叶越精细。<br>
+        宇宙的复杂性，来自规则的重复，而非规则的复杂。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCENE 7: Fractals in Nature ══ -->
+<div class="scene" id="scene-7">
+  <div class="chapter-badge">§ 9.2 · 上帝的指纹</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">自然界的分形语言</div>
+  <div class="scene-body" style="margin-top:8px;max-width:520px;font-size:clamp(12px,1.3vw,16px);">
+    从宏观到微观，分形结构无处不在——<br>
+    都是同一个代数真理的自然书写。
+  </div>
+  <div class="nature-row" id="nature-row">
+    <div class="nat-card">
+      <canvas id="nc0" style="width:min(180px,42vw);height:min(180px,42vw);"></canvas>
+      <div class="nat-label">海岸线</div>
+      <div class="nat-sub">分形维数 ≈ 1.25</div>
+    </div>
+    <div class="nat-card">
+      <canvas id="nc1" style="width:min(180px,42vw);height:min(180px,42vw);"></canvas>
+      <div class="nat-label">闪电</div>
+      <div class="nat-sub">随机游走分支</div>
+    </div>
+    <div class="nat-card">
+      <canvas id="nc2" style="width:min(180px,42vw);height:min(180px,42vw);"></canvas>
+      <div class="nat-label">血管树</div>
+      <div class="nat-sub">分支自相似网络</div>
+    </div>
+    <div class="nat-card">
+      <canvas id="nc3" style="width:min(180px,42vw);height:min(180px,42vw);"></canvas>
+      <div class="nat-label">星系</div>
+      <div class="nat-sub">多尺度自组织结构</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCENE 8: Ending ══ -->
+<div class="scene" id="scene-8">
+  <div class="chapter-badge">尾声 · 第十一章</div>
+  <div class="scene-title fade-up" id="e-t" style="font-size:clamp(20px,3vw,42px);">简单，才是无穷的母亲</div>
+  <div class="divider" style="margin:24px auto;"></div>
+  <div class="big-quote fade-up" id="e-q">
+    宇宙的复杂性，<br>
+    并非源于<strong style="color:var(--frac);">复杂的指令</strong>，<br>
+    而是源于<strong style="color:var(--mand);">简单规则的无限重复</strong>。<br><br>
+    一条公式，一次迭代，<br>
+    <strong style="color:var(--gold-light);">已足以创造出整个宇宙的细节。</strong>
+  </div>
+  <div style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;color:var(--gold-dim);
+    margin-top:20px;text-align:center;" class="fade-up" id="e-a">— 第十一章 · 终</div>
+  <canvas id="c8" style="margin-top:18px;opacity:0;transition:opacity 2s;width:min(660px,96vw);height:min(260px,34vh);"></canvas>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// BACKGROUND — iterating fractal dust
+// ══════════════════════════════════════════
+const bgC=document.getElementById('bg-canvas'),bgX=bgC.getContext('2d');
+let BW,BH,bgTick=0;
+function resizeBg(){BW=bgC.width=window.innerWidth;BH=bgC.height=window.innerHeight;}
+resizeBg();window.addEventListener('resize',resizeBg);
+const stars=Array.from({length:200},()=>({x:Math.random(),y:Math.random(),r:Math.random()*1.1+0.2,a:Math.random(),sp:Math.random()*0.003+0.001}));
+// Background fractal tree (faint)
+function drawBgTree(ctx,x,y,angle,len,depth){
+  if(depth<0||len<2)return;
+  const x2=x+Math.cos(angle)*len,y2=y+Math.sin(angle)*len;
+  ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x2,y2);
+  ctx.strokeStyle=`rgba(160,64,248,${0.02+depth*0.008})`;ctx.lineWidth=depth*0.3;ctx.stroke();
+  drawBgTree(ctx,x2,y2,angle-0.42,len*0.65,depth-1);
+  drawBgTree(ctx,x2,y2,angle+0.42,len*0.65,depth-1);
+}
+function drawBg(){
+  bgX.clearRect(0,0,BW,BH);
+  const g=bgX.createRadialGradient(BW/2,BH/2,0,BW/2,BH/2,Math.max(BW,BH)*0.75);
+  g.addColorStop(0,'#060310');g.addColorStop(1,'#010108');
+  bgX.fillStyle=g;bgX.fillRect(0,0,BW,BH);
+  // Faint fractal trees at corners
+  drawBgTree(bgX,BW*0.15,BH,-(Math.PI/2)+0.1,BH*0.12+Math.sin(bgTick*0.008)*4,6);
+  drawBgTree(bgX,BW*0.85,BH,-(Math.PI/2)-0.1,BH*0.12+Math.cos(bgTick*0.008)*4,6);
+  stars.forEach(s=>{
+    s.a+=s.sp;const al=(Math.sin(s.a)+1)/2*0.5+0.06;
+    bgX.beginPath();bgX.arc(s.x*BW,s.y*BH,s.r,0,Math.PI*2);
+    bgX.fillStyle=`rgba(180,120,255,${al})`;bgX.fill();
+  });
+  bgTick++;requestAnimationFrame(drawBg);
+}
+drawBg();
+
+// ══════════════════════════════════════════
+// SCENE 0: Grand Mandelbrot Opening with zoom
+// ══════════════════════════════════════════
+const c0=document.getElementById('c0');
+let t0=0,c0Raf,c0Img=null;
+function resizeC0(){ const r=c0.getBoundingClientRect(); c0.width=r.width||680; c0.height=r.height||300; }
+function renderMandelbrot(W,H,cxC,cyC,zoom,maxIter){
+  const img=new ImageData(W,H);
+  for(let py=0;py<H;py++){
+    for(let px=0;px<W;px++){
+      const re=(px-W/2)/(W*0.25*zoom)+cxC;
+      const im=(py-H/2)/(W*0.25*zoom)+cyC;
+      let zr=0,zi=0,iter=0;
+      while(zr*zr+zi*zi<4&&iter<maxIter){
+        const nr=zr*zr-zi*zi+re;
+        zi=2*zr*zi+im; zr=nr; iter++;
+      }
+      const idx=(py*W+px)*4;
+      if(iter===maxIter){
+        img.data[idx]=8; img.data[idx+1]=4; img.data[idx+2]=18; img.data[idx+3]=255;
+      } else {
+        // Ultra-smooth coloring
+        const log2z=Math.log(zr*zr+zi*zi)/2;
+        const nu=Math.log(log2z/Math.log(2))/Math.log(2);
+        const smooth=(iter+1-nu)/maxIter;
+        const t2=smooth*6;
+        let r2,g2,b2;
+        if(t2<1){r2=0;g2=Math.floor(t2*80);b2=Math.floor(80+t2*175);}
+        else if(t2<2){r2=Math.floor((t2-1)*120);g2=Math.floor(80+(t2-1)*100);b2=255;}
+        else if(t2<3){r2=Math.floor(120+(t2-2)*100);g2=180;b2=Math.floor(255-(t2-2)*100);}
+        else if(t2<4){r2=220;g2=Math.floor(180+(t2-3)*40);b2=Math.floor(155-(t2-3)*100);}
+        else if(t2<5){r2=Math.floor(220-(t2-4)*180);g2=220;b2=Math.floor(55+(t2-4)*100);}
+        else{r2=40;g2=Math.floor(220-(t2-5)*140);b2=155;}
+        img.data[idx]=r2; img.data[idx+1]=g2; img.data[idx+2]=b2; img.data[idx+3]=255;
+      }
+    }
+  }
+  return img;
+}
+function drawC0(){
+  resizeC0();
+  const CW=c0.width, CH=c0.height, ctx=c0.getContext('2d');
+  const maxIter=120;
+  // Slowly zoom into a beautiful region
+  const zoomBase=1.0, zoomRate=0.0012;
+  const zoom=zoomBase*Math.exp(t0*zoomRate);
+  // Target: elephant valley area
+  const cxC=-0.7269, cyC=0.1889;
+  const img=renderMandelbrot(CW,CH,cxC,cyC,zoom,maxIter);
+  // Offscreen
+  const off=document.createElement('canvas'); off.width=CW; off.height=CH;
+  off.getContext('2d').putImageData(img,0,0);
+  ctx.drawImage(off,0,0);
+  // Glow vignette
+  const vg=ctx.createRadialGradient(CW*0.5,CH*0.5,CH*0.1,CW*0.5,CH*0.5,CW*0.6);
+  vg.addColorStop(0,'transparent'); vg.addColorStop(1,'rgba(3,1,10,0.45)');
+  ctx.fillStyle=vg; ctx.fillRect(0,0,CW,CH);
+  // Zoom label
+  ctx.font=`${Math.round(CH*0.065)}px Cinzel,serif`; ctx.textAlign='right';
+  ctx.fillStyle='rgba(64,200,248,0.45)';
+  ctx.fillText(`zoom × ${zoom.toFixed(1)}`, CW-12, CH-10);
+  t0++; c0Raf=requestAnimationFrame(drawC0);
+}
+
+// ══════════════════════════════════════════
+// SCENE 1: Orbit Visualization — Bounded vs Escape
+// ══════════════════════════════════════════
+let c1Active=false,c1RAF,c1Tick=0;
+function startOrbit(){
+  const canvas=document.getElementById('c1-orbit');if(!canvas)return;
+  const _or=canvas.getBoundingClientRect();
+  const W=_or.width||660, H=_or.height||320;
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  c1Active=true;
+
+  // Three cases to show
+  const cases=[
+    {cr:-0.5,  ci:0,    col:[64,200,248], label:'有界轨道 (c在集合内)', maxShow:18},
+    {cr:0.285, ci:0.01, col:[160,96,255], label:'周期轨道 (边界)', maxShow:20},
+    {cr:0.5,   ci:0.6,  col:[248,96,64],  label:'逃逸轨道 (c在集合外)', maxShow:10},
+  ];
+
+  function frame(){
+    if(!c1Active)return;
+    ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,W,H);
+    const t=c1Tick;
+    // Animate: show up to N points, cycling
+    const animPhase=(t%240)/240; // 0→1 over 4 seconds
+    const unitW=W/cases.length;
+
+    cases.forEach(({cr,ci,col,label,maxShow},si)=>{
+      const [cr2,cg2,cb2]=col;
+      const panCX=unitW*(si+0.5), panCY=H*0.46;
+      // Panel glow
+      const pg=ctx.createRadialGradient(panCX,panCY,0,panCX,panCY,unitW*0.48);
+      pg.addColorStop(0,`rgba(${cr2},${cg2},${cb2},0.04)`); pg.addColorStop(1,'transparent');
+      ctx.fillStyle=pg; ctx.fillRect(panCX-unitW*0.5,0,unitW,H);
+      // Divider
+      if(si>0){
+        const dg=ctx.createLinearGradient(unitW*si,0,unitW*si,H);
+        dg.addColorStop(0,'transparent'); dg.addColorStop(0.5,'rgba(122,95,42,0.18)'); dg.addColorStop(1,'transparent');
+        ctx.fillStyle=dg; ctx.fillRect(unitW*si-1,0,2,H);
+      }
+
+      // Compute orbit
+      const nShow=Math.floor(animPhase*maxShow)+2;
+      let zr=0,zi=0;
+      const pts=[[0,0]];
+      for(let i=0;i<maxShow;i++){
+        const nr=zr*zr-zi*zi+cr; zi=2*zr*zi+ci; zr=nr;
+        pts.push([zr,zi]);
+        if(zr*zr+zi*zi>16&&si===2) break;
+      }
+
+      // Auto-scale to fit panel
+      const shown=pts.slice(0,nShow+1);
+      const allR=shown.map(p=>p[0]), allI=shown.map(p=>p[1]);
+      const minR=Math.min(...allR), maxR=Math.max(...allR);
+      const minI=Math.min(...allI), maxI=Math.max(...allI);
+      const spanR=Math.max(maxR-minR,0.5), spanI=Math.max(maxI-minI,0.5);
+      const scaleF=Math.min(unitW*0.40/spanR, H*0.38/spanI);
+      const cR=(minR+maxR)/2, cI=(minI+maxI)/2;
+      const toScreen=([r,i2])=>[panCX+(r-cR)*scaleF, panCY-(i2-cI)*scaleF];
+
+      // Draw axes
+      const orig=toScreen([0,0]);
+      ctx.strokeStyle=`rgba(${cr2},${cg2},${cb2},0.12)`; ctx.lineWidth=0.7;
+      ctx.beginPath(); ctx.moveTo(panCX-unitW*0.44,orig[1]); ctx.lineTo(panCX+unitW*0.44,orig[1]); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(orig[0],H*0.04); ctx.lineTo(orig[0],H*0.88); ctx.stroke();
+
+      // Draw orbit path
+      const screenPts=shown.map(toScreen);
+      for(let i=1;i<screenPts.length;i++){
+        const alpha=0.25+i/screenPts.length*0.55;
+        ctx.beginPath(); ctx.moveTo(screenPts[i-1][0],screenPts[i-1][1]); ctx.lineTo(screenPts[i][0],screenPts[i][1]);
+        ctx.strokeStyle=`rgba(${cr2},${cg2},${cb2},${alpha})`; ctx.lineWidth=1.4; ctx.stroke();
+        // Arrow
+        if(i%3===0&&i>0){
+          const dx=screenPts[i][0]-screenPts[i-1][0], dy=screenPts[i][1]-screenPts[i-1][1];
+          const ang=Math.atan2(dy,dx), al2=8;
+          const mx=(screenPts[i][0]+screenPts[i-1][0])*0.5, my=(screenPts[i][1]+screenPts[i-1][1])*0.5;
+          ctx.beginPath(); ctx.moveTo(mx,my);
+          ctx.lineTo(mx-Math.cos(ang-0.4)*al2,my-Math.sin(ang-0.4)*al2);
+          ctx.lineTo(mx-Math.cos(ang+0.4)*al2,my-Math.sin(ang+0.4)*al2);
+          ctx.closePath(); ctx.fillStyle=`rgba(${cr2},${cg2},${cb2},${alpha*0.7})`; ctx.fill();
+        }
+      }
+
+      // Draw orbit nodes
+      screenPts.forEach(([sx,sy],i)=>{
+        const nodeR=i===0?H*0.028:H*0.018;
+        const alpha=0.4+i/screenPts.length*0.55;
+        const gg=ctx.createRadialGradient(sx,sy,0,sx,sy,nodeR*2.2);
+        gg.addColorStop(0,`rgba(${cr2},${cg2},${cb2},${alpha*0.35})`); gg.addColorStop(1,'transparent');
+        ctx.fillStyle=gg; ctx.fillRect(sx-nodeR*2.2,sy-nodeR*2.2,nodeR*4.4,nodeR*4.4);
+        ctx.beginPath(); ctx.arc(sx,sy,nodeR*(0.8+i*0.04),0,Math.PI*2);
+        ctx.fillStyle=`rgba(${cr2},${cg2},${cb2},${alpha})`; ctx.fill();
+        // Step index
+        if(i>0&&i<=6){
+          ctx.font=`${Math.round(H*0.048)}px Cinzel,serif`; ctx.textAlign='center';
+          ctx.fillStyle=`rgba(${cr2},${cg2},${cb2},${alpha*0.65})`;
+          ctx.fillText(`z${i}`, sx, sy-nodeR*1.9);
+        }
+      });
+
+      // Divergence indicator
+      if(si===2&&shown.length>4){
+        const last=screenPts[screenPts.length-1];
+        ctx.strokeStyle=`rgba(${cr2},${cg2},${cb2},0.50)`; ctx.lineWidth=1;
+        ctx.setLineDash([4,6]);
+        ctx.beginPath(); ctx.moveTo(last[0],last[1]);
+        const dx=last[0]-screenPts[screenPts.length-2][0], dy=last[1]-screenPts[screenPts.length-2][1];
+        ctx.lineTo(last[0]+dx*2,last[1]+dy*2); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.font=`${Math.round(H*0.055)}px Cinzel,serif`; ctx.textAlign='center';
+        ctx.fillStyle=`rgba(${cr2},${cg2},${cb2},0.60)`;
+        ctx.fillText('→ ∞', last[0]+dx*2.5, last[1]+dy*2.5+H*0.02);
+      }
+
+      // c value and label
+      ctx.font=`${Math.round(H*0.058)}px Cinzel,serif`; ctx.textAlign='center';
+      ctx.fillStyle=`rgba(${cr2},${cg2},${cb2},0.60)`;
+      ctx.fillText(label, panCX, H*0.93);
+      ctx.font=`${Math.round(H*0.042)}px Cinzel,serif`;
+      ctx.fillStyle=`rgba(${cr2},${cg2},${cb2},0.38)`;
+      ctx.fillText(`c = ${cr}${ci>=0?'+':''}${ci}i`, panCX, H*0.97);
+    });
+
+    c1Tick++; c1RAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopOrbit(){c1Active=false;cancelAnimationFrame(c1RAF);}
+
+// ══════════════════════════════════════════
+// SCENE 2: High-quality Mandelbrot — infinite zoom journey
+// ══════════════════════════════════════════
+let mandActive=false,mandRAF,mandTick=0;
+function startMandelbrot(){
+  const canvas=document.getElementById('mand-c');if(!canvas)return;
+  const _mr=canvas.getBoundingClientRect();
+  const S=Math.min(_mr.width||460,_mr.height||460);
+  canvas.width=S;canvas.height=S;
+  const ctx=canvas.getContext('2d');
+  mandActive=true;
+
+  // Zoom journey: full view → elephant valley
+  const journey=[
+    {cx:-0.5,    cy:0,      zoom:1.5,  dur:120},
+    {cx:-0.7269, cy:0.1889, zoom:8,    dur:150},
+    {cx:-0.7269, cy:0.1889, zoom:60,   dur:160},
+    {cx:-0.7269, cy:0.1889, zoom:400,  dur:160},
+  ];
+  let jIdx=0, jT=0;
+  const maxIter=180;
+
+  function renderMand(S,cxC,cyC,zoom){
+    const img=new ImageData(S,S);
+    for(let py=0;py<S;py++){
+      for(let px=0;px<S;px++){
+        const re=(px-S/2)/(S*0.25*zoom)+cxC;
+        const im=(py-S/2)/(S*0.25*zoom)+cyC;
+        let zr=0,zi=0,iter=0;
+        while(zr*zr+zi*zi<4&&iter<maxIter){
+          const nr=zr*zr-zi*zi+re; zi=2*zr*zi+im; zr=nr; iter++;
+        }
+        const idx=(py*S+px)*4;
+        if(iter===maxIter){
+          img.data[idx]=8; img.data[idx+1]=4; img.data[idx+2]=18; img.data[idx+3]=255;
+        } else {
+          const log2z=Math.log(Math.max(1e-10,zr*zr+zi*zi))/2;
+          const nu=Math.log(Math.max(1e-10,log2z)/Math.log(2))/Math.log(2);
+          const smooth=(iter+1-nu)/maxIter;
+          const t2=smooth*6;
+          let r2=0,g2=0,b2=0;
+          if(t2<1){g2=Math.floor(t2*100);b2=Math.floor(t2*220);}
+          else if(t2<2){r2=Math.floor((t2-1)*100);g2=Math.floor(100+(t2-1)*80);b2=220;}
+          else if(t2<3){r2=Math.floor(100+(t2-2)*140);g2=180;b2=Math.floor(220-(t2-2)*80);}
+          else if(t2<4){r2=240;g2=Math.floor(180-(t2-3)*80);b2=Math.floor(140-(t2-3)*80);}
+          else if(t2<5){r2=Math.floor(240-(t2-4)*200);g2=100;b2=Math.floor(60+(t2-4)*100);}
+          else{r2=40;g2=Math.floor(100-(t2-5)*60);b2=160;}
+          img.data[idx]=r2; img.data[idx+1]=g2; img.data[idx+2]=b2; img.data[idx+3]=255;
+        }
+      }
+    }
+    return img;
+  }
+
+  // Pre-render first frame
+  let currentOff=document.createElement('canvas'); currentOff.width=S; currentOff.height=S;
+  currentOff.getContext('2d').putImageData(renderMand(S,journey[0].cx,journey[0].cy,journey[0].zoom),0,0);
+  let nextOff=null, crossT=0, inCross=false;
+
+  function frame(){
+    if(!mandActive)return;
+    const t=mandTick;
+    const step=journey[jIdx];
+
+    // Draw current
+    ctx.drawImage(currentOff,0,0);
+
+    // Crossfade to next if available
+    if(inCross&&nextOff){
+      ctx.globalAlpha=crossT; ctx.drawImage(nextOff,0,0); ctx.globalAlpha=1;
+      crossT+=0.012;
+      if(crossT>=1){ currentOff=nextOff; nextOff=null; inCross=false; crossT=0; jIdx=(jIdx+1)%journey.length; jT=0; }
+    }
+
+    jT++;
+    if(jT>=step.dur&&!inCross){
+      inCross=true; crossT=0;
+      const nj=journey[(jIdx+1)%journey.length];
+      // Async render
+      setTimeout(()=>{
+        const img=renderMand(S,nj.cx,nj.cy,nj.zoom);
+        nextOff=document.createElement('canvas'); nextOff.width=S; nextOff.height=S;
+        nextOff.getContext('2d').putImageData(img,0,0);
+      },0);
+    }
+
+    // Pulsing glow overlay
+    const pulse=0.5+0.5*Math.sin(t*0.06);
+    const gx=S*0.62,gy=S*0.42,gr=S*0.035+S*0.015*pulse;
+    const gg=ctx.createRadialGradient(gx,gy,0,gx,gy,gr);
+    gg.addColorStop(0,`rgba(64,200,248,${0.22*pulse})`); gg.addColorStop(1,'transparent');
+    ctx.fillStyle=gg; ctx.fillRect(gx-gr,gy-gr,gr*2,gr*2);
+
+    // Zoom info
+    ctx.font=`${Math.round(S*0.048)}px Cinzel,serif`; ctx.textAlign='right';
+    ctx.fillStyle='rgba(64,200,248,0.45)';
+    ctx.fillText(`zoom × ${step.zoom}`, S-8, S-8);
+
+    mandTick++; mandRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopMandelbrot(){mandActive=false;cancelAnimationFrame(mandRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 3: Julia Set — high-quality morphing gallery
+// ══════════════════════════════════════════
+let juliaActive=false,juliaRAF,juliaTick=0;
+function startJulia(){
+  const canvas=document.getElementById('julia-c');if(!canvas)return;
+  const _jr=canvas.getBoundingClientRect();
+  const W=_jr.width||640, H=_jr.height||380;
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  juliaActive=true;
+
+  const maxIter=120;
+  const scale=Math.min(W,H)*0.22;
+  // Beautiful c values with names
+  const cPts=[
+    {cr:-0.7,    ci:0.27,    name:'Douady rabbit'},
+    {cr:-0.4,    ci:0.6,     name:'Dendrite'},
+    {cr:0.285,   ci:0.01,    name:'Spiral galaxy'},
+    {cr:-0.70176,ci:-0.3842, name:'Sea horse'},
+    {cr:-0.835,  ci:-0.2321, name:'San Marco'},
+    {cr:0.45,    ci:0.1428,  name:'Siegel disk'},
+    {cr:-0.7269, ci:0.1889,  name:'Feather'},
+  ];
+
+  function renderJulia(cr,ci,W,H){
+    const img=new ImageData(W,H);
+    for(let py=0;py<H;py++){
+      for(let px=0;px<W;px++){
+        const re=(px-W/2)/scale, im=(py-H/2)/scale;
+        let zr=re,zi=im,iter=0;
+        while(zr*zr+zi*zi<4&&iter<maxIter){
+          const nr=zr*zr-zi*zi+cr; zi=2*zr*zi+ci; zr=nr; iter++;
+        }
+        const idx=(py*W+px)*4;
+        if(iter===maxIter){
+          img.data[idx]=8; img.data[idx+1]=4; img.data[idx+2]=18; img.data[idx+3]=255;
+        } else {
+          const log2z=Math.log(Math.max(1e-10,zr*zr+zi*zi))/2;
+          const nu=Math.log(Math.max(1e-10,log2z)/Math.log(2))/Math.log(2);
+          const smooth=(iter+1-nu)/maxIter;
+          const t2=smooth*6;
+          let r2=0,g2=0,b2=0;
+          if(t2<1){g2=Math.floor(t2*80);b2=Math.floor(80+t2*175);}
+          else if(t2<2){r2=Math.floor((t2-1)*160);g2=Math.floor(80+(t2-1)*100);b2=255;}
+          else if(t2<3){r2=Math.floor(160+(t2-2)*80);g2=180;b2=Math.floor(255-(t2-2)*100);}
+          else if(t2<4){r2=240;g2=Math.floor(180+(t2-3)*40);b2=Math.floor(155-(t2-3)*100);}
+          else if(t2<5){r2=Math.floor(240-(t2-4)*200);g2=220;b2=Math.floor(55+(t2-4)*100);}
+          else{r2=40;g2=Math.floor(220-(t2-5)*140);b2=155;}
+          img.data[idx]=r2; img.data[idx+1]=g2; img.data[idx+2]=b2; img.data[idx+3]=255;
+        }
+      }
+    }
+    return img;
+  }
+
+  let cIdx=0, crossT=0, inCross=false;
+  let currentOff=document.createElement('canvas'); currentOff.width=W; currentOff.height=H;
+  currentOff.getContext('2d').putImageData(renderJulia(cPts[0].cr,cPts[0].ci,W,H),0,0);
+  let nextOff=null;
+  let holdTimer=0;
+
+  function frame(){
+    if(!juliaActive)return;
+    const t=juliaTick;
+
+    ctx.drawImage(currentOff,0,0);
+    if(inCross&&nextOff){
+      ctx.globalAlpha=Math.min(1,crossT); ctx.drawImage(nextOff,0,0); ctx.globalAlpha=1;
+      crossT+=0.015;
+      if(crossT>=1){ currentOff=nextOff; nextOff=null; inCross=false; crossT=0; cIdx=(cIdx+1)%cPts.length; holdTimer=0; }
+    } else {
+      holdTimer++;
+      if(holdTimer>180&&!inCross){
+        inCross=true; crossT=0;
+        const nj=cPts[(cIdx+1)%cPts.length];
+        setTimeout(()=>{
+          const img=renderJulia(nj.cr,nj.ci,W,H);
+          nextOff=document.createElement('canvas'); nextOff.width=W; nextOff.height=H;
+          nextOff.getContext('2d').putImageData(img,0,0);
+        },0);
+      }
+    }
+
+    // Dark overlay for text
+    const cpt=cPts[cIdx];
+    ctx.fillStyle='rgba(3,1,10,0.55)'; ctx.fillRect(0,H-H*0.14,W,H*0.14);
+    ctx.font=`${Math.round(H*0.070)}px Cinzel,serif`; ctx.textAlign='left';
+    ctx.fillStyle='rgba(64,200,248,0.75)';
+    ctx.fillText(cpt.name, 14, H-H*0.055);
+    ctx.font=`${Math.round(H*0.048)}px Cinzel,serif`;
+    ctx.fillStyle='rgba(200,150,255,0.55)';
+    ctx.fillText(`c = ${cpt.cr.toFixed(5)}${cpt.ci>=0?'+':''}${cpt.ci.toFixed(5)}i`, 14, H-H*0.012);
+
+    // Pulsing glow on set boundary
+    const pulse=0.4+0.3*Math.sin(t*0.07);
+    const gx=W*0.52,gy=H*0.48,gr=Math.min(W,H)*0.04;
+    const gg=ctx.createRadialGradient(gx,gy,0,gx,gy,gr);
+    gg.addColorStop(0,`rgba(200,150,255,${pulse*0.25})`); gg.addColorStop(1,'transparent');
+    ctx.fillStyle=gg; ctx.fillRect(gx-gr,gy-gr,gr*2,gr*2);
+
+    juliaTick++; juliaRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopJulia(){juliaActive=false;cancelAnimationFrame(juliaRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 4: Sierpinski Triangle — glowing, large
+// ══════════════════════════════════════════
+let sierpActive=false,sierpRAF,sierpTick=0;
+function sierpinski(ctx,x1,y1,x2,y2,x3,y3,depth,maxDepth){
+  if(depth<=0){
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.lineTo(x3,y3);ctx.closePath();
+    const frac=(maxDepth-depth)/maxDepth;
+    const alpha=0.55+frac*0.35;
+    const gr=Math.floor(180+frac*52), gb=Math.floor(100+frac*44);
+    ctx.fillStyle=`rgba(96,${gr},${gb},${alpha})`;
+    ctx.fill();
+    ctx.strokeStyle=`rgba(20,255,140,0.12)`; ctx.lineWidth=0.5; ctx.stroke();
+    return;
+  }
+  const mx12=(x1+x2)/2,my12=(y1+y2)/2;
+  const mx23=(x2+x3)/2,my23=(y2+y3)/2;
+  const mx13=(x1+x3)/2,my13=(y1+y3)/2;
+  sierpinski(ctx,x1,y1,mx12,my12,mx13,my13,depth-1,maxDepth);
+  sierpinski(ctx,mx12,my12,x2,y2,mx23,my23,depth-1,maxDepth);
+  sierpinski(ctx,mx13,my13,mx23,my23,x3,y3,depth-1,maxDepth);
+}
+function startSierpinski(){
+  const canvas=document.getElementById('sierp-c');if(!canvas)return;
+  const _sr=canvas.getBoundingClientRect();
+  const W=_sr.width||560, H=_sr.height||480;
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  sierpActive=true;
+  let depth=0, holdT=0;
+  function frame(){
+    if(!sierpActive)return;
+    const t=sierpTick;
+    if(holdT>90&&depth<7){ depth++; holdT=0; }
+    holdT++;
+    ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,W,H);
+    const m=30, side=Math.min(W-2*m,(H-m)*1.155);
+    const cx2=W/2, bx=cx2-side/2, by=H-m;
+    const tx=cx2, ty=by-side*0.866;
+
+    // Outer glow
+    const og=ctx.createRadialGradient(cx2,(ty+by)/2,0,cx2,(ty+by)/2,side*0.6);
+    og.addColorStop(0,'rgba(96,232,144,0.04)'); og.addColorStop(1,'transparent');
+    ctx.fillStyle=og; ctx.fillRect(0,0,W,H);
+
+    // Background triangle
+    ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(bx,by); ctx.lineTo(bx+side,by); ctx.closePath();
+    ctx.strokeStyle='rgba(96,232,144,0.10)'; ctx.lineWidth=1; ctx.stroke();
+
+    sierpinski(ctx,tx,ty,bx,by,bx+side,by,depth,depth);
+
+    // Edge glow on main triangle
+    ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(bx,by); ctx.lineTo(bx+side,by); ctx.closePath();
+    const pulse=0.6+0.4*Math.sin(t*0.04);
+    ctx.strokeStyle=`rgba(40,255,150,${pulse*0.30})`; ctx.lineWidth=1.8; ctx.stroke();
+
+    // Gen label
+    ctx.font=`${Math.round(H*0.042)}px Cinzel,serif`; ctx.textAlign='right';
+    ctx.fillStyle='rgba(96,232,144,0.45)';
+    ctx.fillText(`Gen ${depth} · ${Math.pow(3,depth)} triangles`, W-14, 24);
+
+    sierpTick++; sierpRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopSierpinski(){sierpActive=false;cancelAnimationFrame(sierpRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 5: Koch Snowflake — glowing, large
+// ══════════════════════════════════════════
+let kochActive=false,kochRAF,kochTick=0;
+function kochPts(p1,p2,depth){
+  if(depth<=0)return[p1,p2];
+  const dx=(p2[0]-p1[0])/3,dy=(p2[1]-p1[1])/3;
+  const a=[p1[0]+dx,p1[1]+dy];
+  const mx=(p1[0]+p2[0])/2,my=(p1[1]+p2[1])/2;
+  const tip=[mx-(p2[1]-p1[1])*Math.sqrt(3)/6,my+(p2[0]-p1[0])*Math.sqrt(3)/6];
+  const b=[p1[0]+2*dx,p1[1]+2*dy];
+  return[...kochPts(p1,a,depth-1),...kochPts(a,tip,depth-1),...kochPts(tip,b,depth-1),...kochPts(b,p2,depth-1),p2];
+}
+function startKoch(){
+  const canvas=document.getElementById('koch-c');if(!canvas)return;
+  const _kr=canvas.getBoundingClientRect();
+  const S=Math.min(_kr.width||460,_kr.height||460);
+  canvas.width=S;canvas.height=S;
+  const ctx=canvas.getContext('2d');
+  kochActive=true;
+  const cx2=S/2,cy2=S/2,r=S*0.40;
+  const baseVerts=Array.from({length:3},(_,i)=>{
+    const a=(i/3)*Math.PI*2-Math.PI/2;
+    return[cx2+Math.cos(a)*r,cy2+Math.sin(a)*r];
+  });
+  let depth=0, holdT=0;
+  function frame(){
+    if(!kochActive)return;
+    const t=kochTick;
+    if(holdT>100&&depth<6){ depth++; holdT=0; }
+    holdT++;
+    ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,S,S);
+
+    // Outer halo
+    const halo=ctx.createRadialGradient(cx2,cy2,r*0.4,cx2,cy2,r*1.3);
+    halo.addColorStop(0,'rgba(64,200,248,0.04)'); halo.addColorStop(1,'transparent');
+    ctx.fillStyle=halo; ctx.fillRect(0,0,S,S);
+
+    // Build snowflake path
+    const allPts=[];
+    for(let side=0;side<3;side++){
+      const pts=kochPts(baseVerts[side],baseVerts[(side+1)%3],depth);
+      allPts.push(...pts);
+    }
+    ctx.beginPath();
+    allPts.forEach((p,i)=>i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]));
+    ctx.closePath();
+
+    // Gradient fill
+    const grad=ctx.createRadialGradient(cx2,cy2-r*0.1,0,cx2,cy2,r*1.1);
+    grad.addColorStop(0,'rgba(64,200,248,0.18)');
+    grad.addColorStop(0.5,'rgba(64,160,248,0.08)');
+    grad.addColorStop(1,'rgba(20,80,200,0.03)');
+    ctx.fillStyle=grad; ctx.fill();
+
+    // Glowing edge — two passes
+    const pulse=0.7+0.3*Math.sin(t*0.045);
+    ctx.strokeStyle=`rgba(64,200,248,${pulse*0.85})`; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.strokeStyle=`rgba(140,220,255,${pulse*0.30})`; ctx.lineWidth=3.5; ctx.stroke();
+
+    // Interior radial lines (symmetry guides)
+    for(let i=0;i<3;i++){
+      const a=(i/3)*Math.PI*2-Math.PI/2;
+      ctx.beginPath(); ctx.moveTo(cx2,cy2);
+      ctx.lineTo(cx2+Math.cos(a)*r,cy2+Math.sin(a)*r);
+      ctx.strokeStyle=`rgba(64,200,248,0.06)`; ctx.lineWidth=0.7; ctx.stroke();
+    }
+
+    // Center jewel
+    const cj=ctx.createRadialGradient(cx2,cy2,0,cx2,cy2,S*0.04);
+    cj.addColorStop(0,`rgba(140,220,255,${pulse*0.75})`); cj.addColorStop(1,'transparent');
+    ctx.fillStyle=cj; ctx.fillRect(cx2-S*0.04,cy2-S*0.04,S*0.08,S*0.08);
+
+    // Label
+    ctx.font=`${Math.round(S*0.048)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle='rgba(64,200,248,0.50)';
+    ctx.fillText(`Gen ${depth} · 周长 = (4/3)^${depth} × L₀`, cx2, S-10);
+    kochTick++; kochRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopKoch(){kochActive=false;cancelAnimationFrame(kochRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 6: Barnsley Fern — luminous, large, per-rule coloring
+// ══════════════════════════════════════════
+let fernActive=false,fernRAF,fernTick=0;
+const IFS=[
+  {a:0,b:0,c:0,d:0.16,e:0,f:0,p:0.01},
+  {a:0.85,b:0.04,c:-0.04,d:0.85,e:0,f:1.6,p:0.85},
+  {a:0.2,b:-0.26,c:0.23,d:0.22,e:0,f:1.6,p:0.07},
+  {a:-0.15,b:0.28,c:0.26,d:0.24,e:0,f:0.44,p:0.07}
+];
+function startFern(){
+  const canvas=document.getElementById('fern-c');if(!canvas)return;
+  const _fr=canvas.getBoundingClientRect();
+  const W=_fr.width||320, H=_fr.height||480;
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  fernActive=true;
+
+  // Pre-generate points with rule index
+  let x=0,y=0;
+  const pts=[];
+  for(let i=0;i<120000;i++){
+    const r=Math.random();
+    let ruleIdx=0, acc=0;
+    for(let ri=0;ri<IFS.length;ri++){acc+=IFS[ri].p;if(r<acc){ruleIdx=ri;break;}}
+    const rule=IFS[ruleIdx];
+    const nx=rule.a*x+rule.b*y+rule.e, ny=rule.c*x+rule.d*y+rule.f;
+    x=nx; y=ny;
+    pts.push([x,y,ruleIdx,ny]);
+  }
+
+  // Scale
+  const minX=Math.min(...pts.map(p=>p[0])), maxX=Math.max(...pts.map(p=>p[0]));
+  const minY=Math.min(...pts.map(p=>p[1])), maxY=Math.max(...pts.map(p=>p[1]));
+  const pad=18;
+  const scX=(W-pad*2)/(maxX-minX), scY=(H-pad*2)/(maxY-minY);
+  const sc=Math.min(scX,scY);
+  const offX=(W-(maxX-minX)*sc)/2-minX*sc;
+  const offY=H-pad+minY*sc;
+
+  // Per-rule colors: stem=gold, main frond=emerald, left/right sub-fronds=lime/teal
+  const ruleColors=[
+    [201,168,76],   // stem: gold
+    [96,220,140],   // main body: emerald
+    [160,240,96],   // left sub-frond: lime
+    [64,200,180],   // right sub-frond: teal
+  ];
+
+  // Dark background first
+  ctx.fillStyle='rgba(3,2,10,1)'; ctx.fillRect(0,0,W,H);
+
+  // Ambient glow
+  const glow=ctx.createRadialGradient(W*0.5,H*0.65,0,W*0.5,H*0.5,H*0.5);
+  glow.addColorStop(0,'rgba(96,160,80,0.06)'); glow.addColorStop(1,'transparent');
+  ctx.fillStyle=glow; ctx.fillRect(0,0,W,H);
+
+  let drawn=0;
+  function frame(){
+    if(!fernActive)return;
+    const batch=600;
+    for(let i=0;i<batch&&drawn<pts.length;i++,drawn++){
+      const [px,py,ri,ny]=pts[drawn];
+      const sx=px*sc+offX, sy=offY-py*sc;
+      if(sx<0||sx>W||sy<0||sy>H) continue;
+      const [cr,cg,cb]=ruleColors[ri];
+      // Height-based brightness: brighter at top
+      const ht=(ny-minY)/(maxY-minY);
+      const alpha=0.55+ht*0.38;
+      const brite=0.8+ht*0.2;
+      ctx.fillStyle=`rgba(${Math.floor(cr*brite)},${Math.floor(cg*brite)},${Math.floor(cb*brite)},${alpha})`;
+      ctx.fillRect(sx,sy,ri===0?1.5:1,ri===0?1.5:1);
+    }
+    // Occasional soft glow pass
+    if(drawn>=pts.length && fernTick%60===0){
+      // Faint shimmer
+      const shimmer=ctx.createRadialGradient(W*0.5,H*0.4,0,W*0.5,H*0.4,H*0.3);
+      shimmer.addColorStop(0,'rgba(96,220,140,0.025)'); shimmer.addColorStop(1,'transparent');
+      ctx.fillStyle=shimmer; ctx.fillRect(0,0,W,H);
+    }
+    fernTick++; fernRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopFern(){fernActive=false;cancelAnimationFrame(fernRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 7: Nature fractal cards
+// ══════════════════════════════════════════
+const natRenderers={};
+function drawCoastline(canvas,tick){
+  const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
+  ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,W,H);
+  const t=tick;
+  // Recursive midpoint displacement for fractal coastline
+  function midpointDisplace(pts,roughness,depth){
+    if(depth<=0) return pts;
+    const out=[];
+    for(let i=0;i<pts.length-1;i++){
+      out.push(pts[i]);
+      const mx=(pts[i][0]+pts[i+1][0])/2;
+      const my=(pts[i][1]+pts[i+1][1])/2+(Math.random()-0.5)*roughness;
+      out.push([mx,my]);
+    }
+    out.push(pts[pts.length-1]);
+    return midpointDisplace(out,roughness*0.55,depth-1);
+  }
+  // Seed for stable-ish coastline
+  const phase=Math.floor(t/180);
+  const seed2=(phase*1.7+1)*31;
+  const basePts=[[0,H*0.5],[W,H*0.5]];
+  // Deterministic-ish using sin to seed
+  function seededRand(s){ return (Math.sin(s*137.508+seed2)*43758.5453)%1; }
+  function fractalLine(x1,y1,x2,y2,rough,depth){
+    if(depth<=0){ctx.lineTo(x2,y2);return;}
+    const mx=(x1+x2)/2, my=(y1+y2)/2+(seededRand(depth*17+x1)*2-1)*rough;
+    fractalLine(x1,y1,mx,my,rough*0.6,depth-1);
+    fractalLine(mx,my,x2,y2,rough*0.6,depth-1);
+  }
+  // Water fill below
+  ctx.beginPath();
+  ctx.moveTo(0,H*0.5);
+  fractalLine(0,H*0.5,W,H*0.5,H*0.18,5);
+  ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath();
+  const wg=ctx.createLinearGradient(0,H*0.5,0,H);
+  wg.addColorStop(0,'rgba(20,80,160,0.45)'); wg.addColorStop(1,'rgba(5,20,60,0.30)');
+  ctx.fillStyle=wg; ctx.fill();
+  // Coast line
+  ctx.beginPath(); ctx.moveTo(0,H*0.5);
+  fractalLine(0,H*0.5,W,H*0.5,H*0.18,5);
+  ctx.strokeStyle=`rgba(64,200,248,0.75)`; ctx.lineWidth=1.3; ctx.stroke();
+  // Glow on water
+  const wglow=ctx.createLinearGradient(0,H*0.48,0,H*0.56);
+  wglow.addColorStop(0,'rgba(64,200,248,0.20)'); wglow.addColorStop(1,'transparent');
+  ctx.fillStyle=wglow; ctx.fillRect(0,H*0.48,W,H*0.10);
+  // Land shading
+  ctx.beginPath(); ctx.moveTo(0,0);
+  ctx.lineTo(W,0); ctx.lineTo(W,H*0.5);
+  fractalLine(W,H*0.5,0,H*0.5,H*0.18,5);
+  ctx.closePath();
+  const lg=ctx.createLinearGradient(0,0,0,H*0.5);
+  lg.addColorStop(0,'rgba(60,120,40,0.22)'); lg.addColorStop(1,'rgba(30,80,20,0.10)');
+  ctx.fillStyle=lg; ctx.fill();
+  // Label
+  ctx.font=`${Math.round(H*0.09)}px Cinzel,serif`; ctx.textAlign='center';
+  ctx.fillStyle='rgba(64,200,248,0.50)'; ctx.fillText('海岸线', W/2, H*0.95);
+}
+function drawLightning(canvas,tick){
+  const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
+  ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,W,H);
+  // Storm clouds top
+  const cg=ctx.createLinearGradient(0,0,0,H*0.25);
+  cg.addColorStop(0,'rgba(30,20,60,0.65)'); cg.addColorStop(1,'transparent');
+  ctx.fillStyle=cg; ctx.fillRect(0,0,W,H*0.25);
+  // Seeded bolt (redraws every 60 frames)
+  const boltSeed=Math.floor(tick/55);
+  function srand(s){ return Math.abs(Math.sin(s*97.3+boltSeed*41.7+1)*43758)%1; }
+  function bolt(x1,y1,x2,y2,depth,al,lw){
+    if(depth<=0){
+      // Glow pass
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+      ctx.strokeStyle=`rgba(200,160,255,${al*0.35})`; ctx.lineWidth=lw*3.5; ctx.stroke();
+      // Core
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+      ctx.strokeStyle=`rgba(230,210,255,${al})`; ctx.lineWidth=lw; ctx.stroke();
+      return;
+    }
+    const seed2=depth*100+Math.floor(x1)+Math.floor(y1);
+    const mx=(x1+x2)/2+(srand(seed2)-0.5)*(W*0.22);
+    const my=(y1+y2)/2+(srand(seed2+1)-0.5)*(H*0.10);
+    bolt(x1,y1,mx,my,depth-1,al*0.88,lw*0.80);
+    bolt(mx,my,x2,y2,depth-1,al*0.88,lw*0.80);
+    // Branch
+    if(depth>2&&srand(seed2+3)<0.40){
+      const bx=mx+(srand(seed2+4)-0.5)*W*0.30;
+      const by=my+H*0.12+srand(seed2+5)*H*0.18;
+      bolt(mx,my,bx,by,depth-2,al*0.50,lw*0.55);
+    }
+  }
+  const bx0=W*0.5+(srand(0)-0.5)*W*0.20;
+  bolt(bx0,H*0.04,bx0+(srand(10)-0.5)*W*0.15,H*0.92,5,0.90,2.0);
+  // Flash glow at top
+  const flash=(tick%55<8)?0.28:0.06;
+  const fg=ctx.createRadialGradient(bx0,H*0.05,0,bx0,H*0.05,W*0.25);
+  fg.addColorStop(0,`rgba(200,180,255,${flash})`); fg.addColorStop(1,'transparent');
+  ctx.fillStyle=fg; ctx.fillRect(0,0,W,H*0.3);
+  ctx.font=`${Math.round(H*0.09)}px Cinzel,serif`; ctx.textAlign='center';
+  ctx.fillStyle='rgba(200,160,255,0.50)'; ctx.fillText('闪电', W/2, H*0.95);
+}
+function drawVessel(canvas,tick){
+  const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
+  ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,W,H);
+  // Pulsing heartbeat glow
+  const hb=0.5+0.5*Math.sin(tick*0.065);
+  const bg=ctx.createRadialGradient(W/2,H*0.7,0,W/2,H*0.5,H*0.5);
+  bg.addColorStop(0,`rgba(248,80,120,${0.06*hb})`); bg.addColorStop(1,'transparent');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+  const spread=0.28+Math.sin(tick*0.009)*0.06;
+  function branch(x,y,angle,len,depth){
+    if(depth<0||len<1.2)return;
+    const x2=x+Math.cos(angle)*len,y2=y+Math.sin(angle)*len;
+    const alpha=0.12+depth*0.10+hb*0.06;
+    const lw=depth*0.55+0.4;
+    // Glow
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x2,y2);
+    ctx.strokeStyle=`rgba(248,80,120,${alpha*0.35})`; ctx.lineWidth=lw*2.8; ctx.stroke();
+    // Core
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x2,y2);
+    const rb=Math.floor(200+depth*8), gb=Math.floor(60+depth*10);
+    ctx.strokeStyle=`rgba(${rb},${gb},140,${alpha})`; ctx.lineWidth=lw; ctx.stroke();
+    branch(x2,y2,angle-spread,len*0.68,depth-1);
+    branch(x2,y2,angle+spread,len*0.68,depth-1);
+    if(depth>4) branch(x2,y2,angle,len*0.50,depth-2);
+  }
+  branch(W/2,H*1.02,-Math.PI/2,H*0.38,7);
+  // Heart core
+  const hcg=ctx.createRadialGradient(W/2,H*0.92,0,W/2,H*0.92,W*0.09);
+  hcg.addColorStop(0,`rgba(248,100,140,${0.65*hb})`); hcg.addColorStop(1,'transparent');
+  ctx.fillStyle=hcg; ctx.fillRect(W/2-W*0.10,H*0.86,W*0.20,W*0.12);
+  ctx.font=`${Math.round(H*0.09)}px Cinzel,serif`; ctx.textAlign='center';
+  ctx.fillStyle='rgba(248,80,120,0.50)'; ctx.fillText('血管网络', W/2, H*0.95);
+}
+function drawGalaxy(canvas,tick){
+  const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
+  ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,W,H);
+  const cx2=W/2,cy2=H/2,rot=tick*0.006;
+  const R=Math.min(W,H)*0.44;
+  // Background star field
+  for(let i=0;i<80;i++){
+    const bx=((i*73.7+17)%1)*W, by=((i*41.3+29)%1)*H;
+    const br=0.15+((i*31.1)%1)*0.45;
+    ctx.beginPath(); ctx.arc(bx,by,0.5+((i*17)%1)*0.8,0,Math.PI*2);
+    ctx.fillStyle=`rgba(220,200,255,${br})`; ctx.fill();
+  }
+  // Galaxy halo
+  const halo=ctx.createRadialGradient(cx2,cy2,0,cx2,cy2,R*1.1);
+  halo.addColorStop(0,'rgba(120,80,220,0.10)'); halo.addColorStop(1,'transparent');
+  ctx.fillStyle=halo; ctx.fillRect(0,0,W,H);
+  // 4 spiral arms
+  for(let arm=0;arm<4;arm++){
+    const armA=arm*Math.PI*0.5;
+    ctx.beginPath();
+    for(let i=1;i<140;i++){
+      const frac=i/140;
+      const r2=frac*R;
+      const a=frac*Math.PI*3.5+armA+rot;
+      const x=cx2+Math.cos(a)*r2, y=cy2+Math.sin(a)*r2*0.62;
+      i===1?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    const armAlpha=0.22+0.10*Math.sin(tick*0.04+arm);
+    ctx.strokeStyle=`rgba(160,120,255,${armAlpha})`; ctx.lineWidth=2.5*(1-arm*0.18); ctx.stroke();
+  }
+  // Arm stars
+  for(let arm=0;arm<4;arm++){
+    const armA=arm*Math.PI*0.5;
+    for(let i=2;i<30;i++){
+      const frac=i/30;
+      const r2=frac*R;
+      const a=frac*Math.PI*3.5+armA+rot;
+      const x=cx2+Math.cos(a)*r2+(Math.sin(i*7.3)*W*0.022);
+      const y=cy2+Math.sin(a)*r2*0.62+(Math.sin(i*5.1)*H*0.018);
+      const starR=0.5+frac*1.8;
+      const alpha=0.30+frac*0.55;
+      const sg=ctx.createRadialGradient(x,y,0,x,y,starR*2.5);
+      sg.addColorStop(0,`rgba(220,200,255,${alpha})`); sg.addColorStop(1,'transparent');
+      ctx.fillStyle=sg; ctx.fillRect(x-starR*2.5,y-starR*2.5,starR*5,starR*5);
+      ctx.beginPath(); ctx.arc(x,y,starR,0,Math.PI*2);
+      ctx.fillStyle=`rgba(240,225,255,${alpha})`; ctx.fill();
+    }
+  }
+  // Bright core
+  const pulse=0.7+0.3*Math.sin(tick*0.055);
+  const cg2=ctx.createRadialGradient(cx2,cy2,0,cx2,cy2,W*0.10);
+  cg2.addColorStop(0,`rgba(255,230,160,${pulse*0.90})`);
+  cg2.addColorStop(0.4,`rgba(200,150,255,${pulse*0.35})`);
+  cg2.addColorStop(1,'transparent');
+  ctx.fillStyle=cg2; ctx.fillRect(cx2-W*0.12,cy2-W*0.12,W*0.24,W*0.24);
+  ctx.font=`${Math.round(H*0.09)}px Cinzel,serif`; ctx.textAlign='center';
+  ctx.fillStyle='rgba(180,140,255,0.50)'; ctx.fillText('星系螺旋', cx2, H*0.95);
+}
+function startNatureCards(){
+  const defs=[{id:'nc0',fn:drawCoastline},{id:'nc1',fn:drawLightning},{id:'nc2',fn:drawVessel},{id:'nc3',fn:drawGalaxy}];
+  defs.forEach(({id,fn})=>{
+    const c=document.getElementById(id);if(!c)return;
+    const rr=c.getBoundingClientRect(); const S=Math.max(rr.width,rr.height,150);
+    c.width=S; c.height=S;
+    let tick=0,active=true,raf;
+    function loop(){c&&fn(c,tick++);raf=active?requestAnimationFrame(loop):0;}
+    loop();
+    natRenderers[id]={stop(){active=false;cancelAnimationFrame(raf);}};
+  });
+}
+function stopNatureCards(){Object.values(natRenderers).forEach(r=>r.stop());}
+
+// ══════════════════════════════════════════
+// SCENE 8 FINALE — Fractals Triptych
+// ══════════════════════════════════════════
+const c8=document.getElementById('c8');
+let t8=0,c8Active=false,c8Raf;
+function resizeC8(){ const r=c8.getBoundingClientRect(); c8.width=r.width||660; c8.height=r.height||260; }
+function drawC8(){
+  if(!c8Active)return;
+  resizeC8();
+  const CW=c8.width, CH=c8.height, ctx=c8.getContext('2d');
+  ctx.fillStyle='rgba(3,2,10,0.92)'; ctx.fillRect(0,0,CW,CH);
+  const t=t8, unitW=CW/3;
+
+  // ── Panel 1: Mini Mandelbrot (pixelated art style) ──
+  {
+    const pw=Math.floor(unitW*0.90), ph=Math.floor(CH*0.78);
+    const ox=unitW*0.05, oy=CH*0.06;
+    const maxIter=60;
+    // Animated slow zoom: zoom in on interesting region
+    const zoom=1.5+t*0.002;
+    const cxC=-0.7269, cyC=0.1889;
+    const cellW=Math.max(2,Math.floor(pw/80)), cellH=Math.max(2,Math.floor(ph/60));
+    for(let py=0;py<ph;py+=cellH){
+      for(let px=0;px<pw;px+=cellW){
+        const re=(px-pw/2)/(pw*0.25*zoom)+cxC;
+        const im=(py-ph/2)/(pw*0.25*zoom)+cyC;
+        let zr=0,zi=0,iter=0;
+        while(zr*zr+zi*zi<4&&iter<maxIter){ const nr=zr*zr-zi*zi+re; zi=2*zr*zi+im; zr=nr; iter++; }
+        if(iter===maxIter){
+          ctx.fillStyle='rgba(8,4,18,1)';
+        } else {
+          const f=iter/maxIter;
+          const t2=f*6;
+          let r2=0,g2=0,b2=0;
+          if(t2<1){g2=Math.floor(t2*100);b2=Math.floor(t2*220);}
+          else if(t2<2){r2=Math.floor((t2-1)*160);g2=100;b2=220;}
+          else if(t2<3){r2=Math.floor(160+(t2-2)*80);g2=180;b2=Math.floor(220-(t2-2)*100);}
+          else{r2=240;g2=Math.floor(180-(t2-3)*120);b2=80;}
+          ctx.fillStyle=`rgba(${r2},${g2},${b2},0.95)`;
+        }
+        ctx.fillRect(ox+px, oy+py, cellW, cellH);
+      }
+    }
+    // Border glow
+    ctx.strokeStyle='rgba(64,200,248,0.28)'; ctx.lineWidth=1.2;
+    ctx.strokeRect(ox,oy,pw,ph);
+    ctx.font=`${Math.round(CH*0.080)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle='rgba(64,200,248,0.55)';
+    ctx.fillText('Mandelbrot', unitW*0.5, CH*0.95);
+  }
+
+  // Divider 1
+  {
+    const dg=ctx.createLinearGradient(unitW,0,unitW,CH);
+    dg.addColorStop(0,'transparent'); dg.addColorStop(0.5,'rgba(122,95,42,0.22)'); dg.addColorStop(1,'transparent');
+    ctx.fillStyle=dg; ctx.fillRect(unitW-1,0,2,CH);
+  }
+
+  // ── Panel 2: Fractal tree swaying ──
+  {
+    const cx2=unitW*1.5, base=CH*0.92;
+    const sway=Math.sin(t*0.025)*0.08;
+    function fTree(x,y,angle,len,depth){
+      if(depth<0||len<1.2)return;
+      const x2=x+Math.cos(angle)*len, y2=y+Math.sin(angle)*len;
+      const alpha=0.14+depth*0.10;
+      const lw=depth*0.55+0.4;
+      const cr=depth>4?60:Math.floor(60+(5-depth)*30);
+      const cg2=depth>4?180:Math.floor(180+(5-depth)*12);
+      // Glow
+      ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x2,y2);
+      ctx.strokeStyle=`rgba(${cr},${cg2},80,${alpha*0.40})`; ctx.lineWidth=lw*2.2; ctx.stroke();
+      // Core
+      ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x2,y2);
+      ctx.strokeStyle=`rgba(${cr},${cg2},80,${alpha})`; ctx.lineWidth=lw; ctx.stroke();
+      const spread=0.38+sway*(depth%2===0?1:-1);
+      fTree(x2,y2,angle-spread,len*0.66,depth-1);
+      fTree(x2,y2,angle+spread,len*0.66,depth-1);
+    }
+    fTree(cx2,base,-Math.PI/2,CH*0.38,7);
+    // Ground
+    const gg=ctx.createLinearGradient(unitW,base,unitW*2,base);
+    gg.addColorStop(0,'transparent'); gg.addColorStop(0.5,'rgba(96,200,80,0.15)'); gg.addColorStop(1,'transparent');
+    ctx.fillStyle=gg; ctx.fillRect(unitW,base,unitW,2);
+    ctx.font=`${Math.round(CH*0.080)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle='rgba(96,220,80,0.55)';
+    ctx.fillText('分形树 IFS', cx2, CH*0.95);
+  }
+
+  // Divider 2
+  {
+    const dg=ctx.createLinearGradient(unitW*2,0,unitW*2,CH);
+    dg.addColorStop(0,'transparent'); dg.addColorStop(0.5,'rgba(122,95,42,0.22)'); dg.addColorStop(1,'transparent');
+    ctx.fillStyle=dg; ctx.fillRect(unitW*2-1,0,2,CH);
+  }
+
+  // ── Panel 3: Koch snowflake animated ──
+  {
+    const S=Math.min(unitW,CH);
+    const ox2=unitW*2, cx3=ox2+unitW*0.5, cy3=CH*0.46;
+    const r3=Math.min(unitW,CH)*0.36;
+    const depth3=Math.min(4,Math.floor(t/60)%5);
+    const baseVerts3=Array.from({length:3},(_,i)=>{
+      const a=(i/3)*Math.PI*2-Math.PI/2;
+      return[cx3+Math.cos(a)*r3,cy3+Math.sin(a)*r3];
+    });
+    function kochPts3(p1,p2,d){
+      if(d<=0)return[p1,p2];
+      const dx=(p2[0]-p1[0])/3,dy=(p2[1]-p1[1])/3;
+      const a3=[p1[0]+dx,p1[1]+dy];
+      const mx=(p1[0]+p2[0])/2, my=(p1[1]+p2[1])/2;
+      const tip=[mx-(p2[1]-p1[1])*Math.sqrt(3)/6, my+(p2[0]-p1[0])*Math.sqrt(3)/6];
+      const b3=[p1[0]+2*dx,p1[1]+2*dy];
+      return[...kochPts3(p1,a3,d-1),...kochPts3(a3,tip,d-1),...kochPts3(tip,b3,d-1),...kochPts3(b3,p2,d-1),p2];
+    }
+    // Halo
+    const halo=ctx.createRadialGradient(cx3,cy3,r3*0.3,cx3,cy3,r3*1.3);
+    halo.addColorStop(0,'rgba(64,200,248,0.05)'); halo.addColorStop(1,'transparent');
+    ctx.fillStyle=halo; ctx.fillRect(ox2,0,unitW,CH);
+    ctx.beginPath();
+    for(let side=0;side<3;side++){
+      const pts=kochPts3(baseVerts3[side],baseVerts3[(side+1)%3],depth3);
+      pts.forEach((p,i)=>i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]));
+    }
+    ctx.closePath();
+    // Fill
+    const kgrad=ctx.createRadialGradient(cx3,cy3,0,cx3,cy3,r3);
+    kgrad.addColorStop(0,'rgba(64,200,248,0.15)'); kgrad.addColorStop(1,'rgba(20,80,200,0.04)');
+    ctx.fillStyle=kgrad; ctx.fill();
+    const pulse=0.7+0.3*Math.sin(t*0.05);
+    ctx.strokeStyle=`rgba(64,200,248,${pulse*0.85})`; ctx.lineWidth=1.3; ctx.stroke();
+    ctx.font=`${Math.round(CH*0.080)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle='rgba(64,200,248,0.55)';
+    ctx.fillText(`Koch Gen ${depth3}`, cx3, CH*0.95);
+  }
+
+  t8++; c8Raf=requestAnimationFrame(drawC8);
+}
+
+// ══════════════════════════════════════════
+// SCENE MANAGER
+// ══════════════════════════════════════════
+const scenes=document.querySelectorAll('.scene');
+const totalScenes=scenes.length;
+let current=0,isTransitioning=false;
+const dotsEl=document.getElementById('nav-dots');
+for(let i=0;i<totalScenes;i++){
+  const d=document.createElement('div');d.className='nav-dot'+(i===0?' active':'');
+  d.addEventListener('click',()=>goTo(i));dotsEl.appendChild(d);
+}
+function updateDots(){document.querySelectorAll('.nav-dot').forEach((d,i)=>d.classList.toggle('active',i===current));}
+function updateProgress(){document.getElementById('progress').style.width=(current/(totalScenes-1)*100)+'%';}
+
+function onEnterScene(idx){
+  if(idx===0){
+    ['s0-b','s0-t','s0-s','s0-body'].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add('show');},200+i*280));
+    c0.style.opacity='1'; setTimeout(()=>{ t0=0; if(c0Raf)cancelAnimationFrame(c0Raf); drawC0(); },380);
+  }
+  if(idx===1){
+    document.querySelectorAll('#iter-chain .iter-node').forEach((el,i)=>setTimeout(()=>el.classList.add('show'),300+i*300));
+    ['ia0','ia1','ia2','ia3'].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add('show');},500+i*300));
+    setTimeout(()=>{const el=document.getElementById('eq-iter');if(el)el.classList.add('show');},800);
+    document.getElementById('c1-orbit').style.opacity='1'; setTimeout(startOrbit,380);
+  }
+  if(idx===2){
+    document.getElementById('mand-c').style.opacity='1';
+    const mi=document.getElementById('mand-info');if(mi)mi.style.opacity='1';
+    setTimeout(startMandelbrot,380);
+  }
+  if(idx===3){
+    document.getElementById('julia-c').style.opacity='1';
+    const jl=document.getElementById('julia-label');if(jl)jl.classList.add('show');
+    setTimeout(startJulia,380);
+  }
+  if(idx===4){
+    document.getElementById('sierp-c').style.opacity='1';
+    const sl=document.getElementById('sierp-label');if(sl)sl.classList.add('show');
+    setTimeout(startSierpinski,380);
+  }
+  if(idx===5){
+    document.getElementById('koch-c').style.opacity='1';
+    const ki=document.getElementById('koch-info');if(ki)ki.style.opacity='1';
+    setTimeout(startKoch,380);
+  }
+  if(idx===6){
+    document.getElementById('fern-c').style.opacity='1';
+    const fi=document.getElementById('fern-info');if(fi)fi.style.opacity='1';
+    setTimeout(startFern,380);
+  }
+  if(idx===7){
+    startNatureCards();
+    document.querySelectorAll('#nature-row .nat-card').forEach((el,i)=>setTimeout(()=>el.classList.add('show'),300+i*250));
+  }
+  if(idx===8){
+    ['e-t','e-q','e-a'].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add('show');},300+i*500));
+    c8.style.opacity='1'; setTimeout(()=>{ t8=0; c8Active=true; if(c8Raf)cancelAnimationFrame(c8Raf); drawC8(); },380);
+  }
+}
+function onLeaveScene(idx){
+  if(idx===1){
+    stopOrbit();
+    document.querySelectorAll('#iter-chain .iter-node').forEach(el=>el.classList.remove('show'));
+    ['ia0','ia1','ia2','ia3'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('show');});
+    const eq=document.getElementById('eq-iter');if(eq)eq.classList.remove('show');
+  }
+  if(idx===2)stopMandelbrot();
+  if(idx===3)stopJulia();
+  if(idx===4)stopSierpinski();
+  if(idx===5)stopKoch();
+  if(idx===6)stopFern();
+  if(idx===7){stopNatureCards();document.querySelectorAll('#nature-row .nat-card').forEach(el=>el.classList.remove('show'));}
+  if(idx===8){ c8Active=false; if(c8Raf)cancelAnimationFrame(c8Raf); }
+}
+function goTo(idx){
+  if(isTransitioning||idx===current)return;
+  isTransitioning=true;onLeaveScene(current);
+  scenes[current].classList.remove('active');current=idx;scenes[current].classList.add('active');
+  updateDots();updateProgress();
+  setTimeout(()=>{onEnterScene(current);isTransitioning=false;},600);
+}
+function next(){if(current<totalScenes-1)goTo(current+1);}
+function prev(){if(current>0)goTo(current-1);}
+document.getElementById('btn-next').addEventListener('click',next);
+document.getElementById('btn-prev').addEventListener('click',prev);
+// Click anywhere to advance (document-level for reliability)
+document.addEventListener('click', (e) => {
+  if(e.target.closest('#nav')) return;
+  if(e.target.closest('a')) return;
+  if(e.target.closest('button')) return;
+  if(e.target.closest('#home-btn')) return;
+  if(e.target.closest('#ch-lang-bar')) return;
+  next();
+});
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')next();if(e.key==='ArrowLeft')prev();});
+setTimeout(()=>{document.getElementById('ornament').classList.add('visible');document.getElementById('hint').classList.add('visible');},1500);
+updateProgress();onEnterScene(0);
+</script>
+
+<div id="ch-lang-bar">
+  <button class="ch-lb" id="ch-btn-zh" onclick="chLang('zh')">中文</button>
+  <div class="ch-lb-sep"></div>
+  <button class="ch-lb on" id="ch-btn-en" onclick="chLang('en')">EN</button>
+</div>
+<script id="bilingual-js">
+(function(){
+
+  var T = {
+    en: {
+      ornament: "Chapter XI · Fractals & Iteration · From Simplicity to Infinity",
+      s0_b:"Chapter XI", s0_t:"Fractals & Iteration", s0_s:"From the Utterly Simple to the Infinitely Complex",
+      s0_body:"When algebra introduces <strong>iteration</strong> — feeding output back as input —<br>a dynamic miracle is born.<br>The simplest rule produces <strong>infinite complexity</strong>.",
+      s1_badge:"§ 11.1 · The Magic of Iteration", s1_title:"Output Becomes Input",
+      s1_body:"Iteration: feed the output of one step back as input of the next.<br>One cycle, two, a thousand —<br>complexity pours endlessly from this minimal loop.",
+      iter_init:"Initial value", iter_inf:"∞ steps", iter_boundary:"Fractal boundary",
+      eq_sub:"Mandelbrot Iteration · c ∈ ℂ · Each value of c determines a fate",
+      s2_badge:"§ 11.1 · The Mandelbrot Set", s2_title:"Infinite Complexity, One Formula",
+      mand_p1:"For every point c in the complex plane, does z<sub>n+1</sub>=z<sub>n</sub>²+c <strong style='color:var(--mand);'>diverge to infinity</strong>? The points that stay bounded form the Mandelbrot set.",
+      mand_p2:"Its boundary is fractal: no matter how far you zoom, <strong style='color:var(--mand);'>new details always emerge</strong>, never smoothing into a curve.",
+      mand_p3:"In 1980, Mandelbrot first drew it with a computer.<br>Some call it &ldquo;God's thumbprint&rdquo;.",
+      s3_badge:"§ 11.1 · Julia Sets", s3_title:"Each c, a Different Fate",
+      s3_body:"Fix c, iterate every starting point z₀ —<br>different values of c generate <strong>endlessly varied Julia sets</strong>.<br>One formula, infinite patterns.",
+      julia_label:"c drifts slowly — Julia sets evolve",
+      s4_badge:"§ 11.2 · Self-Similarity", s4_title:"The Local Contains the Whole",
+      s4_body:"The core secret of fractals: <strong>self-similarity</strong>.<br>Zoom into any part, and you see the whole reflected back.<br>Koch snowflake, Sierpiński triangle —<br>every detail is the same rule, shrunk.",
+      sierp_label:"Sierpiński Triangle · Generations 0–6 · Infinite recursive unfolding",
+      s5_badge:"§ 11.2 · Koch Snowflake", s5_title:"Finite Area, Infinite Perimeter",
+      koch_p1:"One simple rule: replace the middle third of each edge with two sides of an equilateral triangle.<br>Repeat forever — <strong style='color:var(--mand);'>finite area, infinite perimeter</strong>.",
+      koch_p2:"This reveals the strangeness of fractal dimension: the Koch curve has dimension ≈ <strong style='color:var(--mand);'>1.2618</strong> —<br>neither one-dimensional nor two-dimensional.",
+      koch_p3:"The coastline paradox: the smaller the ruler you use,<br>the longer the coastline — tending toward infinity.",
+      s6_badge:"§ 11.2 · Barnsley Fern", s6_title:"Four Rules, One Fern Leaf",
+      fern_p1:"Just <strong style='color:var(--fern);'>four affine transformations</strong> (each with a fixed probability), iterated from a single point, trace out a complete fern leaf.",
+      fern_p2:"Real ferns encode growth in exactly this kind of <strong style='color:var(--fern);'>Iterated Function System (IFS)</strong>.",
+      fern_p3:"More iterations, finer detail.<br>The complexity of the universe comes from the repetition of rules, not the complexity of rules.",
+      s7_badge:"§ 11.2 · Nature's Fingerprints", s7_title:"Nature's Fractal Language",
+      s7_body:"From macro to micro, fractal structure appears everywhere —<br>the same algebraic truth written in different materials.",
+      nat_labels:["Coastline","Lightning","Vascular Tree","Galaxy"],
+      nat_subs:["Fractal dimension ≈ 1.25","Random walk branching","Self-similar branching network","Multi-scale self-organizing structure"],
+      s8_badge:"Epilogue · Chapter XI", s8_title:"Simplicity Is the Mother of Infinity",
+      e_q:"The complexity of the universe<br>does not arise from <strong style='color:var(--frac);'>complex instructions</strong>,<br>but from the <strong style='color:var(--mand);'>infinite repetition of simple rules</strong>.<br><br>One formula, one iteration —<br><strong style='color:var(--gold-light);'>enough to create the entire universe of detail.</strong>",
+      e_a:"— Chapter XI · End"
+    },
+    zh: {
+      ornament: "数学之美与无穷迭代",
+      s0_b:"第十一章", s0_t:"分形与迭代", s0_s:"从极简到无穷",
+      s0_body:"当代数引入<strong>迭代</strong>——将结果作为下一次的输入——<br>一种动态的奇迹诞生了。<br>最简单的规则，产生了<strong>无穷的复杂</strong>。",
+      s1_badge:"§ 11.1 · 迭代的魔力", s1_title:"结果成为输入",
+      s1_body:"迭代，就是将上一步的<strong>输出</strong>，送回去作为下一步的<strong>输入</strong>。<br>一遍、两遍、一千遍——<br>复杂性从这个极简的循环中不断涌现。",
+      iter_init:"初始值", iter_inf:"∞ 步", iter_boundary:"分形边界",
+      eq_sub:"曼德博迭代 · c ∈ ℂ · 每一个 c 值决定一种命运",
+      s2_badge:"§ 11.1 · 曼德博集合", s2_title:"无穷复杂，一行公式",
+      mand_p1:"对复平面上每一个点 c，判断 z<sub>n+1</sub>=z<sub>n</sub>²+c 是否<strong style='color:var(--mand);'>发散至无穷</strong>——不发散的 c 值，构成曼德博集合。",
+      mand_p2:"边界是分形的：无论放大多少倍，<strong style='color:var(--mand);'>永远有新的细节涌现</strong>，永远不会变成光滑的曲线。",
+      mand_p3:"1980年，曼德博用计算机首次将它画出。<br>有人称它为&ldquo;上帝的拇指印&rdquo;。",
+      s3_badge:"§ 11.1 · 朱利亚集", s3_title:"每个 c，一种命运",
+      s3_body:"固定 c，对每个初始点 z₀ 做迭代——<br>不同的 c 值，生出<strong>千变万化的朱利亚集</strong>。<br>同一条公式，孕育了无穷多种美丽的图案。",
+      julia_label:"c 值缓缓漂移，朱利亚集随之演化",
+      s4_badge:"§ 11.2 · 自相似性", s4_title:"局部，包含整体",
+      s4_body:"分形的核心秘密：<strong>自相似</strong>。<br>将局部放大，你看到的是整体的镜像。<br>科赫雪花、谢尔宾斯基三角形——<br>每一个细节，都是同一规则的缩小复刻。",
+      sierp_label:"谢尔宾斯基三角形 · 第 0–6 代 · 无穷递归的展开",
+      s5_badge:"§ 11.2 · 科赫雪花", s5_title:"面积有限，但周长无限——这真的可能吗？",
+      koch_p1:"规则极简：每段线段中间三分之一，换成等边三角形的两边。<br>无限重复——<strong style='color:var(--mand);'>面积有限，周长无限大</strong>。",
+      koch_p2:"这揭示了分形维数的奇异性：科赫曲线的维数约为 <strong style='color:var(--mand);'>1.2618</strong>——<br>既不是一维，也不是二维。",
+      koch_p3:"这就是「海岸线悖论」：你的尺子越精密，测到的海岸线就越长——没有尽头。英国海岸线理论上是无限长的。",
+      s6_badge:"§ 11.2 · 巴恩斯利蕨", s6_title:"四条规则，画一片蕨叶",
+      fern_p1:"只需<strong style='color:var(--fern);'>四个仿射变换</strong>（各有固定概率）不断迭代，就能从一个点出发，描绘出整片蕨叶的轮廓。",
+      fern_p2:"大自然中的蕨类植物，其生长编码正是这种<strong style='color:var(--fern);'>迭代函数系统（IFS）</strong>的生物实现。",
+      fern_p3:"迭代次数越多，蕨叶越精细。<br>宇宙的复杂性，来自规则的重复，而非规则的复杂。",
+      s7_badge:"§ 11.2 · 上帝的指纹", s7_title:"自然界的分形语言",
+      s7_body:"从宏观到微观，分形结构无处不在——<br>都是同一个代数真理的自然书写。",
+      nat_labels:["海岸线","闪电","血管树","星系"],
+      nat_subs:["分形维数 ≈ 1.25","随机游走分支","分支自相似网络","多尺度自组织结构"],
+      s8_badge:"尾声 · 第十一章", s8_title:"简单，才是无穷的母亲",
+      e_q:"宇宙的复杂性，<br>并非源于<strong style='color:var(--frac);'>复杂的指令</strong>，<br>而是源于<strong style='color:var(--mand);'>简单规则的无限重复</strong>。<br><br>一条公式，一次迭代，<br><strong style='color:var(--gold-light);'>已足以创造出整个宇宙的细节。</strong>",
+      e_a:"— 第十一章 · 完"
+    }
+  };
+
+  function applyLang(l) {
+    var t = T[l];
+    function el(id){ return document.getElementById(id); }
+    function qs(sel){ return document.querySelector(sel); }
+    function qsa(sel){ return document.querySelectorAll(sel); }
+
+    var os = qs('.ornament-line span'); if(os) os.textContent = t.ornament;
+
+    if(el('s0-b')) el('s0-b').textContent = t.s0_b;
+    if(el('s0-t')) el('s0-t').textContent = t.s0_t;
+    if(el('s0-s')) el('s0-s').textContent = t.s0_s;
+    if(el('s0-body')) el('s0-body').innerHTML = t.s0_body;
+
+    var badgeMap = [t.s0_b,t.s1_badge,t.s2_badge,t.s3_badge,t.s4_badge,t.s5_badge,t.s6_badge,t.s7_badge,t.s8_badge];
+    var titleMap = [t.s0_t,t.s1_title,t.s2_title,t.s3_title,t.s4_title,t.s5_title,t.s6_title,t.s7_title,t.s8_title];
+    qsa('.chapter-badge').forEach(function(b,i){ if(badgeMap[i]!=null) b.textContent=badgeMap[i]; });
+    qsa('.scene-title').forEach(function(b,i){ if(titleMap[i]!=null) b.textContent=titleMap[i]; });
+
+    var s1b = qs('#scene-1 .scene-body'); if(s1b) s1b.innerHTML = t.s1_body;
+
+    // Iter chain node labels
+    var nodes = qsa('#iter-chain .iter-node');
+    if(nodes.length) {
+      var n0divs = nodes[0].querySelectorAll('div'); if(n0divs[1]) n0divs[1].textContent = t.iter_init;
+      if(nodes[4]) {
+        var n4divs = nodes[4].querySelectorAll('div');
+        if(n4divs[0]) n4divs[0].textContent = t.iter_inf;
+        if(n4divs[1]) n4divs[1].textContent = t.iter_boundary;
+      }
+    }
+    var eqSub = qs('.eq-sub'); if(eqSub) eqSub.textContent = t.eq_sub;
+
+    var mi = el('mand-info');
+    if(mi){ var mp=mi.querySelectorAll('p'); if(mp[0])mp[0].innerHTML=t.mand_p1; if(mp[1])mp[1].innerHTML=t.mand_p2; if(mp[2])mp[2].innerHTML=t.mand_p3; }
+
+    var s3b = qs('#scene-3 .scene-body'); if(s3b) s3b.innerHTML = t.s3_body;
+    if(el('julia-label')) el('julia-label').textContent = t.julia_label;
+
+    var s4b = qs('#scene-4 .scene-body'); if(s4b) s4b.innerHTML = t.s4_body;
+    if(el('sierp-label')) el('sierp-label').textContent = t.sierp_label;
+
+    var ki = el('koch-info');
+    if(ki){ var kp=ki.querySelectorAll('p'); if(kp[0])kp[0].innerHTML=t.koch_p1; if(kp[1])kp[1].innerHTML=t.koch_p2; if(kp[2])kp[2].innerHTML=t.koch_p3; }
+
+    var fi = el('fern-info');
+    if(fi){ var fp=fi.querySelectorAll('p'); if(fp[0])fp[0].innerHTML=t.fern_p1; if(fp[1])fp[1].innerHTML=t.fern_p2; if(fp[2])fp[2].innerHTML=t.fern_p3; }
+
+    var s7b = qs('#scene-7 .scene-body'); if(s7b) s7b.innerHTML = t.s7_body;
+    qsa('.nat-label').forEach(function(e,i){ if(t.nat_labels[i]) e.textContent=t.nat_labels[i]; });
+    qsa('.nat-sub').forEach(function(e,i){ if(t.nat_subs[i]) e.textContent=t.nat_subs[i]; });
+
+    if(el('e-t')) el('e-t').textContent = t.s8_title;
+    if(el('e-q')) el('e-q').innerHTML = t.e_q;
+    if(el('e-a')) el('e-a').textContent = t.e_a;
+  }
+
+  window.chLang = function(l) {
+    window.__currentLang = l;
+    try{localStorage.setItem('mathsite_lang',l);}catch(e){}
+    document.getElementById('ch-btn-zh').classList.toggle('on', l==='zh');
+    document.getElementById('ch-btn-en').classList.toggle('on', l==='en');
+    applyLang(l);
+  };
+
+  window.addEventListener('DOMContentLoaded', function() {
+    var _lp=(new URLSearchParams(location.search)).get('lang');
+    var _ls=null;try{_ls=localStorage.getItem('mathsite_lang');}catch(e){}
+    var _l=_lp||_ls||'en';
+    window.__currentLang=_l;
+    document.getElementById('ch-btn-zh').classList.toggle('on',_l==='zh');
+    document.getElementById('ch-btn-en').classList.toggle('on',_l==='en');
+    applyLang(_l);
+  });
+
+})();
+
+/* Mobile touch swipe */
+(function(){
+  var ts=null,tx=null;
+  document.addEventListener('touchstart',function(e){ts=e.touches[0].clientX;tx=e.touches[0].clientY;},{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(ts===null)return;
+    var dx=e.changedTouches[0].clientX-ts, dy=e.changedTouches[0].clientY-tx;
+    if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>40){
+      if(dx<0&&typeof next==='function')next();
+      else if(dx>0&&typeof prev==='function')prev();
+    }
+    ts=null;tx=null;
+  },{passive:true});
+})();
+
+/* Mobile: add stack class to inline-flex children on narrow screens */
+(function(){
+  function applyMobileLayout(){
+    var isMobile = window.innerWidth <= 700;
+    document.querySelectorAll('.scene > div, .scene > section').forEach(function(el){
+      var s = el.getAttribute('style') || '';
+      if(s.includes('display:flex') || s.includes('display: flex')){
+        if(isMobile){ el.style.flexDirection='column'; el.style.alignItems='center'; }
+        else { el.style.flexDirection=''; el.style.alignItems=''; }
+      }
+    });
+  }
+  applyMobileLayout();
+  window.addEventListener('resize', applyMobileLayout);
+})();
+</script>
+</body>
+</html>

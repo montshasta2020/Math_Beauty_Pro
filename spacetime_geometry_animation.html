@@ -1,0 +1,1562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第七章：时空几何与广义相对论</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700&family=Cinzel:wght@400;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+  :root{
+    --gold:#c9a84c;--gold-light:#e8cc7a;--gold-dim:#7a5f2a;
+    --ink:#020408;--cream:#e8dfc8;
+    --grav:#e8a030;   /* gravity / mass: warm amber */
+    --geo:#50d4b0;    /* geodesic: teal */
+    --rim:#d060f0;    /* Riemann: violet */
+    --wave:#4080f0;   /* gravitational wave: blue */
+  }
+  body{background:var(--ink);font-family:'Noto Serif SC',serif;overflow:hidden;width:100vw;height:100vh;cursor:default;}
+  #bg-canvas{position:fixed;inset:0;z-index:0;}
+  #vignette{position:fixed;inset:0;z-index:5;pointer-events:none;
+    background:radial-gradient(ellipse at center,transparent 26%,rgba(0,0,0,0.55) 68%,rgba(0,0,0,0.93) 100%);}
+  .ornament-line{position:fixed;top:32px;left:50%;transform:translateX(-50%);z-index:20;
+    display:flex;align-items:center;gap:14px;opacity:0;transition:opacity 1.2s;}
+  .ornament-line.visible{opacity:1;}
+  .ornament-line span{font-family:'Cinzel',serif;font-size:10px;letter-spacing:5px;color:var(--gold-dim);text-transform:uppercase;}
+  .ornament-line::before,.ornament-line::after{content:'';width:70px;height:1px;}
+  .ornament-line::before{background:linear-gradient(to right,transparent,var(--gold-dim));}
+  .ornament-line::after{background:linear-gradient(to left,transparent,var(--gold-dim));}
+  #progress{position:fixed;bottom:0;left:0;height:2px;
+    background:linear-gradient(to right,var(--gold-dim),var(--gold),var(--gold-light));z-index:100;transition:width 0.4s linear;}
+  .scene{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;opacity:0;pointer-events:none;transition:opacity 1.4s ease;z-index:10;}
+  .scene.active{opacity:1;pointer-events:auto;}
+  .chapter-badge{font-family:'Cinzel',serif;font-size:10px;letter-spacing:5px;color:var(--gold-dim);
+    text-transform:uppercase;display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+  .chapter-badge::before,.chapter-badge::after{content:'';width:28px;height:1px;background:var(--gold-dim);}
+  .scene-title{font-family:'Cinzel',serif;font-size:clamp(22px,3.8vw,52px);color:var(--gold-light);
+    text-align:center;line-height:1.2;letter-spacing:2px;text-shadow:0 0 50px rgba(201,168,76,0.3);}
+  .scene-body{font-family:'Noto Serif SC',serif;font-size:clamp(13px,1.45vw,17px);color:var(--cream);
+    text-align:center;line-height:1.95;max-width:640px;margin-top:16px;padding:0 24px;font-weight:300;}
+  .scene-body strong{color:var(--gold-light);font-weight:400;}
+  .divider{width:180px;height:1px;background:linear-gradient(to right,transparent,var(--gold-dim),transparent);margin:18px auto;}
+  .fade-up{opacity:0;transform:translateY(16px);transition:all 0.8s ease;}
+  .fade-up.show{opacity:1;transform:translateY(0);}
+
+  /* EQUATION BOX */
+  .eq-box{margin-top:22px;padding:18px 40px;border:1px solid rgba(122,95,42,0.4);
+    position:relative;opacity:0;transition:opacity 0.9s 0.5s;text-align:center;}
+  .eq-box.show{opacity:1;}
+  .eq-box::before,.eq-box::after{content:'';position:absolute;width:8px;height:8px;border:1px solid var(--gold);}
+  .eq-box::before{top:-4px;left:-4px;border-right:none;border-bottom:none;}
+  .eq-box::after{bottom:-4px;right:-4px;border-left:none;border-top:none;}
+  .eq-main{font-family:'IM Fell English',serif;font-size:clamp(20px,2.8vw,36px);
+    color:var(--gold-light);letter-spacing:6px;}
+  .eq-sub{font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;color:var(--gold-dim);margin-top:8px;}
+
+  /* KEY-IDEA STRIP */
+  .idea-strip{display:flex;align-items:stretch;justify-content:center;
+    gap:0;margin-top:20px;max-width:620px;}
+  .idea-item{flex:1;padding:14px 16px;border:1px solid rgba(122,95,42,0.25);
+    text-align:center;opacity:0;transform:translateY(12px);transition:all 0.6s ease;
+    border-right:none;}
+  .idea-item:last-child{border-right:1px solid rgba(122,95,42,0.25);}
+  .idea-item.show{opacity:1;transform:translateY(0);}
+  .idea-icon{font-size:clamp(18px,2.5vw,28px);margin-bottom:6px;}
+  .idea-title{font-family:'Cinzel',serif;font-size:clamp(9px,0.9vw,11px);
+    letter-spacing:2px;color:var(--gold);margin-bottom:6px;}
+  .idea-desc{font-size:clamp(11px,1.1vw,13px);color:var(--cream);line-height:1.6;font-weight:300;}
+
+  /* SPLIT */
+  .split{display:flex;align-items:center;justify-content:center;
+    gap:clamp(18px,4vw,56px);margin-top:18px;flex-wrap:wrap;}
+  .split-info{max-width:280px;}
+  .split-info .tag{display:inline-block;font-family:'Cinzel',serif;font-size:9px;
+    letter-spacing:2px;padding:2px 8px;border:1px solid;margin-bottom:10px;}
+  .split-info p{font-size:clamp(12px,1.25vw,15px);color:var(--cream);line-height:1.85;font-weight:300;}
+  .split-info p+p{margin-top:10px;}
+  .split-info strong{font-weight:400;}
+
+  /* QUOTE */
+  .big-quote{font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(15px,2vw,25px);color:var(--cream);
+    text-align:center;max-width:580px;line-height:1.78;padding:0 28px;}
+
+  /* NAV */
+  #nav{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
+    z-index:200;display:flex;gap:10px;align-items:center;}
+  .nav-btn{width:34px;height:34px;border:1px solid var(--gold-dim);background:transparent;
+    color:var(--gold);cursor:pointer;font-size:16px;display:flex;align-items:center;
+    justify-content:center;transition:all 0.3s;}
+  .nav-btn:hover{background:rgba(201,168,76,0.1);border-color:var(--gold);}
+  .nav-dots{display:flex;gap:6px;align-items:center;}
+  .nav-dot{width:6px;height:6px;border-radius:50%;background:var(--gold-dim);cursor:pointer;transition:all 0.3s;}
+  .nav-dot.active{background:var(--gold);width:20px;border-radius:3px;}
+  #hint{position:fixed;bottom:22px;right:28px;z-index:100;font-family:'Cinzel',serif;
+    font-size:10px;letter-spacing:2px;color:var(--gold-dim);display:flex;align-items:center;
+    gap:8px;opacity:0;transition:opacity 1s;}
+  #hint.visible{opacity:1;}
+  #hint-dot{width:5px;height:5px;border-radius:50%;background:var(--gold-dim);
+    animation:blink 1.6s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.15}}
+
+  #home-btn {
+    position: fixed; top: 26px; left: 36px; z-index: 9000;
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 3px;
+    color: var(--gold); text-decoration: none;
+    border: 1px solid var(--gold-dim); padding: 8px 16px;
+    background: rgba(6,5,7,0.7); cursor: pointer !important;
+    transition: background .3s, color .3s, border-color .3s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  #home-btn:hover { background: rgba(201,168,76,.15); border-color: var(--gold-light); color: var(--gold-light); }
+</style>
+
+<style id="bilingual-css">
+#ch-lang-bar{position:fixed;top:26px;right:36px;z-index:9000;display:flex;align-items:stretch;border:1px solid rgba(122,95,42,.5);overflow:hidden;}
+.ch-lb{font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;padding:8px 16px;background:transparent;border:none;outline:none;color:#7a5f2a;cursor:pointer;transition:background .3s,color .3s;}
+.ch-lb:hover{background:rgba(201,168,76,.1);}
+.ch-lb.on{background:rgba(201,168,76,.2);color:#e8cc7a;}
+.ch-lb-sep{width:1px;background:rgba(122,95,42,.4);flex-shrink:0;}
+</style>
+
+<style id="mobile-responsive">
+@media (max-width: 700px) {
+  /* Core layout - keep centered, handle overflow with scroll wrapper */
+  .scene {
+    padding: 55px 14px 90px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  /* Typography */
+  .scene-title { font-size: clamp(17px, 5.5vw, 28px) !important; letter-spacing: 1px; }
+  .scene-subtitle { font-size: clamp(11px, 3vw, 15px) !important; }
+  .scene-body { font-size: clamp(12px, 3.2vw, 15px) !important; padding: 0 8px; max-width: 96vw; line-height: 1.75 !important; }
+  .chapter-badge { font-size: 7px; letter-spacing: 3px; }
+  .ornament-line span { font-size: 7px; letter-spacing: 1px; max-width: 55vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* UI controls */
+  #home-btn { top: 10px; left: 10px; padding: 5px 10px; font-size: 9px; }
+  #ch-lang-bar { top: 10px; right: 10px; }
+  .ch-lb { padding: 5px 9px; font-size: 8px; letter-spacing: 1px; }
+  #hint { display: none; }
+  .ornament-line { top: 14px; }
+
+  /* Nav - larger touch targets */
+  #nav { bottom: 8px; }
+  .nav-btn { width: 44px; height: 44px; font-size: 22px; }
+
+  /* Force ALL flex row containers to stack */
+  .split-layout,
+  .split-text,
+  .info-row,
+  .sym-row,
+  .law-row,
+  .tl-row,
+  .card-row,
+  .geo-row {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  /* Info panels */
+  .split-info, [id$="-info"], [id$="-text"], [id$="-panel"] {
+    max-width: 94vw !important; width: 94vw !important;
+  }
+  .split-info p, [id$="-info"] p { font-size: clamp(11px, 2.8vw, 14px) !important; }
+
+  /* Only limit standalone full-width canvases, not gallery 3D canvases */
+  canvas#bg-canvas { max-width: 100vw !important; }
+
+  /* Grids → two columns, small screens one column */
+  .law-grid, .var-grid, .sym-grid, .const-grid, .card-grid,
+  [class*="grid"] { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+
+  /* Epilogue / poem */
+  .big-quote, #e-q, #fin-q, .poem { 
+    font-size: clamp(13px, 3.5vw, 18px) !important; 
+    padding: 0 16px; 
+    line-height: 1.9 !important;
+  }
+  .ending-quote { font-size: clamp(14px, 3.8vw, 19px) !important; }
+
+  /* Tables */
+  table { font-size: 10px; width: 100%; }
+  td, th { padding: 4px 6px !important; }
+
+  /* Axiom boxes */
+  .axiom-item { padding: 8px 10px !important; }
+  .axiom-body { font-size: 11px !important; }
+
+  /* Divider spacing */
+  .divider { margin: 12px auto !important; }
+}
+
+@media (max-width: 420px) {
+  .scene-title { font-size: clamp(15px, 5vw, 22px) !important; }
+
+  [class*="grid"] { grid-template-columns: 1fr !important; }
+}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div id="vignette"></div>
+<a id="home-btn" href="index.html">&#8962;&nbsp;HOME</a>
+<div class="ornament-line" id="ornament"><span>§ 5.2 · Spacetime · General Relativity</span></div>
+<div id="progress"></div>
+<div id="nav">
+  <button class="nav-btn" id="btn-prev">&#8249;</button>
+  <div class="nav-dots" id="nav-dots"></div>
+  <button class="nav-btn" id="btn-next">&#8250;</button>
+</div>
+<div id="hint"><div id="hint-dot"></div>CLICK TO ADVANCE</div>
+
+<!-- ══ SCENE 0: Title ══ -->
+<div class="scene active" id="scene-0">
+  <div class="chapter-badge fade-up" id="s0-b">第七章</div>
+  <div class="scene-title fade-up" id="s0-t">时空几何与广义相对论</div>
+  <div style="font-family:'IM Fell English',serif;font-style:italic;font-size:clamp(14px,1.9vw,23px);color:var(--gold-dim);text-align:center;margin-top:10px;" class="fade-up" id="s0-s">时空的本质</div>
+  <div class="divider" style="margin:24px auto;"></div>
+  <div class="scene-body fade-up" id="s0-body" style="max-width:500px;font-size:clamp(13px,1.4vw,17px);">
+    引力，不是一种力。<br>
+    它是质量在时空这块黎曼流形上压出的褶皱，<br>
+    而万物，只是沿着这些褶皱<strong>自然地滑行</strong>。
+  </div>
+  <canvas id="c0" style="margin-top:22px;opacity:0;transition:opacity 1.5s 0.5s;width:min(660px,94vw);height:min(300px,36vh);"></canvas>
+</div>
+
+<!-- ══ SCENE 1: Gravity = Geometry ══ -->
+<div class="scene" id="scene-1">
+  <div class="chapter-badge">§ 5.2 · 引力即几何</div>
+  <div class="scene-title" style="font-size:clamp(20px,3.2vw,44px);">质量弯曲时空</div>
+  <div class="scene-body" style="margin-top:10px;max-width:580px;">
+    牛顿把引力视为神秘的超距作用力。<br>
+    爱因斯坦的回答更深刻：<strong>引力根本不存在</strong>——<br>
+    存在的，只是<strong>弯曲的时空几何</strong>，以及沿测地线运动的物体。
+  </div>
+  <div class="idea-strip" id="idea-strip">
+    <div class="idea-item" id="id0">
+      <div class="idea-icon" style="color:var(--grav);">⬤</div>
+      <div class="idea-title">质量/能量</div>
+      <div class="idea-desc">压弯周围的时空曲率</div>
+    </div>
+    <div class="idea-item" id="id1">
+      <div class="idea-icon" style="color:var(--gold);">↔</div>
+      <div class="idea-title">时空曲率</div>
+      <div class="idea-desc">告诉物质如何运动</div>
+    </div>
+    <div class="idea-item" id="id2">
+      <div class="idea-icon" style="color:var(--geo);">⟳</div>
+      <div class="idea-title">物质运动</div>
+      <div class="idea-desc">沿测地线（最短路径）</div>
+    </div>
+    <div class="idea-item" id="id3">
+      <div class="idea-icon" style="color:var(--rim);">∞</div>
+      <div class="idea-title">动态循环</div>
+      <div class="idea-desc">物质与几何互相塑造</div>
+    </div>
+  </div>
+  <canvas id="c1-grav" style="width:min(620px,94vw);height:min(340px,42vh);margin-top:18px;opacity:0;transition:opacity 1s 0.4s;"></canvas>
+</div>
+
+<!-- ══ SCENE 2: Einstein Field Equations ══ -->
+<div class="scene" id="scene-2">
+  <div class="chapter-badge">§ 5.2 · 场方程</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">宇宙最美的方程</div>
+  <div class="scene-body" style="margin-top:12px;max-width:560px;">
+    1915年，爱因斯坦将黎曼几何的张量语言与物理世界结合，<br>
+    写下了<strong>广义相对论场方程</strong>——<br>
+    左边是时空的曲率，右边是能量与动量的分布。
+  </div>
+  <div class="eq-box" id="eq-main-box">
+    <div class="eq-main">G<sub style="font-size:0.6em">μν</sub> + Λg<sub style="font-size:0.6em">μν</sub> = <span style="color:var(--grav);">8πG</span> · T<sub style="font-size:0.6em">μν</sub> / c⁴</div>
+    <div class="eq-sub">Einstein Field Equations · 1915</div>
+  </div>
+  <div style="display:flex;gap:clamp(16px,3vw,40px);margin-top:20px;max-width:600px;flex-wrap:wrap;justify-content:center;">
+    <div style="text-align:center;opacity:0;transition:opacity 0.7s 1.2s;" id="eq-l" class="fade-up">
+      <div style="font-family:'IM Fell English',serif;font-size:clamp(18px,2.2vw,28px);color:var(--geo);">G<sub style="font-size:0.6em">μν</sub></div>
+      <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;color:var(--gold-dim);margin-top:6px;">Spacetime Curvature Tensor</div>
+    </div>
+    <div style="text-align:center;opacity:0;transition:opacity 0.7s 1.6s;" id="eq-c" class="fade-up">
+      <div style="font-family:'IM Fell English',serif;font-size:clamp(18px,2.2vw,28px);color:var(--gold);">Λg<sub style="font-size:0.6em">μν</sub></div>
+      <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;color:var(--gold-dim);margin-top:6px;">Cosmological Constant</div>
+    </div>
+    <div style="text-align:center;opacity:0;transition:opacity 0.7s 2s;" id="eq-r" class="fade-up">
+      <div style="font-family:'IM Fell English',serif;font-size:clamp(18px,2.2vw,28px);color:var(--grav);">T<sub style="font-size:0.6em">μν</sub></div>
+      <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;color:var(--gold-dim);margin-top:6px;">Energy-Momentum Tensor</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCENE 3: Geodesic — Shortest Path ══ -->
+<div class="scene" id="scene-3">
+  <div class="chapter-badge">§ 5.2 · 测地线</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">最"直"的弯曲路径</div>
+  <div class="split">
+    <canvas id="geodesic-c" style="width:min(340px,54vh);height:min(340px,54vh);opacity:0;transition:opacity 1s 0.3s;flex-shrink:0;"></canvas>
+    <div class="split-info" id="geo-info" style="opacity:0;transition:opacity 0.8s 0.9s;">
+      <div class="tag" style="color:var(--geo);border-color:rgba(80,212,176,0.3);">GEODESIC</div>
+      <p id="geo-p0">在弯曲时空中，<strong style="color:var(--geo);">测地线</strong>是两点之间最短的路径——但这条"最短路"在三维空间看来是弯曲的。</p>
+      <p id="geo-p1">地球绕太阳运行，并非因为太阳"拉"着它——而是因为太阳质量在时空中压出一个曲面，地球只是<strong style="color:var(--geo);">顺着曲面滑行</strong>。</p>
+      <p style="margin-top:10px;font-size:clamp(11px,1.1vw,13px);color:var(--gold-dim);" id="geo-p2">
+        光在大质量天体附近弯曲，<br>也是同样的原理——光走的是时空的测地线。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCENE 4: Light Bending ══ -->
+<div class="scene" id="scene-4">
+  <div class="chapter-badge">§ 5.2 · 光线弯曲</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">星光，走在弯曲的路上</div>
+  <div class="scene-body" style="margin-top:12px;max-width:540px;">
+    1919年，爱丁顿在日全食时观测到：<br>
+    太阳背后星星的光线，因太阳质量弯曲时空而<strong>发生偏折</strong>。<br>
+    这是广义相对论的第一次实验验证，<br>
+    也是几何学第一次被证明<strong>是物理现实</strong>，而非抽象想象。
+  </div>
+  <canvas id="lightbend-c" style="width:min(640px,94vw);height:min(340px,42vh);margin-top:16px;opacity:0;transition:opacity 1.2s 0.3s;"></canvas>
+  <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;color:var(--gold-dim);
+    margin-top:12px;opacity:0;transition:opacity 0.7s 1s;" class="fade-up" id="lb-label">
+    1919 · 爱丁顿日食观测 · 偏折角 1.75″
+  </div>
+</div>
+
+<!-- ══ SCENE 5: Gravitational Waves ══ -->
+<div class="scene" id="scene-5">
+  <div class="chapter-badge">§ 5.2 · 引力波</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">时空的涟漪</div>
+  <div class="scene-body" style="margin-top:12px;max-width:540px;">
+    当两个黑洞旋转碰撞，剧烈的加速度向外辐射出<strong>引力波</strong>——<br>
+    时空本身的振动，以光速向宇宙传播。<br>
+    2015年，LIGO探测到第一个引力波信号，<br>
+    验证了爱因斯坦100年前基于<strong>纯粹几何推理</strong>的预言。
+  </div>
+  <canvas id="gwave-c" style="width:min(660px,96vw);height:min(380px,48vh);margin-top:14px;opacity:0;transition:opacity 1.2s 0.3s;"></canvas>
+</div>
+
+<!-- ══ SCENE 6: Black Hole ══ -->
+<div class="scene" id="scene-6">
+  <div class="chapter-badge">§ 5.2 · 黑洞</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">曲率的极限</div>
+  <div class="split" style="margin-top:14px;">
+    <canvas id="bhole-c" style="width:min(380px,62vh);height:min(380px,62vh);opacity:0;transition:opacity 1.2s 0.3s;flex-shrink:0;"></canvas>
+    <div class="split-info" id="bh-info" style="opacity:0;transition:opacity 0.8s 0.9s;">
+      <div class="tag" style="color:var(--rim);border-color:rgba(208,96,240,0.3);">BLACK HOLE</div>
+      <p id="bh-p0">黑洞是黎曼几何的<strong style="color:var(--rim);">极限情形</strong>：质量在无限小的点上无限集中，时空曲率趋向无穷大。</p>
+      <p id="bh-p1">事件视界——那个光也无法逃脱的边界——不是物质的边界，而是<strong style="color:var(--rim);">时空几何的边界</strong>。</p>
+      <p style="margin-top:10px;font-size:clamp(11px,1.1vw,13px);color:var(--gold-dim);" id="bh-p2">
+        史瓦西半径：r<sub>s</sub> = 2GM/c²<br>
+        超过此半径，逃逸速度 ≥ 光速。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCENE 7: Ending ══ -->
+<div class="scene" id="scene-7">
+  <div class="chapter-badge">尾声 · 第五章完</div>
+  <div class="scene-title fade-up" id="e-t" style="font-size:clamp(20px,3vw,42px);">几何，是宇宙的语法</div>
+  <div class="divider" style="margin:24px auto;"></div>
+  <div class="big-quote fade-up" id="e-q">
+    欧几里得用五条公理锁住了平面，<br>
+    黎曼用张量语言描述了弯曲空间，<br>
+    爱因斯坦用这套语言，<br>
+    <strong style="color:var(--gold-light);">读懂了宇宙。</strong><br><br>
+    <span style="font-size:0.85em;color:rgba(232,220,200,0.6);">
+      数学不是描述宇宙的工具——<br>数学，就是宇宙运行的底层代码。
+    </span>
+  </div>
+  <div style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;color:var(--gold-dim);
+    margin-top:20px;text-align:center;" class="fade-up" id="e-a">— 第七章 · 终</div>
+  <canvas id="c7" style="margin-top:18px;opacity:0;transition:opacity 2s;width:min(640px,94vw);height:min(280px,34vh);"></canvas>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// BACKGROUND — warped spacetime grid
+// ══════════════════════════════════════════
+const bgC=document.getElementById('bg-canvas'),bgX=bgC.getContext('2d');
+let BW,BH,bgTick=0;
+function resizeBg(){BW=bgC.width=window.innerWidth;BH=bgC.height=window.innerHeight;}
+resizeBg();window.addEventListener('resize',resizeBg);
+const stars=Array.from({length:200},()=>({x:Math.random(),y:Math.random(),r:Math.random()*1.1+0.2,a:Math.random(),sp:Math.random()*0.003+0.001}));
+function drawBg(){
+  bgX.clearRect(0,0,BW,BH);
+  const g=bgX.createRadialGradient(BW/2,BH/2,0,BW/2,BH/2,Math.max(BW,BH)*0.75);
+  g.addColorStop(0,'#060310');g.addColorStop(1,'#010108');
+  bgX.fillStyle=g;bgX.fillRect(0,0,BW,BH);
+  // Subtle warped grid
+  const cx=BW/2,cy=BH/2,mass=80;
+  bgX.strokeStyle='rgba(80,80,160,0.045)';bgX.lineWidth=0.7;
+  const cols=10,rows=7;
+  for(let r=0;r<=rows;r++){
+    bgX.beginPath();
+    for(let c=0;c<=cols;c++){
+      let gx=c/cols*BW,gy=r/rows*BH;
+      const dx=gx-cx,dy=gy-cy,dist=Math.sqrt(dx*dx+dy*dy)||1;
+      const pull=mass*mass/(dist+mass)*0.8;
+      gx-=dx/dist*pull*(1/(1+dist/120));gy-=dy/dist*pull*(1/(1+dist/120));
+      c===0?bgX.moveTo(gx,gy):bgX.lineTo(gx,gy);
+    }
+    bgX.stroke();
+  }
+  for(let c=0;c<=cols;c++){
+    bgX.beginPath();
+    for(let r=0;r<=rows;r++){
+      let gx=c/cols*BW,gy=r/rows*BH;
+      const dx=gx-cx,dy=gy-cy,dist=Math.sqrt(dx*dx+dy*dy)||1;
+      const pull=mass*mass/(dist+mass)*0.8;
+      gx-=dx/dist*pull*(1/(1+dist/120));gy-=dy/dist*pull*(1/(1+dist/120));
+      r===0?bgX.moveTo(gx,gy):bgX.lineTo(gx,gy);
+    }
+    bgX.stroke();
+  }
+  stars.forEach(s=>{
+    s.a+=s.sp;const al=(Math.sin(s.a)+1)/2*0.5+0.06;
+    bgX.beginPath();bgX.arc(s.x*BW,s.y*BH,s.r,0,Math.PI*2);
+    bgX.fillStyle=`rgba(180,160,240,${al})`;bgX.fill();
+  });
+  bgTick++;requestAnimationFrame(drawBg);
+}
+drawBg();
+
+// ══════════════════════════════════════════
+// SCENE 0: Grand Spacetime Fabric — 3D warped grid with ripples
+// ══════════════════════════════════════════
+const c0=document.getElementById('c0');
+let t0=0,c0Raf;
+function resizeC0(){const r=c0.getBoundingClientRect();c0.width=r.width||660;c0.height=r.height||300;}
+function drawC0(){
+  resizeC0();
+  const CW=c0.width,CH=c0.height;
+  const ctx=c0.getContext('2d');
+  ctx.fillStyle='rgba(4,2,12,0.92)';ctx.fillRect(0,0,CW,CH);
+  const t=t0,cx=CW/2,cy=CH/2;
+
+  // ── Isometric-ish spacetime grid (perspective warp) ──
+  const COLS=22,ROWS=14;
+  const gW=CW*0.92,gH=CH*0.80;
+  const ox=(CW-gW)/2,oy=(CH-gH)/2+CH*0.04;
+  const massX=cx,massY=cy+CH*0.05;
+  const massStr=2800; // warp strength
+
+  function gridPt(ci,ri){
+    const gx=ox+ci/COLS*gW,gy=oy+ri/ROWS*gH;
+    const dx=gx-massX,dy=gy-massY;
+    const dist=Math.sqrt(dx*dx+dy*dy)||1;
+    // Gravitational well depression
+    const pull=massStr/(dist*dist+80);
+    const wx=gx-dx/dist*pull*0.18;
+    const wy=gy-dy/dist*pull*0.32+pull*0.22;
+    return[wx,wy];
+  }
+
+  // Color based on warp depth
+  function warpColor(ci,ri){
+    const [wx,wy]=gridPt(ci,ri);
+    const [fx,fy]=[ox+ci/COLS*gW,oy+ri/ROWS*gH];
+    const dip=Math.sqrt((wx-fx)**2+(wy-fy)**2);
+    const heat=Math.min(1,dip/35);
+    const r2=Math.floor(80+heat*160),g2=Math.floor(60+heat*80),b2=Math.floor(200+heat*30);
+    return[r2,g2,b2];
+  }
+
+  // Grid rows
+  for(let ri=0;ri<=ROWS;ri++){
+    ctx.beginPath();
+    for(let ci=0;ci<=COLS;ci++){
+      const[wx,wy]=gridPt(ci,ri);
+      ci===0?ctx.moveTo(wx,wy):ctx.lineTo(wx,wy);
+    }
+    const[r2,g2,b2]=warpColor(COLS/2,ri);
+    const alpha=0.12+0.10*(1-Math.abs(ri-ROWS/2)/(ROWS/2));
+    ctx.strokeStyle=`rgba(${r2},${g2},${b2},${alpha})`;
+    ctx.lineWidth=0.8;ctx.stroke();
+  }
+  // Grid cols
+  for(let ci=0;ci<=COLS;ci++){
+    ctx.beginPath();
+    for(let ri=0;ri<=ROWS;ri++){
+      const[wx,wy]=gridPt(ci,ri);
+      ri===0?ctx.moveTo(wx,wy):ctx.lineTo(wx,wy);
+    }
+    const[r2,g2,b2]=warpColor(ci,ROWS/2);
+    const alpha=0.12+0.10*(1-Math.abs(ci-COLS/2)/(COLS/2));
+    ctx.strokeStyle=`rgba(${r2},${g2},${b2},${alpha})`;
+    ctx.lineWidth=0.8;ctx.stroke();
+  }
+
+  // ── Expanding gravitational wave rings ──
+  for(let i=0;i<7;i++){
+    const r=(t*1.4+i*28)%200;
+    const alpha=Math.max(0,0.55-r/200)*0.9;
+    ctx.beginPath();ctx.ellipse(massX,massY,r,r*0.35,0,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(232,160,48,${alpha})`;ctx.lineWidth=1.2;ctx.stroke();
+  }
+
+  // ── Orbiting body + trail ──
+  const angle=t*0.016;
+  const orbitA=CW*0.20,orbitB=CH*0.10;
+  const ox2=massX+Math.cos(angle)*orbitA,oy2=massY+Math.sin(angle)*orbitB;
+  // Trail
+  ctx.beginPath();
+  for(let i=40;i>0;i--){
+    const a2=angle-i*0.05;
+    const tx=massX+Math.cos(a2)*orbitA,ty=massY+Math.sin(a2)*orbitB;
+    i===40?ctx.moveTo(tx,ty):ctx.lineTo(tx,ty);
+  }
+  ctx.strokeStyle='rgba(80,212,176,0.25)';ctx.lineWidth=1;ctx.stroke();
+  // Full orbit ellipse (faint)
+  ctx.beginPath();ctx.ellipse(massX,massY,orbitA,orbitB,0,0,Math.PI*2);
+  ctx.strokeStyle='rgba(80,212,176,0.12)';ctx.lineWidth=0.8;ctx.stroke();
+  // Body glow
+  const bg=ctx.createRadialGradient(ox2,oy2,0,ox2,oy2,16);
+  bg.addColorStop(0,'rgba(80,212,176,0.8)');bg.addColorStop(1,'transparent');
+  ctx.fillStyle=bg;ctx.fillRect(ox2-16,oy2-16,32,32);
+  ctx.beginPath();ctx.arc(ox2,oy2,6,0,Math.PI*2);
+  ctx.fillStyle='rgba(80,212,176,1)';ctx.fill();
+
+  // ── Central mass ──
+  const pulse=0.8+0.2*Math.sin(t*0.06);
+  const mg=ctx.createRadialGradient(massX,massY,0,massX,massY,40*pulse);
+  mg.addColorStop(0,'rgba(232,200,80,1)');
+  mg.addColorStop(0.25,'rgba(232,140,40,0.7)');
+  mg.addColorStop(0.6,'rgba(200,80,20,0.25)');
+  mg.addColorStop(1,'transparent');
+  ctx.fillStyle=mg;ctx.fillRect(massX-42,massY-42,84,84);
+  ctx.beginPath();ctx.arc(massX,massY,10*pulse,0,Math.PI*2);
+  ctx.fillStyle='rgba(232,200,80,1)';ctx.fill();
+
+  t0++;c0Raf=requestAnimationFrame(drawC0);
+}
+
+// ══════════════════════════════════════════
+// SCENE 1: Gravity Funnel — 3D perspective spacetime well
+// ══════════════════════════════════════════
+let c1Active=false,c1RAF,c1Tick=0;
+function startGravVis(){
+  const canvas=document.getElementById('c1-grav');if(!canvas)return;
+  const _r1=canvas.getBoundingClientRect();
+  const W=_r1.width||620,H=_r1.height||340;
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  c1Active=true;c1Tick=0;
+
+  function frame(){
+    if(!c1Active)return;
+    ctx.fillStyle='rgba(4,2,12,0.92)';ctx.fillRect(0,0,W,H);
+    const t=c1Tick;
+
+    // ── 3D perspective grid warped into gravitational funnel ──
+    // We draw columns & rows of a grid, with center pulled DOWN (funnel)
+    const cx=W/2,cy=H*0.44;
+    const COLS=28,ROWS=16;
+    const gW=W*0.88,gH=H*0.60;
+    const ox=(W-gW)/2,oy=cy-gH/2-H*0.02;
+    const massPull=H*0.38; // how deep the funnel goes
+
+    function funnelPt(ci,ri){
+      const fx=ox+ci/COLS*gW;
+      const fy=oy+ri/ROWS*gH;
+      const dx=(fx-cx)/(gW/2),dy=(fy-(oy+gH/2))/(gH/2);
+      const dist2=dx*dx+dy*dy;
+      const funnel=massPull/(1+dist2*5)*Math.exp(-dist2*0.8);
+      return[fx, fy+funnel];
+    }
+
+    // Color map: hot at center (orange), cool at edges (purple)
+    function heatColor(ci,ri){
+      const dx=(ci/COLS-0.5)*2,dy=(ri/ROWS-0.5)*2;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      const heat=Math.max(0,1-dist*0.9);
+      const r2=Math.floor(60+heat*180),g2=Math.floor(40+heat*100),b2=Math.floor(180+heat*60);
+      const a=0.08+heat*0.18;
+      return `rgba(${r2},${g2},${b2},${a})`;
+    }
+
+    // Grid rows
+    for(let ri=0;ri<=ROWS;ri++){
+      ctx.beginPath();
+      for(let ci=0;ci<=COLS;ci++){
+        const[px,py]=funnelPt(ci,ri);
+        ci===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+      }
+      ctx.strokeStyle=heatColor(COLS/2,ri);ctx.lineWidth=0.9;ctx.stroke();
+    }
+    // Grid cols
+    for(let ci=0;ci<=COLS;ci++){
+      ctx.beginPath();
+      for(let ri=0;ri<=ROWS;ri++){
+        const[px,py]=funnelPt(ci,ri);
+        ri===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+      }
+      ctx.strokeStyle=heatColor(ci,ROWS/2);ctx.lineWidth=0.9;ctx.stroke();
+    }
+
+    // ── Bottom of funnel — deep well ──
+    const[wellX,wellY]=funnelPt(COLS/2,ROWS/2);
+    const wg=ctx.createRadialGradient(wellX,wellY,0,wellX,wellY,60);
+    wg.addColorStop(0,'rgba(232,160,48,0.55)');
+    wg.addColorStop(0.4,'rgba(200,80,20,0.20)');
+    wg.addColorStop(1,'transparent');
+    ctx.fillStyle=wg;ctx.fillRect(wellX-65,wellY-65,130,130);
+
+    // ── Multiple orbiting bodies at different radii ──
+    [[0.18,0.07,0.016,'rgba(80,212,176,1)'],[0.30,0.12,0.010,'rgba(200,120,255,1)'],[0.42,0.17,0.007,'rgba(255,200,80,1)']].forEach(([aR,bR,spd,col],oi)=>{
+      const ang=t*spd+oi*Math.PI*0.7;
+      const orbitA=gW*aR,orbitB=H*bR;
+      // Draw orbit ellipse (faint)
+      ctx.beginPath();ctx.ellipse(cx,cy,orbitA,orbitB,0,0,Math.PI*2);
+      ctx.strokeStyle=col.replace('1)','0.10)');ctx.lineWidth=0.8;ctx.stroke();
+      // Body position
+      const bx=cx+Math.cos(ang)*orbitA,by=cy+Math.sin(ang)*orbitB;
+      // Glow
+      const bg=ctx.createRadialGradient(bx,by,0,bx,by,14);
+      bg.addColorStop(0,col.replace('1)','0.7)'));bg.addColorStop(1,'transparent');
+      ctx.fillStyle=bg;ctx.fillRect(bx-14,by-14,28,28);
+      ctx.beginPath();ctx.arc(bx,by,5,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
+    });
+
+    // ── Central mass (sun) ──
+    const pulse=0.85+0.15*Math.sin(t*0.06);
+    const sg=ctx.createRadialGradient(cx,cy,0,cx,cy,50*pulse);
+    sg.addColorStop(0,'rgba(232,200,80,1)');
+    sg.addColorStop(0.3,'rgba(232,140,40,0.6)');
+    sg.addColorStop(0.7,'rgba(200,60,10,0.2)');
+    sg.addColorStop(1,'transparent');
+    ctx.fillStyle=sg;ctx.fillRect(cx-52,cy-52,104,104);
+    ctx.beginPath();ctx.arc(cx,cy,12*pulse,0,Math.PI*2);
+    ctx.fillStyle='rgba(232,200,80,1)';ctx.fill();
+
+    // ── Expanding ripple rings ──
+    for(let i=0;i<4;i++){
+      const r=(t*1.8+i*55)%320;
+      const alpha=Math.max(0,0.35-r/320)*0.8;
+      ctx.beginPath();ctx.ellipse(cx,cy,r,r*0.28,0,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(232,160,48,${alpha})`;ctx.lineWidth=1;ctx.stroke();
+    }
+
+    c1Tick++;c1RAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopGravVis(){c1Active=false;cancelAnimationFrame(c1RAF);}
+
+// ══════════════════════════════════════════
+// SCENE 3: Geodesic comparison
+// ══════════════════════════════════════════
+let geoActive=false,geoRAF,geoTick=0;
+function startGeodesic(){
+  const canvas=document.getElementById('geodesic-c');if(!canvas)return;
+  const _gr=canvas.getBoundingClientRect();
+  const W=_gr.width||340,H=_gr.height||340;
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  geoActive=true;
+  // Draw a 3D sphere with geodesic
+  function rotY(p,a){return[p[0]*Math.cos(a)+p[2]*Math.sin(a),p[1],-p[0]*Math.sin(a)+p[2]*Math.cos(a)];}
+  function rotX(p,a){return[p[0],p[1]*Math.cos(a)-p[2]*Math.sin(a),p[1]*Math.sin(a)+p[2]*Math.cos(a)];}
+  function proj(p,fov,cx,cy){const z=p[2]+fov,s=fov/z;return[p[0]*s+cx,p[1]*s+cy];}
+  const r=Math.min(W,H)*0.42,cx=W/2,cy=H/2;
+  function frame(){
+    if(!geoActive)return;
+    ctx.clearRect(0,0,W,H);
+    const t=geoTick,ry=t*0.009,rx=0.35;
+    // Latitude / longitude grid
+    for(let lat=0;lat<=12;lat++){
+      const la=(lat/12)*Math.PI;
+      ctx.beginPath();
+      for(let i=0;i<=36;i++){
+        const lon=(i/36)*Math.PI*2;
+        let p=[Math.sin(la)*Math.cos(lon)*r,Math.cos(la)*r,Math.sin(la)*Math.sin(lon)*r];
+        p=rotY(p,ry);p=rotX(p,rx);const pp=proj(p,400,cx,cy);
+        i===0?ctx.moveTo(pp[0],pp[1]):ctx.lineTo(pp[0],pp[1]);
+      }
+      ctx.strokeStyle='rgba(140,90,230,0.15)';ctx.lineWidth=0.7;ctx.stroke();
+    }
+    for(let lon=0;lon<12;lon++){
+      const lo=(lon/12)*Math.PI;
+      ctx.beginPath();
+      for(let i=0;i<=36;i++){
+        const la=(i/36)*Math.PI;
+        let p=[Math.sin(la)*Math.cos(lo)*r,Math.cos(la)*r,Math.sin(la)*Math.sin(lo)*r];
+        p=rotY(p,ry);p=rotX(p,rx);const pp=proj(p,400,cx,cy);
+        i===0?ctx.moveTo(pp[0],pp[1]):ctx.lineTo(pp[0],pp[1]);
+      }
+      ctx.strokeStyle='rgba(140,90,230,0.15)';ctx.lineWidth=0.7;ctx.stroke();
+    }
+    // Sphere surface hint
+    ctx.fillStyle='rgba(4,2,12,0.88)';ctx.fillRect(0,0,W,H);
+    const sg=ctx.createRadialGradient(cx-r*0.28,cy-r*0.28,0,cx,cy,r);
+    sg.addColorStop(0,'rgba(70,30,120,0.65)');sg.addColorStop(0.6,'rgba(30,10,60,0.80)');sg.addColorStop(1,'rgba(8,4,18,0.92)');
+    ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle=sg;ctx.fill();
+    // Specular highlight
+    const sh=ctx.createRadialGradient(cx-r*0.30,cy-r*0.30,0,cx,cy,r*0.7);
+    sh.addColorStop(0,'rgba(200,160,255,0.12)');sh.addColorStop(1,'transparent');
+    ctx.fillStyle=sh;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='rgba(160,100,240,0.35)';ctx.lineWidth=1.2;ctx.stroke();
+    // Great circle geodesic (Earth orbit analogy)
+    const tilt=0.5;
+    ctx.strokeStyle='rgba(80,212,176,0.95)';ctx.lineWidth=2.5;
+    ctx.beginPath();
+    for(let i=0;i<=72;i++){
+      const a=(i/72)*Math.PI*2;
+      let p=[Math.cos(a)*r,Math.sin(a)*Math.sin(tilt)*r,Math.sin(a)*Math.cos(tilt)*r];
+      p=rotY(p,ry);p=rotX(p,rx);const pp=proj(p,400,cx,cy);
+      i===0?ctx.moveTo(pp[0],pp[1]):ctx.lineTo(pp[0],pp[1]);
+    }
+    ctx.stroke();
+    // Moving body on geodesic
+    const ba=t*0.022;
+    let bp=[Math.cos(ba)*r,Math.sin(ba)*Math.sin(tilt)*r,Math.sin(ba)*Math.cos(tilt)*r];
+    bp=rotY(bp,ry);bp=rotX(bp,rx);const bpp=proj(bp,400,cx,cy);
+    const bg=ctx.createRadialGradient(bpp[0],bpp[1],0,bpp[0],bpp[1],18);
+    bg.addColorStop(0,'rgba(80,212,176,0.65)');bg.addColorStop(1,'transparent');
+    ctx.fillStyle=bg;ctx.fillRect(bpp[0]-18,bpp[1]-18,36,36);
+    ctx.beginPath();ctx.arc(bpp[0],bpp[1],7,0,Math.PI*2);
+    ctx.fillStyle='rgba(80,212,176,1)';ctx.fill();
+    // Central mass (sun at sphere center, projected)
+    let sp=[0,0,0];sp=rotY(sp,ry);sp=rotX(sp,rx);const spp=proj(sp,400,cx,cy);
+    const sun=ctx.createRadialGradient(spp[0],spp[1],0,spp[0],spp[1],10);
+    sun.addColorStop(0,'rgba(232,200,80,0.95)');sun.addColorStop(1,'transparent');
+    ctx.fillStyle=sun;ctx.fillRect(spp[0]-10,spp[1]-10,20,20);
+    ctx.beginPath();ctx.arc(spp[0],spp[1],5,0,Math.PI*2);
+    ctx.fillStyle='rgba(232,200,80,1)';ctx.fill();
+    geoTick++;geoRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopGeodesic(){geoActive=false;cancelAnimationFrame(geoRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 4: Einstein Ring — gravitational lensing spectacular
+// ══════════════════════════════════════════
+let lbActive=false,lbRAF,lbTick=0;
+function startLightBend(){
+  const canvas=document.getElementById('lightbend-c');if(!canvas)return;
+  const _lr=canvas.getBoundingClientRect();
+  const W=_lr.width||640,H=_lr.height||340;
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  lbActive=true;lbTick=0;
+
+  // Left panel: dramatic light bending; Right panel: Einstein ring
+  function frame(){
+    if(!lbActive)return;
+    ctx.fillStyle='rgba(4,2,12,0.92)';ctx.fillRect(0,0,W,H);
+    const t=lbTick;
+    const divX=W*0.52;
+
+    // ════ LEFT: Deflected star light ════
+    {
+      ctx.save();ctx.beginPath();ctx.rect(0,0,divX,H);ctx.clip();
+      const sunX=divX*0.50,sunY=H*0.50,sunR=H*0.07;
+
+      // Warped background grid (spacetime)
+      const COLS=16,ROWS=10;
+      for(let ri=0;ri<=ROWS;ri++){
+        ctx.beginPath();
+        for(let ci=0;ci<=COLS;ci++){
+          const gx=ci/COLS*divX,gy=ri/ROWS*H;
+          const dx=gx-sunX,dy=gy-sunY,dist=Math.sqrt(dx*dx+dy*dy)||1;
+          const pull=Math.min(sunR*sunR*22/(dist*dist+20),H*0.25);
+          const wx=gx-dx/dist*pull*0.15,wy=gy-dy/dist*pull*0.25;
+          ci===0?ctx.moveTo(wx,wy):ctx.lineTo(wx,wy);
+        }
+        ctx.strokeStyle='rgba(120,80,200,0.10)';ctx.lineWidth=0.6;ctx.stroke();
+      }
+      for(let ci=0;ci<=COLS;ci++){
+        ctx.beginPath();
+        for(let ri=0;ri<=ROWS;ri++){
+          const gx=ci/COLS*divX,gy=ri/ROWS*H;
+          const dx=gx-sunX,dy=gy-sunY,dist=Math.sqrt(dx*dx+dy*dy)||1;
+          const pull=Math.min(sunR*sunR*22/(dist*dist+20),H*0.25);
+          const wx=gx-dx/dist*pull*0.15,wy=gy-dy/dist*pull*0.25;
+          ri===0?ctx.moveTo(wx,wy):ctx.lineTo(wx,wy);
+        }
+        ctx.strokeStyle='rgba(120,80,200,0.10)';ctx.lineWidth=0.6;ctx.stroke();
+      }
+
+      // Multiple bent light rays (fan around the sun)
+      const nRays=9;
+      for(let ri=0;ri<nRays;ri++){
+        const impact=(ri/(nRays-1)-0.5)*H*0.55; // impact parameter
+        const deflect=sunR*sunR*16/(Math.abs(impact)+sunR*1.4)*(impact>0?-1:1);
+        const prog=Math.min(1,Math.max(0,(t-(ri*8))/70));
+        if(prog<=0)continue;
+        // Photon path
+        ctx.beginPath();
+        const steps=60;
+        let first=true;
+        for(let si2=0;si2<=steps*prog;si2++){
+          const frac=si2/steps;
+          const lx=frac*divX;
+          const dx2=lx-sunX;
+          const bend=deflect*Math.exp(-dx2*dx2/(sunR*sunR*18))*(1-Math.abs(impact)/(H*0.4));
+          const ly=sunY+impact+bend;
+          if(ly<4||ly>H-4){first=true;continue;}
+          if(first){ctx.moveTo(lx,ly);first=false;}else ctx.lineTo(lx,ly);
+        }
+        const isCenter=(ri===Math.floor(nRays/2));
+        const bright=isCenter?0.90:0.22+Math.abs(ri-nRays/2)/nRays*0.15;
+        ctx.strokeStyle=`rgba(255,240,80,${bright})`;
+        ctx.lineWidth=isCenter?2:0.8;ctx.stroke();
+
+        // Animated photon on each ray
+        if(prog>0.15){
+          const pp=(t%(100+ri*15))/(100+ri*15);
+          const lx2=pp*divX;
+          const dx2=lx2-sunX;
+          const bend=deflect*Math.exp(-dx2*dx2/(sunR*sunR*18))*(1-Math.abs(impact)/(H*0.4));
+          const ly2=sunY+impact+bend;
+          if(ly2>4&&ly2<H-4){
+            const pg=ctx.createRadialGradient(lx2,ly2,0,lx2,ly2,8);
+            pg.addColorStop(0,`rgba(255,250,120,${bright*0.95})`);pg.addColorStop(1,'transparent');
+            ctx.fillStyle=pg;ctx.fillRect(lx2-8,ly2-8,16,16);
+          }
+        }
+      }
+
+      // Star source (left edge)
+      for(let si2=0;si2<3;si2++){
+        const sy=sunY+[-H*0.25,0,H*0.25][si2];
+        const col=['rgba(180,180,255,','rgba(255,220,180,','rgba(180,255,200,'][si2];
+        const sg=ctx.createRadialGradient(12,sy,0,12,sy,10);
+        sg.addColorStop(0,col+'0.95)');sg.addColorStop(1,'transparent');
+        ctx.fillStyle=sg;ctx.fillRect(2,sy-10,20,20);
+        ctx.beginPath();ctx.arc(12,sy,5,0,Math.PI*2);
+        ctx.fillStyle=col+'1)';ctx.fill();
+      }
+
+      // Sun/lens glow
+      const sg2=ctx.createRadialGradient(sunX,sunY,0,sunX,sunY,sunR*3);
+      sg2.addColorStop(0,'rgba(232,200,80,1)');
+      sg2.addColorStop(0.3,'rgba(232,140,40,0.5)');
+      sg2.addColorStop(0.7,'rgba(200,60,10,0.15)');
+      sg2.addColorStop(1,'transparent');
+      ctx.fillStyle=sg2;ctx.fillRect(sunX-sunR*3,sunY-sunR*3,sunR*6,sunR*6);
+      ctx.beginPath();ctx.arc(sunX,sunY,sunR,0,Math.PI*2);
+      ctx.fillStyle='rgba(232,200,80,1)';ctx.fill();
+
+      ctx.font=`${Math.round(H*0.042)}px Cinzel,serif`;ctx.textAlign='center';
+      ctx.fillStyle='rgba(201,168,76,0.50)';
+      ctx.fillText('引力透镜偏折',divX/2,H-12);
+      ctx.restore();
+    }
+
+    // Divider
+    const dg=ctx.createLinearGradient(divX,0,divX,H);
+    dg.addColorStop(0,'transparent');dg.addColorStop(0.5,'rgba(122,95,42,0.35)');dg.addColorStop(1,'transparent');
+    ctx.fillStyle=dg;ctx.fillRect(divX-1,0,2,H);
+
+    // ════ RIGHT: Einstein Ring ════
+    {
+      ctx.save();ctx.beginPath();ctx.rect(divX,0,W-divX,H);ctx.clip();
+      const rx=(divX+W)/2,ry=H/2;
+      const ringR=Math.min(W-divX,H)*0.28;
+      const prog2=Math.min(1,t/90);
+
+      // Deep space background glows
+      for(let i=0;i<6;i++){
+        const sx=divX+Math.random()*0.0001*(i*13+7)+i*(W-divX)/7+20;
+        const sy=H*0.15+i*H*0.13;
+        ctx.beginPath();ctx.arc(sx,sy,2,0,Math.PI*2);
+        ctx.fillStyle=`rgba(200,200,255,${0.15+i*0.04})`;ctx.fill();
+      }
+
+      // Ring structure — multiple arcs forming Einstein ring
+      const ringAlpha=prog2*0.9;
+      const nArcs=3;
+      for(let ai=0;ai<nArcs;ai++){
+        const rr=ringR*(0.9+ai*0.07);
+        const rotation=t*0.003*(ai%2===0?1:-1)+ai*0.5;
+        // Ring segment glow
+        ctx.beginPath();
+        ctx.arc(rx,ry,rr,rotation,rotation+Math.PI*2*(0.92+ai*0.025));
+        const ringGrad=ctx.createLinearGradient(rx-rr,ry,rx+rr,ry);
+        ringGrad.addColorStop(0,'rgba(100,180,255,0)');
+        ringGrad.addColorStop(0.25,`rgba(140,200,255,${ringAlpha*0.6})`);
+        ringGrad.addColorStop(0.5,`rgba(220,240,255,${ringAlpha*0.95})`);
+        ringGrad.addColorStop(0.75,`rgba(140,200,255,${ringAlpha*0.6})`);
+        ringGrad.addColorStop(1,'rgba(100,180,255,0)');
+        ctx.strokeStyle=ringGrad;
+        ctx.lineWidth=3+ai*1.5;ctx.stroke();
+      }
+
+      // Lensing galaxy (center)
+      const lg=ctx.createRadialGradient(rx,ry,0,rx,ry,ringR*0.35);
+      lg.addColorStop(0,'rgba(232,200,120,0.90)');
+      lg.addColorStop(0.4,'rgba(200,140,60,0.45)');
+      lg.addColorStop(0.8,'rgba(160,80,20,0.15)');
+      lg.addColorStop(1,'transparent');
+      ctx.fillStyle=lg;ctx.fillRect(rx-ringR*0.4,ry-ringR*0.4,ringR*0.8,ringR*0.8);
+      ctx.beginPath();ctx.arc(rx,ry,ringR*0.12,0,Math.PI*2);
+      ctx.fillStyle='rgba(232,200,120,1)';ctx.fill();
+
+      // Bright arcs at ring position (hotspots)
+      for(let hi=0;hi<4;hi++){
+        const ha=hi/4*Math.PI*2+t*0.008;
+        const hx=rx+Math.cos(ha)*ringR,hy=ry+Math.sin(ha)*ringR*0.96;
+        const hg=ctx.createRadialGradient(hx,hy,0,hx,hy,14);
+        hg.addColorStop(0,`rgba(200,230,255,${prog2*0.75})`);hg.addColorStop(1,'transparent');
+        ctx.fillStyle=hg;ctx.fillRect(hx-14,hy-14,28,28);
+      }
+
+      // Photon ring glow
+      const prg=ctx.createRadialGradient(rx,ry,ringR*0.85,rx,ry,ringR*1.2);
+      prg.addColorStop(0,`rgba(120,180,255,${prog2*0.15})`);
+      prg.addColorStop(0.5,`rgba(160,210,255,${prog2*0.08})`);
+      prg.addColorStop(1,'transparent');
+      ctx.fillStyle=prg;ctx.fillRect(rx-ringR*1.3,ry-ringR*1.3,ringR*2.6,ringR*2.6);
+
+      ctx.font=`${Math.round(H*0.042)}px Cinzel,serif`;ctx.textAlign='center';
+      ctx.fillStyle='rgba(140,190,255,0.55)';
+      ctx.fillText('爱因斯坦环',rx,H-12);
+      ctx.restore();
+    }
+
+    lbTick++;lbRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopLightBend(){lbActive=false;cancelAnimationFrame(lbRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 5: Binary Merger — inspiral + gravitational wave signal
+// ══════════════════════════════════════════
+let gwActive=false,gwRAF,gwTick=0;
+function startGWave(){
+  const canvas=document.getElementById('gwave-c');if(!canvas)return;
+  const _gr=canvas.getBoundingClientRect();
+  const W=_gr.width||660,H=_gr.height||380;
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  gwActive=true;gwTick=0;
+
+  // Merger zone: top 60%, wave display: bottom 40%
+  const mergeH=H*0.60,waveY0=H*0.63;
+
+  function frame(){
+    if(!gwActive)return;
+    ctx.fillStyle='rgba(4,2,12,0.92)';ctx.fillRect(0,0,W,H);
+    const t=gwTick,cx=W/2,mcy=mergeH*0.50;
+
+    // ── MERGER ZONE: inspiraling binary ──
+
+    // Phase: 0→60 inspiral, 60→90 merger, 90+ ringdown
+    const phase=t%240;
+    const inPhase=Math.min(1,phase/80);           // 0→1 inspiral
+    const mergePhase=Math.max(0,Math.min(1,(phase-80)/30));  // merger flash
+    const rdPhase=Math.max(0,Math.min(1,(phase-110)/60));    // ringdown
+
+    // Separation shrinks as they inspiral
+    const sep=Math.max(12,(1-inPhase)*W*0.18+12);
+    const orbitR=sep;
+
+    // Chirp frequency increases
+    const chirpFreq=0.018+inPhase*0.06;
+    const orbAngle=t*chirpFreq;
+
+    // Spacetime warped grid background
+    const COLS=20,ROWS=10;
+    const gW=W*0.85,gH=mergeH*0.85;
+    const gox=(W-gW)/2,goy=mcy-gH/2;
+    function warpPt(ci2,ri2){
+      const fx=gox+ci2/COLS*gW,fy=goy+ri2/ROWS*gH;
+      const dx=fx-cx,dy=fy-mcy;
+      const dist=Math.sqrt(dx*dx+dy*dy)||1;
+      const pull=3200/(dist*dist+100)*inPhase;
+      return[fx-dx/dist*pull*0.12,fy-dy/dist*pull*0.20+pull*0.12];
+    }
+    for(let ri2=0;ri2<=ROWS;ri2++){
+      ctx.beginPath();
+      for(let ci2=0;ci2<=COLS;ci2++){
+        const[px,py]=warpPt(ci2,ri2);
+        ci2===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+      }
+      const heat=Math.max(0,1-Math.abs(ri2-ROWS/2)/(ROWS*0.5));
+      ctx.strokeStyle=`rgba(${80+heat*140},${40+heat*80},${200+heat*40},${0.08+heat*0.08})`;
+      ctx.lineWidth=0.7;ctx.stroke();
+    }
+    for(let ci2=0;ci2<=COLS;ci2++){
+      ctx.beginPath();
+      for(let ri2=0;ri2<=ROWS;ri2++){
+        const[px,py]=warpPt(ci2,ri2);
+        ri2===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+      }
+      const heat=Math.max(0,1-Math.abs(ci2-COLS/2)/(COLS*0.5));
+      ctx.strokeStyle=`rgba(${80+heat*140},${40+heat*80},${200+heat*40},${0.08+heat*0.08})`;
+      ctx.lineWidth=0.7;ctx.stroke();
+    }
+
+    // Spiral trail of each BH
+    const trail=Math.min(120,t*1.2);
+    for(let bh=0;bh<2;bh++){
+      const sign=bh===0?1:-1;
+      ctx.beginPath();let first=true;
+      for(let ti=trail;ti>=0;ti-=2){
+        const pastPhase=Math.max(0,Math.min(1,(t-ti)%240/80));
+        const pastSep=Math.max(12,(1-pastPhase)*W*0.18+12);
+        const pastAngle=(t-ti)*chirpFreq;
+        const tx=cx+Math.cos(pastAngle+sign*Math.PI/2)*pastSep;
+        const ty=mcy+Math.sin(pastAngle+sign*Math.PI/2)*pastSep*0.45;
+        const a=(1-ti/trail)*0.3;
+        if(first){ctx.moveTo(tx,ty);first=false;}else ctx.lineTo(tx,ty);
+      }
+      const col=bh===0?`rgba(200,100,255,`:`rgba(80,180,255,`;
+      ctx.strokeStyle=col+'0.25)';ctx.lineWidth=1;ctx.stroke();
+    }
+
+    // Black holes
+    if(mergePhase<0.85){
+      [[1,`rgba(200,100,255,`],[-1,`rgba(80,180,255,`]].forEach(([sign,col],bh)=>{
+        const bx=cx+Math.cos(orbAngle+sign*Math.PI/2)*orbitR;
+        const by=mcy+Math.sin(orbAngle+sign*Math.PI/2)*orbitR*0.45;
+        const br=Math.max(4,14*(1-inPhase*0.5));
+        // Accretion glow
+        const ag=ctx.createRadialGradient(bx,by,0,bx,by,br*4);
+        ag.addColorStop(0,col+'0.5)');ag.addColorStop(0.5,col+'0.12)');ag.addColorStop(1,'transparent');
+        ctx.fillStyle=ag;ctx.fillRect(bx-br*4,by-br*4,br*8,br*8);
+        // Black hole core
+        ctx.beginPath();ctx.arc(bx,by,br,0,Math.PI*2);
+        ctx.fillStyle='rgba(0,0,0,1)';ctx.fill();
+        ctx.strokeStyle=col+'0.8)';ctx.lineWidth=1.5;ctx.stroke();
+      });
+    }
+
+    // Merger flash
+    if(mergePhase>0){
+      const mf=mergePhase*(1-rdPhase);
+      const mg=ctx.createRadialGradient(cx,mcy,0,cx,mcy,W*0.25*mf);
+      mg.addColorStop(0,`rgba(255,220,100,${mf*0.9})`);
+      mg.addColorStop(0.3,`rgba(255,150,50,${mf*0.4})`);
+      mg.addColorStop(0.6,`rgba(200,80,20,${mf*0.1})`);
+      mg.addColorStop(1,'transparent');
+      ctx.fillStyle=mg;ctx.fillRect(0,0,W,mergeH);
+    }
+
+    // Ringdown — single larger BH
+    if(rdPhase>0){
+      const rBr=18+rdPhase*8;
+      const rg=ctx.createRadialGradient(cx,mcy,0,cx,mcy,rBr*3.5);
+      rg.addColorStop(0,'rgba(180,80,255,0.45)');rg.addColorStop(0.5,'rgba(100,30,180,0.15)');rg.addColorStop(1,'transparent');
+      ctx.fillStyle=rg;ctx.fillRect(cx-rBr*4,mcy-rBr*4,rBr*8,rBr*8);
+      ctx.beginPath();ctx.arc(cx,mcy,rBr,0,Math.PI*2);
+      ctx.fillStyle='rgba(0,0,0,1)';ctx.fill();
+      ctx.strokeStyle=`rgba(200,100,255,${rdPhase*0.7})`;ctx.lineWidth=2;ctx.stroke();
+    }
+
+    // Expanding GW rings from merger
+    for(let i=0;i<8;i++){
+      const r=(t*2.2+i*42)%Math.max(W,mergeH)*1.2;
+      const alpha=Math.max(0,0.45-r/(Math.max(W,mergeH)*1.2))*inPhase;
+      ctx.beginPath();ctx.ellipse(cx,mcy,r,r*0.38,0,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(180,100,255,${alpha})`;ctx.lineWidth=0.9;ctx.stroke();
+    }
+
+    // ── DIVIDER ──
+    ctx.fillStyle='rgba(60,30,100,0.25)';ctx.fillRect(0,mergeH,W,2);
+
+    // ── WAVE DISPLAY: LIGO chirp signal ──
+    const waveAmplitude=H*0.14;
+    ctx.strokeStyle='rgba(80,212,176,0.75)';ctx.lineWidth=1.8;
+    ctx.beginPath();
+    for(let x=0;x<W;x+=2){
+      const xFrac=x/W;
+      // Chirp: frequency increases, amplitude peaks at merger
+      const freq=2+xFrac*xFrac*28;
+      const env=Math.exp(-(((xFrac-0.72)*8)**2))*1.4+Math.exp(-(((xFrac-0.72)*2)**2))*0.4;
+      const amp=waveAmplitude*Math.min(1,env);
+      const phase2=xFrac*Math.PI*2*freq-t*0.25;
+      const y=waveY0+H*0.08+Math.sin(phase2)*amp;
+      x<2?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+
+    // Zero line
+    ctx.beginPath();ctx.moveTo(0,waveY0+H*0.08);ctx.lineTo(W,waveY0+H*0.08);
+    ctx.strokeStyle='rgba(80,212,176,0.12)';ctx.lineWidth=0.7;ctx.stroke();
+
+    // Merger marker
+    const mergeX=W*0.72;
+    ctx.beginPath();ctx.moveTo(mergeX,waveY0);ctx.lineTo(mergeX,H-4);
+    ctx.strokeStyle='rgba(255,200,80,0.25)';ctx.lineWidth=0.8;ctx.setLineDash([3,6]);ctx.stroke();ctx.setLineDash([]);
+    ctx.font=`${Math.round(H*0.038)}px Cinzel,serif`;ctx.textAlign='center';
+    ctx.fillStyle='rgba(255,200,80,0.45)';ctx.fillText('并合',mergeX,H-8);
+    ctx.fillStyle='rgba(80,212,176,0.45)';ctx.fillText('GW150914 引力波信号',W/2,waveY0-8);
+
+    gwTick++;gwRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopGWave(){gwActive=false;cancelAnimationFrame(gwRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 6: Black Hole — photon sphere + accretion disk
+// ══════════════════════════════════════════
+let bhActive=false,bhRAF,bhTick=0;
+function startBlackHole(){
+  const canvas=document.getElementById('bhole-c');if(!canvas)return;
+  const _bhr=canvas.getBoundingClientRect();
+  const S=Math.min(_bhr.width||380,_bhr.height||380);
+  canvas.width=S;canvas.height=S;
+  const ctx=canvas.getContext('2d');
+  bhActive=true;bhTick=0;
+  const cx=S/2,cy=S/2;
+  const rEH=S*0.175;   // event horizon
+  const rPS=S*0.260;   // photon sphere
+  const rISCO=S*0.310; // innermost stable orbit
+
+  function frame(){
+    if(!bhActive)return;
+    ctx.fillStyle='rgba(4,2,12,0.92)';ctx.fillRect(0,0,S,S);
+    const t=bhTick;
+
+    // ── Deep space stars ──
+    const starSeed=[0.13,0.28,0.41,0.57,0.69,0.82,0.93,0.07,0.35,0.76];
+    starSeed.forEach((s,i)=>{
+      const sx=S*(s*1.3%1),sy=S*(starSeed[(i+3)%10]*1.5%1);
+      const d=Math.sqrt((sx-cx)**2+(sy-cy)**2);
+      if(d<rPS*1.6)return; // hide behind disk
+      const a=0.1+0.3*Math.sin(t*0.02+i*1.7);
+      ctx.beginPath();ctx.arc(sx,sy,1.2,0,Math.PI*2);
+      ctx.fillStyle=`rgba(200,200,255,${a})`;ctx.fill();
+    });
+
+    // ── Accretion disk — behind BH (far side) ──
+    // Draw in two passes: back half first, then BH, then front half
+    const DISK_RINGS=30;
+    // BACK half (below center = behind BH visually since tilted)
+    for(let ri=DISK_RINGS;ri>=1;ri--){
+      const r=rEH*1.05+ri*(rPS*1.8-rEH*1.05)/DISK_RINGS;
+      const heat=Math.max(0,1-ri/DISK_RINGS);
+      const brightness=0.55+heat*0.45;
+      const rc=Math.floor(255*brightness),gc=Math.floor((80+heat*160)*brightness);
+      const alpha=(0.06+heat*0.20)*(0.5+0.3*Math.sin(t*0.004+ri*0.3));
+      const angle=ri*0.12+t*0.003;
+      ctx.beginPath();ctx.ellipse(cx,cy,r,r*0.26,angle,Math.PI,Math.PI*2);
+      ctx.strokeStyle=`rgba(${rc},${gc},20,${alpha})`;
+      ctx.lineWidth=3.5+(DISK_RINGS-ri)*0.06;ctx.stroke();
+    }
+
+    // ── Background shadow / lensing halo ──
+    const ls=ctx.createRadialGradient(cx,cy,rEH*0.9,cx,cy,rPS*1.55);
+    ls.addColorStop(0,'rgba(0,0,0,1)');
+    ls.addColorStop(0.6,'rgba(20,5,40,0.85)');
+    ls.addColorStop(1,'transparent');
+    ctx.fillStyle=ls;ctx.beginPath();ctx.arc(cx,cy,rPS*1.55,0,Math.PI*2);ctx.fill();
+
+    // ── Photon ring — multiple glowing arcs ──
+    for(let pi=0;pi<3;pi++){
+      const pr=rPS*(1.0+pi*0.04);
+      const a=0.35-pi*0.10;
+      ctx.beginPath();ctx.arc(cx,cy,pr,Math.PI*1.15,Math.PI*2.0);
+      ctx.strokeStyle=`rgba(255,200,80,${a})`;ctx.lineWidth=2.5-pi*0.6;ctx.stroke();
+      ctx.beginPath();ctx.arc(cx,cy,pr,Math.PI*0.0,Math.PI*0.85);
+      ctx.strokeStyle=`rgba(255,200,80,${a*0.6})`;ctx.lineWidth=2.5-pi*0.6;ctx.stroke();
+    }
+
+    // ── Event horizon — absolute black ──
+    ctx.beginPath();ctx.arc(cx,cy,rEH,0,Math.PI*2);
+    ctx.fillStyle='rgba(0,0,0,1)';ctx.fill();
+    ctx.beginPath();ctx.arc(cx,cy,rEH,0,Math.PI*2);
+    ctx.strokeStyle='rgba(180,80,255,0.80)';ctx.lineWidth=2;ctx.stroke();
+
+    // EH glow ring
+    const ehg=ctx.createRadialGradient(cx,cy,rEH*0.9,cx,cy,rEH*1.3);
+    ehg.addColorStop(0,'rgba(180,80,255,0.20)');ehg.addColorStop(1,'transparent');
+    ctx.fillStyle=ehg;ctx.beginPath();ctx.arc(cx,cy,rEH*1.3,0,Math.PI*2);ctx.fill();
+
+    // ── Accretion disk — front half ──
+    for(let ri=1;ri<=DISK_RINGS;ri++){
+      const r=rEH*1.05+ri*(rPS*1.8-rEH*1.05)/DISK_RINGS;
+      const heat=Math.max(0,1-ri/DISK_RINGS);
+      const brightness=0.55+heat*0.45;
+      const rc=Math.floor(255*brightness),gc=Math.floor((80+heat*160)*brightness);
+      const alpha=(0.12+heat*0.50)*(0.5+0.3*Math.sin(t*0.004+ri*0.3));
+      const angle=ri*0.12+t*0.003;
+      ctx.beginPath();ctx.ellipse(cx,cy,r,r*0.26,angle,0,Math.PI);
+      ctx.strokeStyle=`rgba(${rc},${gc},20,${alpha})`;
+      ctx.lineWidth=3.5+(DISK_RINGS-ri)*0.06;ctx.stroke();
+    }
+
+    // ── Jet beams (polar jets) ──
+    const jetAlpha=0.18+0.12*Math.sin(t*0.05);
+    const jetW=rEH*0.35;
+    for(let side=0;side<2;side++){
+      const jy=side===0?cy-rEH:cy+rEH;
+      const jH=S*0.30;
+      const jDir=side===0?-1:1;
+      const jg=ctx.createLinearGradient(cx,jy,cx,jy+jH*jDir);
+      jg.addColorStop(0,`rgba(140,80,255,${jetAlpha*0.9})`);
+      jg.addColorStop(0.6,`rgba(100,50,200,${jetAlpha*0.4})`);
+      jg.addColorStop(1,'transparent');
+      ctx.beginPath();
+      ctx.moveTo(cx-jetW,jy);
+      ctx.lineTo(cx,jy+jH*jDir*0.8);
+      ctx.lineTo(cx+jetW,jy);
+      ctx.fillStyle=jg;ctx.fill();
+    }
+
+    // ── Labels ──
+    ctx.font=`${Math.round(S*0.048)}px Cinzel,serif`;ctx.textAlign='center';
+    ctx.fillStyle='rgba(180,80,255,0.55)';
+    ctx.fillText('事件视界',cx,cy+rEH+S*0.045);
+    ctx.fillStyle='rgba(255,200,80,0.40)';
+    ctx.fillText('光子球',cx+rPS*0.75,cy-rPS*0.18);
+
+    bhTick++;bhRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopBlackHole(){bhActive=false;cancelAnimationFrame(bhRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 7 OUTRO — Grand Spacetime Epilogue
+// ══════════════════════════════════════════
+const c7=document.getElementById('c7');
+let t7=0,c7Active=false,c7Raf;
+function resizeC7(){const r=c7.getBoundingClientRect();c7.width=r.width||640;c7.height=r.height||280;}
+function drawC7(){
+  if(!c7Active)return;
+  resizeC7();
+  const CW=c7.width,CH=c7.height;
+  const ctx=c7.getContext('2d');
+  ctx.fillStyle='rgba(4,2,12,0.92)';ctx.fillRect(0,0,CW,CH);
+  const t=t7,cx=CW/2,cy=CH/2;
+
+  // ── Spacetime grid (warped by central mass) ──
+  const COLS=24,ROWS=14;
+  const gW=CW*0.88,gH=CH*0.78;
+  const gox=(CW-gW)/2,goy=(CH-gH)/2+CH*0.04;
+  const massStr=1800;
+
+  function gPt(ci,ri){
+    const fx=gox+ci/COLS*gW,fy=goy+ri/ROWS*gH;
+    const dx=fx-cx,dy=fy-cy;
+    const d=Math.sqrt(dx*dx+dy*dy)||1;
+    const pull=massStr/(d*d+60);
+    return[fx-dx/d*pull*0.15,fy-dy/d*pull*0.28+pull*0.18];
+  }
+  function gCol(ci,ri){
+    const[wx,wy]=gPt(ci,ri);
+    const dip=Math.sqrt((wx-gox-ci/COLS*gW)**2+(wy-goy-ri/ROWS*gH)**2);
+    const h=Math.min(1,dip/28);
+    return`rgba(${Math.floor(70+h*160)},${Math.floor(50+h*90)},${Math.floor(200+h*40)},${0.09+h*0.13})`;
+  }
+
+  for(let ri=0;ri<=ROWS;ri++){
+    ctx.beginPath();
+    for(let ci=0;ci<=COLS;ci++){const[px,py]=gPt(ci,ri);ci===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}
+    ctx.strokeStyle=gCol(COLS/2,ri);ctx.lineWidth=0.8;ctx.stroke();
+  }
+  for(let ci=0;ci<=COLS;ci++){
+    ctx.beginPath();
+    for(let ri=0;ri<=ROWS;ri++){const[px,py]=gPt(ci,ri);ri===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}
+    ctx.strokeStyle=gCol(ci,ROWS/2);ctx.lineWidth=0.8;ctx.stroke();
+  }
+
+  // ── Gravitational waves ──
+  for(let i=0;i<6;i++){
+    const r=(t*1.6+i*48)%Math.max(CW,CH)*1.1;
+    const alpha=Math.max(0,0.40-r/(Math.max(CW,CH)*1.1))*0.85;
+    ctx.beginPath();ctx.ellipse(cx,cy,r,r*0.34,0,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(201,168,76,${alpha})`;ctx.lineWidth=1;ctx.stroke();
+  }
+
+  // ── Three orbiting bodies at different radii ──
+  [[CW*0.12,CH*0.055,0.016,'rgba(80,212,176,1)'],[CW*0.21,CH*0.095,0.010,'rgba(180,100,255,1)'],[CW*0.30,CH*0.135,0.007,'rgba(255,180,80,1)']].forEach(([aR,bR,spd,col],oi)=>{
+    const ang=t*spd+oi*2.1;
+    ctx.beginPath();ctx.ellipse(cx,cy,aR,bR,0,0,Math.PI*2);
+    ctx.strokeStyle=col.replace('1)','0.10)');ctx.lineWidth=0.7;ctx.stroke();
+    const bx=cx+Math.cos(ang)*aR,by=cy+Math.sin(ang)*bR;
+    // Trail
+    ctx.beginPath();
+    for(let ti=25;ti>=0;ti--){
+      const ta=ang-ti*0.06;
+      ctx.lineTo(cx+Math.cos(ta)*aR,cy+Math.sin(ta)*bR);
+    }
+    ctx.strokeStyle=col.replace('1)',`${0.18})`);ctx.lineWidth=1;ctx.stroke();
+    // Body
+    const bg=ctx.createRadialGradient(bx,by,0,bx,by,12);
+    bg.addColorStop(0,col.replace('1)','0.75)'));bg.addColorStop(1,'transparent');
+    ctx.fillStyle=bg;ctx.fillRect(bx-12,by-12,24,24);
+    ctx.beginPath();ctx.arc(bx,by,5,0,Math.PI*2);
+    ctx.fillStyle=col;ctx.fill();
+  });
+
+  // ── Central black hole ──
+  const bhr=CH*0.07;
+  // Accretion disk back
+  for(let ri=12;ri>=1;ri--){
+    const r=bhr+ri*bhr*0.22;
+    const heat=1-ri/12;
+    const al=(0.05+heat*0.18)*Math.sin(t*0.005+ri)*0.4+0.08;
+    ctx.beginPath();ctx.ellipse(cx,cy,r,r*0.26,0,Math.PI,Math.PI*2);
+    ctx.strokeStyle=`rgba(${Math.floor(200+heat*55)},${Math.floor(80+heat*120)},20,${al})`;
+    ctx.lineWidth=3+ri*0.15;ctx.stroke();
+  }
+  // Photon sphere glow
+  const ps=ctx.createRadialGradient(cx,cy,bhr,cx,cy,bhr*1.7);
+  ps.addColorStop(0,'rgba(0,0,0,1)');ps.addColorStop(0.7,'rgba(30,8,50,0.8)');ps.addColorStop(1,'transparent');
+  ctx.fillStyle=ps;ctx.beginPath();ctx.arc(cx,cy,bhr*1.7,0,Math.PI*2);ctx.fill();
+  // EH
+  ctx.beginPath();ctx.arc(cx,cy,bhr,0,Math.PI*2);
+  ctx.fillStyle='rgba(0,0,0,1)';ctx.fill();
+  ctx.strokeStyle='rgba(180,80,255,0.70)';ctx.lineWidth=1.8;ctx.stroke();
+  // Accretion disk front
+  for(let ri=1;ri<=12;ri++){
+    const r=bhr+ri*bhr*0.22;
+    const heat=1-ri/12;
+    const al=(0.10+heat*0.40)*Math.sin(t*0.005+ri)*0.4+0.12;
+    ctx.beginPath();ctx.ellipse(cx,cy,r,r*0.26,0,0,Math.PI);
+    ctx.strokeStyle=`rgba(${Math.floor(200+heat*55)},${Math.floor(80+heat*120)},20,${al})`;
+    ctx.lineWidth=3+ri*0.15;ctx.stroke();
+  }
+
+  t7++;c7Raf=requestAnimationFrame(drawC7);
+}
+
+// ══════════════════════════════════════════
+// SCENE MANAGER
+// ══════════════════════════════════════════
+const scenes=document.querySelectorAll('.scene');
+const totalScenes=scenes.length;
+let current=0,isTransitioning=false;
+const dotsEl=document.getElementById('nav-dots');
+for(let i=0;i<totalScenes;i++){
+  const d=document.createElement('div');d.className='nav-dot'+(i===0?' active':'');
+  d.addEventListener('click',()=>goTo(i));dotsEl.appendChild(d);
+}
+function updateDots(){document.querySelectorAll('.nav-dot').forEach((d,i)=>d.classList.toggle('active',i===current));}
+function updateProgress(){document.getElementById('progress').style.width=(current/(totalScenes-1)*100)+'%';}
+
+function onEnterScene(idx){
+  if(idx===0){
+    ['s0-b','s0-t','s0-s','s0-body'].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add('show');},200+i*280));
+    c0.style.opacity='1';setTimeout(()=>{t0=0;if(c0Raf)cancelAnimationFrame(c0Raf);drawC0();},380);
+  }
+  if(idx===1){
+    ['id0','id1','id2','id3'].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add('show');},300+i*250));
+    const _c1el=document.getElementById('c1-grav');if(_c1el)_c1el.style.opacity='1';setTimeout(startGravVis,380);
+  }
+  if(idx===2){
+    setTimeout(()=>{const el=document.getElementById('eq-main-box');if(el)el.classList.add('show');},400);
+    ['eq-l','eq-c','eq-r'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.add('show');});
+  }
+  if(idx===3){
+    const _gel=document.getElementById('geodesic-c');if(_gel)_gel.style.opacity='1';
+    const gi=document.getElementById('geo-info');if(gi)gi.style.opacity='1';
+    setTimeout(startGeodesic,360);
+  }
+  if(idx===4){
+    const _lel=document.getElementById('lightbend-c');if(_lel)_lel.style.opacity='1';
+    const ll=document.getElementById('lb-label');if(ll)ll.classList.add('show');
+    setTimeout(startLightBend,360);
+  }
+  if(idx===5){
+    const _gwel=document.getElementById('gwave-c');if(_gwel)_gwel.style.opacity='1';
+    setTimeout(startGWave,360);
+  }
+  if(idx===6){
+    const _bhel=document.getElementById('bhole-c');if(_bhel)_bhel.style.opacity='1';
+    const bi=document.getElementById('bh-info');if(bi)bi.style.opacity='1';
+    setTimeout(startBlackHole,360);
+  }
+  if(idx===7){
+    ['e-t','e-q','e-a'].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add('show');},300+i*500));
+    c7.style.opacity='1';setTimeout(()=>{t7=0;c7Active=true;if(c7Raf)cancelAnimationFrame(c7Raf);drawC7();},360);
+  }
+}
+function onLeaveScene(idx){
+  if(idx===1)stopGravVis();
+  if(idx===3)stopGeodesic();
+  if(idx===4)stopLightBend();
+  if(idx===5)stopGWave();
+  if(idx===6)stopBlackHole();
+  if(idx===7)c7Active=false;
+  if(idx===2){const el=document.getElementById('eq-main-box');if(el)el.classList.remove('show');}
+}
+function goTo(idx){
+  if(isTransitioning||idx===current)return;
+  isTransitioning=true;onLeaveScene(current);
+  scenes[current].classList.remove('active');current=idx;scenes[current].classList.add('active');
+  updateDots();updateProgress();
+  setTimeout(()=>{onEnterScene(current);isTransitioning=false;},600);
+}
+function next(){if(current<totalScenes-1)goTo(current+1);}
+function prev(){if(current>0)goTo(current-1);}
+document.getElementById('btn-next').addEventListener('click',next);
+document.getElementById('btn-prev').addEventListener('click',prev);
+// Click anywhere to advance (document-level for reliability)
+document.addEventListener('click', (e) => {
+  if(e.target.closest('#nav')) return;
+  if(e.target.closest('a')) return;
+  if(e.target.closest('button')) return;
+  if(e.target.closest('#home-btn')) return;
+  if(e.target.closest('#ch-lang-bar')) return;
+  next();
+});
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')next();if(e.key==='ArrowLeft')prev();});
+setTimeout(()=>{document.getElementById('ornament').classList.add('visible');document.getElementById('hint').classList.add('visible');},1500);
+updateProgress();onEnterScene(0);
+</script>
+
+<div id="ch-lang-bar">
+  <button class="ch-lb" id="ch-btn-zh" onclick="chLang('zh')">中文</button>
+  <div class="ch-lb-sep"></div>
+  <button class="ch-lb on" id="ch-btn-en" onclick="chLang('en')">EN</button>
+</div>
+<script id="bilingual-js">
+(function(){
+  var D={"ornament": "Chapter VII · Spacetime Geometry · General Relativity", "badges": ["Chapter VII", "§ 7.1 · Gravity as Geometry", "§ 7.1 · Einstein's Field Equations", "§ 7.2 · Curved Spacetime", "§ 7.2 · Light Bending", "§ 7.3 · Gravitational Waves", "Epilogue · Chapter VII", "Epilogue · Chapter VII"], "titles": ["Spacetime & General Relativity", "Gravity is Not a Force", "Einstein's Field Equations", "Mass Warps Spacetime", "The 1919 Eclipse: Light Bends", "Gravitational Waves: Ripples in Spacetime", "The Universe is a Living Geometry", "Geometry Is the Grammar of the Universe"], "bodies": ["Gravity is not a force.<br>It is the curvature of spacetime caused by mass —<br>matter simply follows the straightest path through curved space.", "Newton saw gravity as mysterious action-at-a-distance.<br>Einstein replaced it: <strong>mass tells space how to curve; space tells matter how to move.</strong>", "In 1915, Einstein wrote: <strong>G_μν = 8πT_μν</strong><br>Ten coupled nonlinear equations describing the entire universe.", "A massive object like the Sun warps spacetime around it.<br>Nearby objects — including light — follow <strong>geodesics</strong> through curved space.", "In 1919, Eddington observed: <strong>starlight bent by the Sun's gravity</strong>, exactly as Einstein predicted.<br>General relativity confirmed. Newton superseded.", "When two black holes collide, violent acceleration radiates <strong>gravitational waves</strong> —<br>ripples in spacetime, traveling at light speed.<br>Detected by LIGO in 2015, a century after Einstein's prediction.", "Spacetime is not a static stage — it is a dynamic, living geometry.<br>Mass curves it, waves ripple through it, the universe expands within it."]};
+  var orig=null;
+  function save(){
+    if(orig)return;
+    var os=document.querySelector('.ornament-line span');
+    orig={
+      ornament:os?os.textContent:'',
+      badges:[].map.call(document.querySelectorAll('.chapter-badge'),function(e){return e.innerHTML;}),
+      titles:[].map.call(document.querySelectorAll('.scene-title'),function(e){return e.innerHTML;}),
+      bodies:[].map.call(document.querySelectorAll('.scene-body'),function(e){return e.innerHTML;}),
+    };
+  }
+  function applyEn(){
+    save();
+    applyPatchEn();
+    var os=document.querySelector('.ornament-line span');
+    if(os&&D.ornament)os.textContent=D.ornament;
+    [].forEach.call(document.querySelectorAll('.chapter-badge'),function(el,i){if(D.badges[i]!=null)el.innerHTML=D.badges[i];});
+    [].forEach.call(document.querySelectorAll('.scene-title'),function(el,i){if(D.titles[i]!=null)el.innerHTML=D.titles[i];});
+    [].forEach.call(document.querySelectorAll('.scene-body'),function(el,i){if(D.bodies[i]!=null)el.innerHTML=D.bodies[i];});
+  
+  
+
+    /* zwOrig save */
+    if(!window._zwOrig){
+      window._zwOrig={};
+      ['geo-p0','geo-p1','geo-p2','bh-p0','bh-p1','bh-p2','e-a','e-t'].forEach(function(id){var e=document.getElementById(id);if(e)window._zwOrig[id]=e.innerHTML;});
+    }
+    /* __direct_wires__ */
+    var _w=document.getElementById('e-t');if(_w)_w.innerHTML='Geometry is the grammar of the universe';
+    var _w=document.getElementById('e-a');if(_w)_w.innerHTML='— Chapter VII · End';
+    var _w=document.getElementById('geo-p0');if(_w)_w.innerHTML='In curved spacetime, a <strong style="color:var(--geo);">geodesic</strong> is the shortest path between two points &mdash; but it looks curved in 3D space.';
+    var _w=document.getElementById('geo-p1');if(_w)_w.innerHTML='Earth orbits the Sun not because it&#39;s pulled &mdash; but because the Sun&#39;s mass warps spacetime into a curve, and Earth <strong style="color:var(--geo);">slides along it</strong>.';
+    var _w=document.getElementById('geo-p2');if(_w)_w.innerHTML='Light bends near massive objects for the same reason &mdash; it follows the geodesics of spacetime.';
+    var _w=document.getElementById('bh-p0');if(_w)_w.innerHTML='A black hole is the <strong style="color:var(--rim);">limiting case</strong> of Riemannian geometry: infinite mass density, spacetime curvature approaching infinity.';
+    var _w=document.getElementById('bh-p1');if(_w)_w.innerHTML='The event horizon &mdash; boundary no light escapes &mdash; is not a material boundary but a <strong style="color:var(--rim);">boundary of spacetime geometry itself</strong>.';
+    var _w=document.getElementById('bh-p2');if(_w)_w.innerHTML='Schwarzschild radius: r<sub>s</sub> = 2GM/c&sup2;<br>Beyond this, escape velocity &ge; speed of light.';
+  }
+  function applyZh(){
+    if(!orig)return;
+    /* zwOrig restore */
+    if(window._zwOrig){['geo-p0','geo-p1','geo-p2','bh-p0','bh-p1','bh-p2','e-a','e-t'].forEach(function(id){var e=document.getElementById(id);if(e&&window._zwOrig[id]!==undefined)e.innerHTML=window._zwOrig[id];});}
+    applyPatchZh();
+    var os=document.querySelector('.ornament-line span');
+    if(os)os.textContent=orig.ornament;
+    [].forEach.call(document.querySelectorAll('.chapter-badge'),function(el,i){if(orig.badges[i]!=null)el.innerHTML=orig.badges[i];});
+    [].forEach.call(document.querySelectorAll('.scene-title'),function(el,i){if(orig.titles[i]!=null)el.innerHTML=orig.titles[i];});
+    [].forEach.call(document.querySelectorAll('.scene-body'),function(el,i){if(orig.bodies[i]!=null)el.innerHTML=orig.bodies[i];});
+  }
+  
+  // Extended EN patches for elements not covered by D.badges/titles/bodies
+  var enPatches=[
+    [".scene-subtitle", 0, "Gravity is Geometry"],
+    [".idea-title", 0, "Mass / Energy"], [".idea-desc", 0, "Curves surrounding spacetime curvature"],
+    [".idea-title", 1, "Spacetime Curvature"], [".idea-desc", 1, "Tells matter how to move"],
+    [".idea-title", 2, "Matter Motion"], [".idea-desc", 2, "Along geodesics (shortest paths)"],
+    [".idea-title", 3, "Dynamic Loop"], [".idea-desc", 3, "Matter and geometry mutually shape each other"],
+    ["#geo-info p", 0, "In curved spacetime, a <strong style=\"color:var(--geo);\">geodesic</strong> is the shortest path between two points &mdash; but this shortest path looks curved in 3D space."],
+    ["#geo-info p", 1, "Earth orbits the Sun not because the Sun pulls it &mdash; but because the Sun&rsquo;s mass warps spacetime into a curve, and Earth simply <strong style=\"color:var(--geo);\">slides along that curve</strong>."],
+    ["#geo-info p", 2, "Light bends near massive objects for the same reason &mdash; light follows the geodesics of spacetime."],
+    ["#bh-info p", 0, "A black hole is the <strong style=\"color:var(--rim);\">limiting case</strong> of Riemannian geometry: mass at an infinitely small point, spacetime curvature approaching infinity."],
+    ["#bh-info p", 1, "The event horizon &mdash; the boundary no light can escape &mdash; is not a material boundary, but a <strong style=\"color:var(--rim);\">boundary of spacetime geometry itself</strong>."],
+    ["#bh-info p", 2, "Schwarzschild radius: r<sub>s</sub> = 2GM/c&sup2;<br>Beyond this radius, escape velocity &ge; the speed of light."],
+    ["#e-t", 0, "Geometry Is the Grammar of the Universe"],
+    ["#e-q", 0, "Euclid locked the plane with five axioms,<br>Riemann described curved space with tensors,<br>Einstein used that language<br><strong style=\"color:var(--gold-light);\">to read the universe.</strong><br><br><span style=\"font-size:0.85em;color:rgba(232,220,200,0.6);\">Mathematics is not a tool to describe the universe &mdash;<br>mathematics is the underlying code of the universe itself.</span>"]
+  , ['#lb-label', 0, '1919 · Eddington Solar Eclipse Observation · Deflection angle 1.75″']];
+  var patchOrig=null;
+  function savePatch(){
+    if(patchOrig)return;
+    patchOrig=enPatches.map(function(p){
+      var els=document.querySelectorAll(p[0]);
+      return els[p[1]]?els[p[1]].innerHTML:null;
+    });
+  }
+  function applyPatchEn(){
+    savePatch();
+    enPatches.forEach(function(p){
+      var els=document.querySelectorAll(p[0]);
+      if(els[p[1]]!=null)els[p[1]].innerHTML=p[2];
+    });
+  }
+  function applyPatchZh(){
+    if(!patchOrig)return;
+    enPatches.forEach(function(p,i){
+      var els=document.querySelectorAll(p[0]);
+      if(els[p[1]]!=null&&patchOrig[i]!=null)els[p[1]].innerHTML=patchOrig[i];
+    });
+  }
+  window.chLang=function(l){
+    window.__currentLang=l;
+    try{localStorage.setItem('mathsite_lang',l);}catch(e){}
+    document.getElementById('ch-btn-zh').classList.toggle('on',l==='zh');
+    document.getElementById('ch-btn-en').classList.toggle('on',l==='en');
+    if(l==='en')applyEn();else applyZh();
+  };
+  // Auto-switch based on ?lang=en in URL
+  window.addEventListener('DOMContentLoaded',function(){
+    // Read language from localStorage or ?lang URL param, default English
+    var _lp=(new URLSearchParams(location.search)).get('lang');
+    var _ls=null;try{_ls=localStorage.getItem('mathsite_lang');}catch(e){}
+    var _l=_lp||_ls||'en';
+    window.__currentLang=_l;
+    document.getElementById('ch-btn-zh').classList.toggle('on',_l==='zh');
+    document.getElementById('ch-btn-en').classList.toggle('on',_l==='en');
+    // Always run applyEn first to populate orig/patchOrig caches,
+    // then switch to Chinese if needed
+    applyEn();
+    if(_l==='zh')applyZh();
+  });
+})();
+
+/* Mobile touch swipe */
+(function(){
+  var ts=null,tx=null;
+  document.addEventListener('touchstart',function(e){ts=e.touches[0].clientX;tx=e.touches[0].clientY;},{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(ts===null)return;
+    var dx=e.changedTouches[0].clientX-ts, dy=e.changedTouches[0].clientY-tx;
+    if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>40){
+      if(dx<0&&typeof next==='function')next();
+      else if(dx>0&&typeof prev==='function')prev();
+    }
+    ts=null;tx=null;
+  },{passive:true});
+})();
+
+/* Mobile: add stack class to inline-flex children on narrow screens */
+(function(){
+  function applyMobileLayout(){
+    var isMobile = window.innerWidth <= 700;
+    document.querySelectorAll('.scene > div, .scene > section').forEach(function(el){
+      var s = el.getAttribute('style') || '';
+      if(s.includes('display:flex') || s.includes('display: flex')){
+        if(isMobile){ el.style.flexDirection='column'; el.style.alignItems='center'; }
+        else { el.style.flexDirection=''; el.style.alignItems=''; }
+      }
+    });
+  }
+  applyMobileLayout();
+  window.addEventListener('resize', applyMobileLayout);
+})();
+</script>
+</body>
+</html>

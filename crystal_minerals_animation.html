@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第三章：晶体矿物</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700&family=Cinzel:wght@400;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --gold: #c9a84c;
+    --gold-light: #e8cc7a;
+    --gold-dim: #7a5f2a;
+    --ink: #04060a;
+    --cream: #e8dfc8;
+    --salt-col: #a8d4e8;
+    --fluor-col: #8ee8c0;
+    --pyrite-col: #e8c86a;
+  }
+  body {
+    background: var(--ink); font-family: 'Noto Serif SC', serif;
+    overflow: hidden; width: 100vw; height: 100vh; cursor: default;
+  }
+  #bg-canvas { position: fixed; inset: 0; z-index: 0; }
+  #vignette {
+    position: fixed; inset: 0; z-index: 5; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.55) 72%, rgba(0,0,0,0.9) 100%);
+  }
+  .ornament-line {
+    position: fixed; top: 32px; left: 50%; transform: translateX(-50%);
+    z-index: 20; display: flex; align-items: center; gap: 14px;
+    opacity: 0; transition: opacity 1.2s;
+  }
+  .ornament-line.visible { opacity: 1; }
+  .ornament-line span {
+    font-family: 'Cinzel', serif; font-size: 10px;
+    letter-spacing: 5px; color: var(--gold-dim); text-transform: uppercase;
+  }
+  .ornament-line::before, .ornament-line::after {
+    content: ''; width: 70px; height: 1px;
+    background: linear-gradient(to right, transparent, var(--gold-dim));
+  }
+  .ornament-line::after { background: linear-gradient(to left, transparent, var(--gold-dim)); }
+
+  #progress {
+    position: fixed; bottom: 0; left: 0; height: 2px;
+    background: linear-gradient(to right, var(--gold-dim), var(--gold), var(--gold-light));
+    z-index: 100; transition: width 0.4s linear; width: 0%;
+  }
+
+  .scene {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 1.4s ease; z-index: 10;
+  }
+  .scene.active { opacity: 1; pointer-events: auto; }
+
+  .chapter-badge {
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 5px;
+    color: var(--gold-dim); text-transform: uppercase;
+    display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+  }
+  .chapter-badge::before, .chapter-badge::after {
+    content: ''; width: 28px; height: 1px; background: var(--gold-dim);
+  }
+  .scene-title {
+    font-family: 'Cinzel', serif; font-size: clamp(24px,4vw,54px);
+    color: var(--gold-light); text-align: center; line-height: 1.2; letter-spacing: 2px;
+    text-shadow: 0 0 50px rgba(201,168,76,0.3);
+  }
+  .scene-body {
+    font-family: 'Noto Serif SC', serif; font-size: clamp(13px,1.5vw,18px);
+    color: var(--cream); text-align: center; line-height: 1.95;
+    max-width: 640px; margin-top: 18px; padding: 0 24px; font-weight: 300;
+  }
+  .scene-body strong { color: var(--gold-light); font-weight: 400; }
+  .divider {
+    width: 180px; height: 1px;
+    background: linear-gradient(to right, transparent, var(--gold-dim), transparent);
+    margin: 20px auto;
+  }
+  .fade-up { opacity: 0; transform: translateY(16px); transition: all 0.8s ease; }
+  .fade-up.show { opacity: 1; transform: translateY(0); }
+
+  /* ── CRYSTAL SHOWCASE ── */
+  #crystal-row {
+    display: flex; align-items: flex-start; justify-content: center;
+    gap: clamp(14px, 3vw, 52px); margin-top: 28px; flex-wrap: wrap;
+  
+    max-width: 94vw;
+  }
+  .crystal-card {
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    opacity: 0; transform: translateY(28px) scale(0.9);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+    max-width: 200px;
+  }
+  .crystal-card.show { opacity: 1; transform: translateY(0) scale(1); }
+  .crystal-canvas-wrap canvas { width: 100%; height: 100%; }
+  .crystal-glow {
+    position: absolute; inset: -12px; border-radius: 50%; pointer-events: none;
+  }
+  .crystal-name {
+    font-family: 'Cinzel', serif; font-size: clamp(11px,1.1vw,14px);
+    letter-spacing: 2px; color: var(--gold); text-align: center;
+  }
+  .crystal-chem {
+    font-family: 'IM Fell English', serif; font-style: italic;
+    font-size: clamp(11px,1vw,13px); color: var(--gold-dim); text-align: center;
+  }
+  .crystal-shape {
+    font-size: clamp(10px,0.95vw,12px); color: var(--cream); opacity: 0.7;
+    text-align: center; letter-spacing: 1px; font-weight: 300;
+    font-family: 'Noto Serif SC', serif;
+  }
+
+  /* ── DETAIL PANEL ── */
+  .detail-panel {
+    max-width: 640px; margin-top: 22px; padding: 18px 30px;
+    border: 1px solid rgba(122,95,42,0.3); position: relative;
+    opacity: 0; transition: opacity 0.8s 0.3s;
+  }
+  .detail-panel.show { opacity: 1; }
+  .detail-panel::before, .detail-panel::after {
+    content: ''; position: absolute; width: 8px; height: 8px; border: 1px solid var(--gold-dim);
+  }
+  .detail-panel::before { top:-4px; left:-4px; border-right:none; border-bottom:none; }
+  .detail-panel::after { bottom:-4px; right:-4px; border-left:none; border-top:none; }
+  .detail-text {
+    font-size: clamp(12px,1.3vw,15px); color: var(--cream); line-height: 1.8;
+    text-align: center; font-weight: 300;
+  }
+  .detail-text strong { color: var(--gold-light); font-weight: 400; }
+
+  /* ── ATOM GRID SCENE ── */
+  #atom-stage { position: relative; width: clamp(240px,50vw,420px); height: clamp(180px,30vw,280px); margin-top: 20px; }
+
+  /* ── CONCLUSION QUOTE ── */
+  .big-quote {
+    font-family: 'IM Fell English', serif; font-style: italic;
+    font-size: clamp(16px,2.2vw,28px); color: var(--cream);
+    text-align: center; max-width: 600px; line-height: 1.75; padding: 0 28px;
+  }
+  .quote-author {
+    font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 3px;
+    color: var(--gold-dim); margin-top: 18px; text-align: center;
+  }
+
+  /* ── NAV ── */
+  #nav {
+    position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%);
+    z-index: 200; display: flex; gap: 10px; align-items: center;
+  }
+  .nav-btn {
+    width: 34px; height: 34px; border: 1px solid var(--gold-dim);
+    background: transparent; color: var(--gold); cursor: pointer;
+    font-size: 16px; display: flex; align-items: center; justify-content: center;
+    transition: all 0.3s;
+  }
+  .nav-btn:hover { background: rgba(201,168,76,0.1); border-color: var(--gold); }
+  .nav-dots { display: flex; gap: 6px; align-items: center; }
+  .nav-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--gold-dim); cursor: pointer; transition: all 0.3s;
+  }
+  .nav-dot.active { background: var(--gold); width: 20px; border-radius: 3px; }
+  #hint {
+    position: fixed; bottom: 22px; right: 28px; z-index: 100;
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 2px;
+    color: var(--gold-dim); display: flex; align-items: center; gap: 8px;
+    opacity: 0; transition: opacity 1s;
+  }
+  #hint.visible { opacity: 1; }
+  #hint-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--gold-dim); animation: blink 1.6s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1}50%{opacity:0.15} }
+
+  #home-btn {
+    position: fixed; top: 26px; left: 36px; z-index: 9000;
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 3px;
+    color: var(--gold); text-decoration: none;
+    border: 1px solid var(--gold-dim); padding: 8px 16px;
+    background: rgba(6,5,7,0.7); cursor: pointer !important;
+    transition: background .3s, color .3s, border-color .3s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  #home-btn:hover { background: rgba(201,168,76,.15); border-color: var(--gold-light); color: var(--gold-light); }
+</style>
+
+<style id="bilingual-css">
+#ch-lang-bar{position:fixed;top:26px;right:36px;z-index:9000;display:flex;align-items:stretch;border:1px solid rgba(122,95,42,.5);overflow:hidden;}
+.ch-lb{font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;padding:8px 16px;background:transparent;border:none;outline:none;color:#7a5f2a;cursor:pointer;transition:background .3s,color .3s;}
+.ch-lb:hover{background:rgba(201,168,76,.1);}
+.ch-lb.on{background:rgba(201,168,76,.2);color:#e8cc7a;}
+.ch-lb-sep{width:1px;background:rgba(122,95,42,.4);flex-shrink:0;}
+</style>
+
+<style id="mobile-responsive">
+@media (max-width: 700px) {
+  /* Crystal gallery - stack vertically on mobile */
+  #crystal-row {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+    justify-content: center !important;
+    margin-top: 16px !important;
+  }
+  .crystal-card {
+    max-width: calc(33% - 8px) !important;
+    min-width: 0 !important;
+  }
+  .crystal-name { font-size: 10px !important; }
+  .crystal-sub { font-size: 8px !important; }
+  /* Core layout - keep centered, handle overflow with scroll wrapper */
+  .scene {
+    padding: 55px 14px 90px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  /* Typography */
+  .scene-title { font-size: clamp(17px, 5.5vw, 28px) !important; letter-spacing: 1px; }
+  .scene-subtitle { font-size: clamp(11px, 3vw, 15px) !important; }
+  .scene-body { font-size: clamp(12px, 3.2vw, 15px) !important; padding: 0 8px; max-width: 96vw; line-height: 1.75 !important; }
+  .chapter-badge { font-size: 7px; letter-spacing: 3px; }
+  .ornament-line span { font-size: 7px; letter-spacing: 1px; max-width: 55vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* UI controls */
+  #home-btn { top: 10px; left: 10px; padding: 5px 10px; font-size: 9px; }
+  #ch-lang-bar { top: 10px; right: 10px; }
+  .ch-lb { padding: 5px 9px; font-size: 8px; letter-spacing: 1px; }
+  #hint { display: none; }
+  .ornament-line { top: 14px; }
+
+  /* Nav - larger touch targets */
+  #nav { bottom: 8px; }
+  .nav-btn { width: 44px; height: 44px; font-size: 22px; }
+
+  /* Force ALL flex row containers to stack */
+  .split-layout,
+  .split-text,
+  .info-row,
+  .sym-row,
+  .law-row,
+  .tl-row,
+  .card-row,
+  .geo-row {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  /* Info panels */
+  .split-info, [id$="-info"], [id$="-text"], [id$="-panel"] {
+    max-width: 94vw !important; width: 94vw !important;
+  }
+  .split-info p, [id$="-info"] p { font-size: clamp(11px, 2.8vw, 14px) !important; }
+
+  /* Only limit standalone full-width canvases, not gallery 3D canvases */
+  canvas#bg-
+
+  /* Grids → two columns, small screens one column */
+  .law-grid, .var-grid, .sym-grid, .const-grid, .card-grid,
+  [class*="grid"] { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+
+  /* Epilogue / poem */
+  .big-quote, #e-q, #fin-q, .poem { 
+    font-size: clamp(13px, 3.5vw, 18px) !important; 
+    padding: 0 16px; 
+    line-height: 1.9 !important;
+  }
+  .ending-quote { font-size: clamp(14px, 3.8vw, 19px) !important; }
+
+  /* Tables */
+  table { font-size: 10px; width: 100%; }
+  td, th { padding: 4px 6px !important; }
+
+  /* Axiom boxes */
+  .axiom-item { padding: 8px 10px !important; }
+  .axiom-body { font-size: 11px !important; }
+
+  /* Divider spacing */
+  .divider { margin: 12px auto !important; }
+}
+
+@media (max-width: 420px) {
+  .scene-title { font-size: clamp(15px, 5vw, 22px) !important; 
+  .crystal-canvas-wrap { width: 68px !important; height: 68px !important; }
+}
+
+  [class*="grid"] { grid-template-columns: 1fr !important; }
+}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div id="vignette"></div>
+<a id="home-btn" href="index.html">&#8962;&nbsp;HOME</a>
+<div class="ornament-line" id="ornament"><span>§ 2.2 · Crystallography</span></div>
+<div id="progress"></div>
+<div id="nav">
+  <button class="nav-btn" id="btn-prev">&#8249;</button>
+  <div class="nav-dots" id="nav-dots"></div>
+  <button class="nav-btn" id="btn-next">&#8250;</button>
+</div>
+<div id="hint"><div id="hint-dot"></div>CLICK TO ADVANCE</div>
+
+<!-- ════════ SCENE 0: Opening ════════ -->
+<div class="scene active" id="scene-0">
+  <div class="chapter-badge fade-up" id="s0-badge">第三章</div>
+  <div class="scene-title fade-up" id="s0-t1">晶体矿物</div>
+  <div style="font-family:'IM Fell English',serif;font-style:italic;font-size:clamp(13px,1.8vw,22px);color:var(--gold-dim);text-align:center;margin-top:10px;" class="fade-up" id="s0-t2">The Architect of the Microscopic World</div>
+  <div class="divider" style="margin:22px auto;"></div>
+  <div class="scene-body fade-up" id="s0-body" style="max-width:500px;font-size:clamp(13px,1.4vw,17px);">
+    食盐为什么是正方形的？钻石为什么那么硬？<br>
+    这一切都有一个原因：<strong>原子在几何规则的支配下自发排列</strong>。<br>
+    大自然不需要设计师，数学就是它的建筑图纸。
+  </div>
+  <canvas id="c0" style="margin-top:22px;opacity:0;transition:opacity 1.5s 0.6s;width:min(680px,96vw);height:min(300px,38vh);"></canvas>
+</div>
+
+<!-- ════════ SCENE 1: Three Crystals ════════ -->
+<div class="scene" id="scene-1">
+  <div class="chapter-badge">§ 2.2 · 三种矿物</div>
+  <div class="scene-title" style="font-size:clamp(20px,3.2vw,44px);">三种矿物，三种完美形状</div>
+  <div class="scene-body" style="margin-top:10px;margin-bottom:4px;font-size:clamp(12px,1.3vw,16px);">
+    食盐：立方体。萤石：八面体。黄铁矿：十二面体。<br>这不是巧合——<strong>它们的形状由原子排列的几何法则决定。</strong>
+  </div>
+  <div id="crystal-row">
+    <!-- injected by JS -->
+  </div>
+</div>
+
+<!-- ════════ SCENE 2: Salt (Cube) deep dive ════════ -->
+<div class="scene" id="scene-2">
+  <div class="chapter-badge">食盐 · 正六面体</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);" id="s2-title">NaCl — 空间填充的极致</div>
+  <div class="scene-body" style="margin-top:14px;" id="s2-body">
+    氯化钠的 Na⁺ 与 Cl⁻ 以<strong>面心立方</strong>结构交替排列，<br>
+    每个离子被六个异号离子包围，形成完美的立方对称。<br>
+    这种堆叠方式使空间利用率达到最高——<br>
+    自然界选择了几何上最<strong>经济</strong>的方案。
+  </div>
+  <canvas id="c2-salt" style="margin-top:18px;opacity:0;transition:opacity 1s 0.3s;width:min(640px,96vw);height:min(380px,50vh);"></canvas>
+  <div class="detail-panel" id="s2-panel">
+    <div class="detail-text">
+      晶系：<strong>等轴晶系</strong>｜对称元素：<strong>48 种</strong>｜<br>
+      空间群：<strong>Fm3̄m</strong>｜每单元含 <strong>4 个</strong> NaCl 分子对
+    </div>
+  </div>
+</div>
+
+<!-- ════════ SCENE 3: Fluorite (Octahedron) deep dive ════════ -->
+<div class="scene" id="scene-3">
+  <div class="chapter-badge">萤石 · 正八面体</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">CaF₂ — 光的折射建筑</div>
+  <div class="scene-body" style="margin-top:14px;">
+    萤石常以<strong>正八面体</strong>天然解理，<br>
+    内部 Ca²⁺ 离子形成面心立方格，<br>
+    F⁻ 则填充所有四面体空隙，<br>
+    两套格子的叠合，创造出极高的<strong>光学对称性</strong>。
+  </div>
+  <canvas id="c3-fluor" style="margin-top:18px;opacity:0;transition:opacity 1s 0.3s;width:min(440px,80vh);height:min(440px,80vh);"></canvas>
+  <div class="detail-panel" id="s3-panel">
+    <div class="detail-text">
+      莫氏硬度：<strong>4</strong>｜折射率：<strong>1.434</strong>｜<br>
+      天然荧光：紫外光下发出<strong>蓝紫色</strong>荧光（"荧光"一词源于此）
+    </div>
+  </div>
+</div>
+
+<!-- ════════ SCENE 4: Pyrite (Dodecahedron) deep dive ════════ -->
+<div class="scene" id="scene-4">
+  <div class="chapter-badge">黄铁矿 · 五角十二面体</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">FeS₂ — 天然的愚人金</div>
+  <div class="scene-body" style="margin-top:14px;">
+    黄铁矿能生长出<strong>五角十二面体</strong>，每面为不规则五边形，<br>
+    金属光泽酷似黄金，被称为"愚人金"。<br>
+    其内部 Fe²⁺ 与 S₂²⁻ 的有序排列，<br>
+    是对称性与化学键能共同<strong>谈判</strong>后的结果。
+  </div>
+  <canvas id="c4-pyrite" style="margin-top:18px;opacity:0;transition:opacity 1s 0.3s;width:min(440px,80vh);height:min(440px,80vh);"></canvas>
+  <div class="detail-panel" id="s4-panel">
+    <div class="detail-text">
+      莫氏硬度：<strong>6–6.5</strong>｜晶系：<strong>等轴晶系</strong>｜<br>
+      面角：五角十二面体各面内角约 <strong>108°</strong>，与正五边形完全吻合
+    </div>
+  </div>
+</div>
+
+<!-- ════════ SCENE 5: Conclusion ════════ -->
+<div class="scene" id="scene-5">
+  <div class="chapter-badge">结语</div>
+  <div class="scene-title fade-up" id="e-t" style="font-size:clamp(20px,3vw,42px);">自然是最古老的几何学家</div>
+  <div class="divider" style="margin:24px auto;"></div>
+  <div class="big-quote fade-up" id="e-q">
+    从宏观宇宙的星系螺旋，<br>
+    到微观晶格的原子排列——<br>
+    几何不是我们用来描述自然的语言，<br>
+    <strong style="color:var(--gold-light);">几何，就是自然本身的骨架。</strong>
+  </div>
+  <div class="quote-author fade-up" id="e-a">— 第三章 · 终</div>
+  <canvas id="c5" style="margin-top:20px;opacity:0;transition:opacity 2s;width:min(660px,96vw);height:min(260px,34vh);"></canvas>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// 3D MATH
+// ══════════════════════════════════════════
+function rotX(p,a){return[p[0],p[1]*Math.cos(a)-p[2]*Math.sin(a),p[1]*Math.sin(a)+p[2]*Math.cos(a)];}
+function rotY(p,a){return[p[0]*Math.cos(a)+p[2]*Math.sin(a),p[1],-p[0]*Math.sin(a)+p[2]*Math.cos(a)];}
+function project(p,fov,cx,cy){const z=p[2]+fov,s=fov/z;return[p[0]*s+cx,p[1]*s+cy];}
+function faceNormal(pts,face){
+  const a=pts[face[0]],b=pts[face[1]],c=pts[face[2]];
+  const u=[b[0]-a[0],b[1]-a[1],b[2]-a[2]],v=[c[0]-a[0],c[1]-a[1],c[2]-a[2]];
+  return[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]];
+}
+function dot(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];}
+function faceZ(pts,face){return face.reduce((s,i)=>s+pts[i][2],0)/face.length;}
+function hexToRgb(h){const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return[r,g,b];}
+
+function drawSolid(ctx, W, H, verts3d, faces, color, ax, ay, scale, alpha=0.88, opts={}) {
+  const glowColor = opts.glowColor || color;
+  const edgeBright = opts.edgeBright || 0.45;
+  const verts = verts3d.map(v=>{
+    let p=[...v].map(x=>x*scale);
+    p=rotX(p,ax); p=rotY(p,ay);
+    return p;
+  });
+  const fov=Math.max(W,H)*1.1, cx=W/2, cy=H/2;
+  const proj = verts.map(v=>project(v,fov,cx,cy));
+  const light=[0.4,-0.55,1.0];
+  const llen=Math.sqrt(light.reduce((s,v2)=>s+v2*v2,0));
+  const [cr,cg,cb]=hexToRgb(color);
+  const [gr,gg,gb]=hexToRgb(glowColor);
+  const sorted=[...faces].sort((a,b)=>faceZ(verts,a)-faceZ(verts,b));
+
+  sorted.forEach(face=>{
+    const n=faceNormal(verts,face);
+    const nlen=Math.sqrt(dot(n,n))||1;
+    const nNorm=n.map(x=>x/nlen);
+    const d=dot(nNorm,light.map(x=>x/llen));
+    const diffuse=Math.max(0.0,d);
+    // specular
+    const spec=Math.pow(Math.max(0,d),6)*0.35;
+    const ambient=0.15;
+    const bright=Math.min(1, ambient+diffuse*0.85+spec);
+
+    ctx.beginPath();
+    face.forEach((vi,i)=>{
+      const p=proj[vi]; i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]);
+    });
+    ctx.closePath();
+
+    // Face fill with slight transparency for front faces
+    const isFront = dot(nNorm,[0,0,1])>-0.1;
+    ctx.fillStyle=`rgba(${Math.floor(cr*bright)},${Math.floor(cg*bright)},${Math.floor(cb*bright)},${alpha*(isFront?0.88:0.72)})`;
+    ctx.fill();
+
+    // Edge highlight
+    const ea=Math.max(0.15, diffuse*edgeBright);
+    ctx.strokeStyle=`rgba(${cr},${cg},${cb},${ea})`;
+    ctx.lineWidth=isFront?1.2:0.7; ctx.stroke();
+  });
+
+  // Outer glow pass (front faces only)
+  if(opts.glow) {
+    sorted.slice(Math.floor(sorted.length*0.55)).forEach(face=>{
+      ctx.beginPath();
+      face.forEach((vi,i)=>{ const p=proj[vi]; i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]); });
+      ctx.closePath();
+      ctx.strokeStyle=`rgba(${gr},${gg},${gb},0.50)`;
+      ctx.lineWidth=1.8; ctx.stroke();
+    });
+  }
+}
+
+// ══════════════════════════════════════════
+// GEOMETRY DATA
+// ══════════════════════════════════════════
+const CUBE = {
+  verts:[[1,1,1],[1,1,-1],[1,-1,1],[1,-1,-1],[-1,1,1],[-1,1,-1],[-1,-1,1],[-1,-1,-1]],
+  faces:[[0,1,3,2],[4,5,7,6],[0,4,6,2],[1,5,7,3],[0,1,5,4],[2,3,7,6]]
+};
+const OCTA = {
+  verts:[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]],
+  faces:[[0,2,4],[0,4,3],[0,3,5],[0,5,2],[1,4,2],[1,2,5],[1,5,3],[1,3,4]]
+};
+// Pyritohedron (slightly irregular dodecahedron-like)
+function makePyrito(e=0.618) {
+  const v=[];
+  const t=[[0,1,e],[0,1,-e],[0,-1,e],[0,-1,-e],[1,e,0],[1,-e,0],[-1,e,0],[-1,-e,0],[e,0,1],[e,0,-1],[-e,0,1],[-e,0,-1]];
+  t.forEach(p=>v.push(p));
+  const faces=[[0,8,4,6,10],[1,9,5,7,11],[0,2,8,9,1],[4,5,9,8,0],[6,7,11,10,2],[3,10,11,1,5],[2,3,5,4,0],[1,11,7,6,10],[3,2,6,4,9],[7,5,3,11],[8,2,10,6,4],[9,4,8,5,1]];
+  // simplified 12 faces
+  return { verts: v, faces: [
+    [0,8,4,6,10],[1,9,5,7,11],
+    [0,2,8],[8,2,3],[3,5,8],[8,5,9],[9,1,4],[4,1,0],
+    [6,10,11],[11,7,6],[7,3,11],[3,2,7]
+  ]};
+}
+const PYRITO = makePyrito();
+
+// ══════════════════════════════════════════
+// CRYSTAL RENDERERS (continuous RAF loops)
+// ══════════════════════════════════════════
+const renderers = {};
+
+function makeRenderer(canvasId, geom, color, scaleBase) {
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return null;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  let ax=0.4, ay=0, active=false, rafId;
+  function loop() {
+    ctx.clearRect(0,0,W,H);
+    ay += 0.012; ax += 0.003;
+    drawSolid(ctx, W, H, geom.verts, geom.faces, color, ax, ay, scaleBase);
+    if(active) rafId = requestAnimationFrame(loop);
+  }
+  return {
+    start() { active=true; loop(); },
+    stop() { active=false; cancelAnimationFrame(rafId); }
+  };
+}
+
+// ══════════════════════════════════════════
+// ATOM LATTICE ANIMATION (Scene 2 - NaCl) — full-width spectacular
+// ══════════════════════════════════════════
+function startSaltLattice() {
+  const canvas = document.getElementById('c2-salt');
+  if(!canvas) return;
+  const _sr=canvas.getBoundingClientRect();
+  const W=_sr.width||640, H=_sr.height||380;
+  canvas.width=W; canvas.height=H;
+  const ctx = canvas.getContext('2d');
+  let tick=0, active=true;
+
+  const n=4; // 4×4×4 grid for denser lattice
+  const spacing=Math.min(W,H)*0.088;
+
+  function buildAtoms(){
+    const atoms=[];
+    for(let x=-n;x<=n;x++) for(let y=-n;y<=n;y++) for(let z=-n;z<=n;z++){
+      const isNa=(x+y+z)%2===0;
+      atoms.push({x:x*spacing*0.5, y:y*spacing*0.5, z:z*spacing*0.5, isNa,
+                  ix:x, iy:y, iz:z});
+    }
+    return atoms;
+  }
+  const atoms=buildAtoms();
+
+  function render(){
+    ctx.fillStyle='rgba(3,2,8,0.92)'; ctx.fillRect(0,0,W,H);
+    const ry=tick*0.008, rx=0.32;
+    const fov=Math.min(W,H)*1.1;
+
+    // Project all atoms
+    const proj=atoms.map(a=>{
+      let px=a.x, py=a.y, pz=a.z;
+      // rotY
+      [px,pz]=[px*Math.cos(ry)+pz*Math.sin(ry), -px*Math.sin(ry)+pz*Math.cos(ry)];
+      // rotX
+      [py,pz]=[py*Math.cos(rx)-pz*Math.sin(rx), py*Math.sin(rx)+pz*Math.cos(rx)];
+      const s=fov/(pz+fov+spacing*2);
+      return {x:px*s+W/2, y:py*s+H/2, z:pz, s:s, isNa:a.isNa};
+    }).sort((a,b)=>a.z-b.z);
+
+    // ── Draw bonds first (only between adjacent atoms) ──
+    const bondThresh=spacing*0.62;
+    for(let i=0;i<proj.length;i++){
+      for(let j=i+1;j<proj.length;j++){
+        const ai=atoms[i], aj=atoms[j];
+        const di=Math.abs(ai.ix-aj.ix)+Math.abs(ai.iy-aj.iy)+Math.abs(ai.iz-aj.iz);
+        if(di!==2) continue; // only face-to-face bonds in NaCl (checkerboard)
+        const a=proj[i], b=proj[j];
+        const dx=a.x-b.x, dy=a.y-b.y, dscr=Math.sqrt(dx*dx+dy*dy);
+        if(dscr>bondThresh*3) continue;
+        const zMid=(a.z+b.z)/2;
+        const depthA=Math.max(0,Math.min(1,(zMid+spacing*n*0.8)/(spacing*n*1.6)));
+        const alpha=0.08+depthA*0.22;
+        const lw=0.5+depthA*1.0;
+        ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y);
+        ctx.strokeStyle=`rgba(168,210,240,${alpha})`; ctx.lineWidth=lw; ctx.stroke();
+      }
+    }
+
+    // ── Draw atoms ──
+    proj.forEach(a=>{
+      const baseR=a.isNa ? spacing*0.18 : spacing*0.22;
+      const r=baseR*a.s*2.2;
+      // Depth-based alpha and size
+      const depthFrac=Math.max(0,Math.min(1,(a.z+spacing*n*0.8)/(spacing*n*1.6)));
+      const atomAlpha=0.35+depthFrac*0.65;
+
+      const grd=ctx.createRadialGradient(a.x-r*0.28,a.y-r*0.28,0,a.x,a.y,r);
+      if(a.isNa){
+        // Na: warm purple/violet
+        grd.addColorStop(0,`rgba(210,180,255,${atomAlpha})`);
+        grd.addColorStop(0.5,`rgba(140,80,220,${atomAlpha*0.85})`);
+        grd.addColorStop(1,`rgba(60,20,140,${atomAlpha*0.3})`);
+      } else {
+        // Cl: cool teal/cyan
+        grd.addColorStop(0,`rgba(140,220,240,${atomAlpha})`);
+        grd.addColorStop(0.5,`rgba(40,160,200,${atomAlpha*0.85})`);
+        grd.addColorStop(1,`rgba(10,80,130,${atomAlpha*0.3})`);
+      }
+      ctx.beginPath(); ctx.arc(a.x,a.y,r,0,Math.PI*2);
+      ctx.fillStyle=grd; ctx.fill();
+
+      // Specular highlight
+      if(depthFrac>0.4){
+        const hr=r*0.28;
+        const hg=ctx.createRadialGradient(a.x-r*0.22,a.y-r*0.22,0,a.x-r*0.22,a.y-r*0.22,hr);
+        hg.addColorStop(0,`rgba(255,255,255,${depthFrac*0.55})`);
+        hg.addColorStop(1,'transparent');
+        ctx.fillStyle=hg; ctx.beginPath(); ctx.arc(a.x-r*0.22,a.y-r*0.22,hr,0,Math.PI*2); ctx.fill();
+      }
+    });
+
+    // ── Legend ──
+    const lx=W*0.035, ly=H*0.90;
+    ctx.font=`${Math.round(H*0.055)}px Cinzel,serif`; ctx.textAlign='left';
+    [{col:'rgba(180,140,255,0.80)',label:'Na⁺'},{col:'rgba(80,200,230,0.80)',label:'Cl⁻'}].forEach(({col,label},li)=>{
+      const lxo=lx+li*W*0.12;
+      ctx.beginPath(); ctx.arc(lxo,ly,H*0.028,0,Math.PI*2); ctx.fillStyle=col; ctx.fill();
+      ctx.fillStyle='rgba(220,210,190,0.65)'; ctx.fillText(label,lxo+H*0.040,ly+H*0.020);
+    });
+
+    tick++; if(active) requestAnimationFrame(render);
+  }
+  render();
+  renderers['salt']={ stop(){ active=false; } };
+}
+
+// Fluorite octahedron — large, glowing, semi-transparent
+function startFluorite() {
+  const canvas=document.getElementById('c3-fluor');
+  if(!canvas) return;
+  const _fr=canvas.getBoundingClientRect();
+  const S=Math.min(_fr.width||440,_fr.height||440);
+  canvas.width=S; canvas.height=S;
+  const ctx=canvas.getContext('2d');
+  let ax=0.42, ay=0, tick=0, active=true;
+  const scale=S*0.31;
+  const [cr,cg,cb]=[142,232,192]; // #8ee8c0
+
+  function loop(){
+    ctx.fillStyle='rgba(3,2,8,0.92)'; ctx.fillRect(0,0,S,S);
+    ay+=0.010; ax+=0.004; tick++;
+
+    const verts=OCTA.verts.map(v=>{
+      let p=[...v].map(x=>x*scale); p=rotX(p,ax); p=rotY(p,ay); return p;
+    });
+    const fov=S*1.2, cx=S/2, cy=S/2;
+    const proj=verts.map(v=>project(v,fov,cx,cy));
+    const light=[0.4,-0.55,1]; const llen=Math.sqrt(0.16+0.3025+1);
+    const sorted=[...OCTA.faces].sort((a,b)=>faceZ(verts,a)-faceZ(verts,b));
+
+    // ── Outer glow halo ──
+    const pulse=0.7+0.3*Math.sin(tick*0.055);
+    const halo=ctx.createRadialGradient(cx,cy,scale*0.4,cx,cy,scale*1.55);
+    halo.addColorStop(0,`rgba(${cr},${cg},${cb},${0.08*pulse})`);
+    halo.addColorStop(0.6,`rgba(${cr},${cg},${cb},${0.03*pulse})`);
+    halo.addColorStop(1,'transparent');
+    ctx.fillStyle=halo; ctx.fillRect(0,0,S,S);
+
+    // ── Draw back faces (semi-transparent) ──
+    sorted.forEach((face,fi)=>{
+      const n=faceNormal(verts,face); const nlen=Math.sqrt(dot(n,n))||1;
+      const nN=n.map(x=>x/nlen);
+      const isFront=dot(nN,[0,0,1])>0;
+      const d=dot(nN,light.map(x=>x/llen));
+      const bright=Math.max(0,d);
+      const spec=Math.pow(Math.max(0,d),8)*0.5;
+      const b2=Math.min(1,0.12+bright*0.88+spec);
+      const faceAlpha=isFront ? 0.72 : 0.28;
+      ctx.beginPath();
+      face.forEach((vi,i)=>{ const p=proj[vi]; i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]); });
+      ctx.closePath();
+      ctx.fillStyle=`rgba(${Math.floor(cr*b2)},${Math.floor(cg*b2)},${Math.floor(cb*b2)},${faceAlpha})`;
+      ctx.fill();
+      const ea=isFront?Math.max(0.3,bright*0.7):0.12;
+      ctx.strokeStyle=`rgba(${cr},${cg},${cb},${ea})`; ctx.lineWidth=isFront?1.5:0.7; ctx.stroke();
+    });
+
+    // ── Inner crystalline glow ──
+    const innerGlow=ctx.createRadialGradient(cx-scale*0.18,cy-scale*0.18,0,cx,cy,scale*0.7);
+    innerGlow.addColorStop(0,`rgba(${cr},${cg},${cb},${0.18*pulse})`);
+    innerGlow.addColorStop(0.5,`rgba(${cr},${cg},${cb},${0.06*pulse})`);
+    innerGlow.addColorStop(1,'transparent');
+    ctx.fillStyle=innerGlow; ctx.fillRect(cx-scale,cy-scale,scale*2,scale*2);
+
+    // ── Front edges bright highlight ──
+    sorted.slice(Math.floor(sorted.length*0.5)).forEach(face=>{
+      ctx.beginPath();
+      face.forEach((vi,i)=>{ const p=proj[vi]; i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]); });
+      ctx.closePath(); ctx.strokeStyle=`rgba(${cr},${cg},${cb},0.65)`; ctx.lineWidth=2.0; ctx.stroke();
+    });
+
+    // ── Specular flash on top vertex ──
+    const topV=proj.reduce((best,p)=>p[1]<best[1]?p:best,proj[0]);
+    const sg=ctx.createRadialGradient(topV[0],topV[1],0,topV[0],topV[1],scale*0.2);
+    sg.addColorStop(0,`rgba(255,255,255,${0.4*pulse})`); sg.addColorStop(1,'transparent');
+    ctx.fillStyle=sg; ctx.fillRect(topV[0]-scale*0.2,topV[1]-scale*0.2,scale*0.4,scale*0.4);
+
+    // CaF₂ label
+    ctx.font=`${Math.round(S*0.056)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle=`rgba(${cr},${cg},${cb},0.55)`;
+    ctx.fillText('CaF₂ · 萤石', cx, S*0.95);
+
+    if(active) requestAnimationFrame(loop);
+  }
+  loop();
+  renderers['fluor']={ stop(){ active=false; } };
+}
+
+// Pyrite — large golden metallic pyritohedron
+function startPyrite() {
+  const canvas=document.getElementById('c4-pyrite');
+  if(!canvas) return;
+  const _pr=canvas.getBoundingClientRect();
+  const S=Math.min(_pr.width||440,_pr.height||440);
+  canvas.width=S; canvas.height=S;
+  const ctx=canvas.getContext('2d');
+  let ax=0.3, ay=0, active=true, tick=0;
+  const scale=S*0.295;
+  const cx=S/2, cy=S/2;
+
+  function loop(){
+    ctx.fillStyle='rgba(3,2,8,0.92)'; ctx.fillRect(0,0,S,S);
+    tick++; ay+=0.009; ax+=0.0035;
+
+    const shimmer=Math.sin(tick*0.038)*0.5+0.5;
+    // Base gold: warm amber
+    const gr2=Math.floor(208+shimmer*32), gg2=Math.floor(158+shimmer*38);
+    const [cr,cg,cb]=[gr2,gg2,52];
+
+    const verts=PYRITO.verts.map(v=>{
+      let p=[...v].map(x=>x*scale); p=rotX(p,ax); p=rotY(p,ay); return p;
+    });
+    const fov=S*1.2;
+    const proj=verts.map(v=>project(v,fov,cx,cy));
+    const light=[0.5,-0.5,1]; const llen=Math.sqrt(0.25+0.25+1);
+    const sorted=[...PYRITO.faces].sort((a,b)=>faceZ(verts,a)-faceZ(verts,b));
+
+    // ── Golden outer glow ──
+    const pulse=0.7+0.3*Math.sin(tick*0.05);
+    const halo=ctx.createRadialGradient(cx,cy,scale*0.35,cx,cy,scale*1.6);
+    halo.addColorStop(0,`rgba(220,170,50,${0.12*pulse})`);
+    halo.addColorStop(0.55,`rgba(180,130,30,${0.05*pulse})`);
+    halo.addColorStop(1,'transparent');
+    ctx.fillStyle=halo; ctx.fillRect(0,0,S,S);
+
+    sorted.forEach(face=>{
+      const n=faceNormal(verts,face); const nlen=Math.sqrt(dot(n,n))||1;
+      const nN=n.map(x=>x/nlen);
+      const d=dot(nN,light.map(x=>x/llen));
+      const bright=Math.max(0,d);
+      // Gold has strong specular
+      const spec=Math.pow(Math.max(0,d),12)*0.65*shimmer;
+      const b2=Math.min(1,0.10+bright*0.90+spec);
+
+      // Gold face fill
+      const fr=Math.floor(cr*b2), fg=Math.floor(cg*b2), fb=Math.floor(cb*b2);
+      ctx.beginPath();
+      face.forEach((vi,i)=>{ const p=proj[vi]; i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]); });
+      ctx.closePath();
+      ctx.fillStyle=`rgba(${fr},${fg},${fb},0.92)`; ctx.fill();
+      const isFront=dot(nN,[0,0,1])>0;
+      const ea=isFront?Math.max(0.25,bright*0.60):0.10;
+      ctx.strokeStyle=`rgba(${cr},${cg},${cb},${ea})`; ctx.lineWidth=isFront?1.2:0.6; ctx.stroke();
+    });
+
+    // ── Metallic specular sheen pass ──
+    ctx.save();
+    ctx.globalAlpha=shimmer*0.18;
+    sorted.slice(Math.floor(sorted.length*0.6)).forEach(face=>{
+      const n=faceNormal(verts,face); const nlen=Math.sqrt(dot(n,n))||1;
+      const d=dot(n.map(x=>x/nlen),light.map(x=>x/llen));
+      if(d<0.4) return;
+      ctx.beginPath();
+      face.forEach((vi,i)=>{ const p=proj[vi]; i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]); });
+      ctx.closePath();
+      ctx.fillStyle='rgba(255,250,200,0.9)'; ctx.fill();
+    });
+    ctx.restore();
+
+    // ── Front edge gold highlight ──
+    sorted.slice(Math.floor(sorted.length*0.5)).forEach(face=>{
+      ctx.beginPath();
+      face.forEach((vi,i)=>{ const p=proj[vi]; i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]); });
+      ctx.closePath();
+      ctx.strokeStyle=`rgba(255,220,80,${0.50+shimmer*0.30})`; ctx.lineWidth=1.8; ctx.stroke();
+    });
+
+    // FeS₂ label
+    ctx.font=`${Math.round(S*0.056)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle=`rgba(220,170,50,0.60)`;
+    ctx.fillText('FeS₂ · 黄铁矿', cx, S*0.95);
+
+    if(active) requestAnimationFrame(loop);
+  }
+  loop();
+  renderers['pyrite']={ stop(){ active=false; } };
+}
+
+// ══════════════════════════════════════════
+// SCENE 0 — Grand Crystal Panorama
+// ══════════════════════════════════════════
+const c0=document.getElementById('c0');
+let t0=0, c0Raf;
+function resizeC0(){ const r=c0.getBoundingClientRect(); c0.width=r.width||680; c0.height=r.height||300; }
+function drawC0(){
+  resizeC0();
+  const CW=c0.width, CH=c0.height, ctx=c0.getContext('2d');
+  ctx.fillStyle='rgba(3,2,8,0.92)'; ctx.fillRect(0,0,CW,CH);
+  const t=t0;
+
+  // Three crystal zones
+  const zones=[
+    {cx:CW*0.18, cy:CH*0.48, geom:CUBE,   color:'#a8d4e8', label:'NaCl', name:'食盐', scale:CH*0.19, speed:1.0},
+    {cx:CW*0.50, cy:CH*0.48, geom:OCTA,   color:'#8ee8c0', label:'CaF₂',name:'萤石', scale:CH*0.21, speed:0.85},
+    {cx:CW*0.82, cy:CH*0.48, geom:PYRITO, color:'#e8c86a', label:'FeS₂', name:'黄铁矿',scale:CH*0.19, speed:1.1},
+  ];
+
+  zones.forEach(({cx,cy,geom,color,label,name,scale,speed},zi)=>{
+    const [cr,cg,cb]=hexToRgb(color);
+    const ax=0.32+t*0.004*speed+zi*0.8;
+    const ay=t*0.011*speed+zi*1.3;
+
+    // Glow behind
+    const gR=scale*1.6;
+    const glw=ctx.createRadialGradient(cx,cy,0,cx,cy,gR);
+    glw.addColorStop(0,`rgba(${cr},${cg},${cb},0.10)`);
+    glw.addColorStop(0.5,`rgba(${cr},${cg},${cb},0.04)`);
+    glw.addColorStop(1,'transparent');
+    ctx.fillStyle=glw; ctx.fillRect(cx-gR,cy-gR,gR*2,gR*2);
+
+    // Fake canvas pass: draw solid centered at (cx,cy)
+    // Transform verts and draw via drawSolid path manually
+    const verts=geom.verts.map(v=>{
+      let p=[...v].map(x=>x*scale);
+      p=rotX(p,ax); p=rotY(p,ay);
+      return p;
+    });
+    const fov=Math.max(CW,CH)*1.1;
+    const proj=verts.map(v=>project(v,fov,cx,cy));
+    const light=[0.4,-0.55,1]; const llen=Math.sqrt(0.16+0.3025+1);
+    const sorted=[...geom.faces].sort((a,b)=>faceZ(verts,a)-faceZ(verts,b));
+    sorted.forEach(face=>{
+      const n=faceNormal(verts,face); const nlen=Math.sqrt(dot(n,n))||1;
+      const d=dot(n.map(x=>x/nlen),light.map(x=>x/llen));
+      const diff=Math.max(0,d); const spec=Math.pow(Math.max(0,d),6)*0.3;
+      const bright=Math.min(1,0.15+diff*0.85+spec);
+      ctx.beginPath();
+      face.forEach((vi,i)=>{ const p=proj[vi]; i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]); });
+      ctx.closePath();
+      ctx.fillStyle=`rgba(${Math.floor(cr*bright)},${Math.floor(cg*bright)},${Math.floor(cb*bright)},0.90)`;
+      ctx.fill();
+      const ea=Math.max(0.15,diff*0.5);
+      ctx.strokeStyle=`rgba(${cr},${cg},${cb},${ea})`; ctx.lineWidth=1.0; ctx.stroke();
+    });
+    // Front edge glow
+    sorted.slice(Math.floor(sorted.length*0.5)).forEach(face=>{
+      ctx.beginPath();
+      face.forEach((vi,i)=>{ const p=proj[vi]; i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]); });
+      ctx.closePath(); ctx.strokeStyle=`rgba(${cr},${cg},${cb},0.55)`; ctx.lineWidth=1.5; ctx.stroke();
+    });
+
+    // Dividers
+    if(zi<2){
+      const divX=CW*(zi===0?0.34:0.66);
+      const dg=ctx.createLinearGradient(divX,0,divX,CH);
+      dg.addColorStop(0,'transparent'); dg.addColorStop(0.5,'rgba(122,95,42,0.20)'); dg.addColorStop(1,'transparent');
+      ctx.fillStyle=dg; ctx.fillRect(divX-1,0,2,CH);
+    }
+
+    // Labels
+    ctx.font=`${Math.round(CH*0.085)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle=`rgba(${cr},${cg},${cb},0.72)`;
+    ctx.fillText(label, cx, CH*0.89);
+    ctx.font=`${Math.round(CH*0.066)}px Noto Serif SC,serif`;
+    ctx.fillStyle=`rgba(${cr},${cg},${cb},0.50)`;
+    ctx.fillText(name, cx, CH*0.97);
+  });
+
+  t0++; c0Raf=requestAnimationFrame(drawC0);
+}
+
+// ══════════════════════════════════════════
+// SCENE 1 GALLERY (small cards)
+// ══════════════════════════════════════════
+const galleryDataZh=[
+  {key:'salt-mini',geom:CUBE,color:'#a8d4e8',name:'食盐',chem:'NaCl',shape:'正六面体',scale:36},
+  {key:'fluor-mini',geom:OCTA,color:'#8ee8c0',name:'萤石',chem:'CaF₂',shape:'正八面体',scale:32},
+  {key:'pyrite-mini',geom:PYRITO,color:'#e8c86a',name:'黄铁矿',chem:'FeS₂',shape:'五角十二面体',scale:34},
+];
+const galleryDataEn=[
+  {key:'salt-mini',geom:CUBE,color:'#a8d4e8',name:'Salt',chem:'NaCl',shape:'Hexahedron',scale:36},
+  {key:'fluor-mini',geom:OCTA,color:'#8ee8c0',name:'Fluorite',chem:'CaF₂',shape:'Octahedron',scale:32},
+  {key:'pyrite-mini',geom:PYRITO,color:'#e8c86a',name:'Pyrite',chem:'FeS₂',shape:'Pyritohedron',scale:34},
+];
+
+function buildGallery(){
+  const galleryData=window.__currentLang==='en'?galleryDataEn:galleryDataZh;
+  const row=document.getElementById('crystal-row');
+  row.innerHTML='';
+  galleryData.forEach(({key,color,name,chem,shape})=>{
+    const sz=window.innerWidth<=500?110:window.innerWidth<=900?170:Math.min(Math.max(170,window.innerWidth*0.14),220);
+    const card=document.createElement('div');
+    card.className='crystal-card'; card.id=`ccard-${key}`;
+    card.innerHTML=`
+      <div class="crystal-canvas-wrap" style="width:${sz}px;height:${sz}px;">
+        <canvas id="gc-${key}" width="${sz}" height="${sz}"></canvas>
+        <div class="crystal-glow" style="background:radial-gradient(circle,${color}18 0%,transparent 70%);"></div>
+      </div>
+      <div class="crystal-name">${name}</div>
+      <div class="crystal-chem">${chem}</div>
+      <div class="crystal-shape">${shape}</div>
+    `;
+    row.appendChild(card);
+  });
+}
+buildGallery();
+
+function startGalleryRenderers(){
+  const gData=window.__currentLang==='en'?galleryDataEn:galleryDataZh;
+  gData.forEach(({key,geom,color,scale})=>{
+    const r=makeRenderer(`gc-${key}`,geom,color,scale);
+    if(r){ renderers[`g-${key}`]=r; r.start(); }
+  });
+}
+function stopGalleryRenderers(){
+  const gData=window.__currentLang==='en'?galleryDataEn:galleryDataZh;
+  gData.forEach(({key})=>{ const r=renderers[`g-${key}`]; if(r)r.stop(); });
+}
+
+// ══════════════════════════════════════════
+// SCENE 5 FINALE — Three crystals constellation
+// ══════════════════════════════════════════
+const c5=document.getElementById('c5');
+let t5=0, c5Active=false, c5Raf;
+function resizeC5(){ const r=c5.getBoundingClientRect(); c5.width=r.width||660; c5.height=r.height||260; }
+function drawC5(){
+  if(!c5Active) return;
+  resizeC5();
+  const CW=c5.width, CH=c5.height, ctx=c5.getContext('2d');
+  ctx.fillStyle='rgba(3,2,8,0.92)'; ctx.fillRect(0,0,CW,CH);
+  const t=t5;
+  const n=3, unitW=CW/n;
+  const scale5=Math.min(unitW,CH)*0.30;
+
+  const crystals=[
+    {geom:CUBE,   color:'#a8d4e8', label:'NaCl · 食盐',   spd:1.00},
+    {geom:OCTA,   color:'#8ee8c0', label:'CaF₂ · 萤石',   spd:0.85},
+    {geom:PYRITO, color:'#e8c86a', label:'FeS₂ · 黄铁矿',  spd:1.15},
+  ];
+
+  crystals.forEach(({geom,color,label,spd},i)=>{
+    const cx=unitW*(i+0.5), cy=CH*0.46;
+    const [cr,cg,cb]=hexToRgb(color);
+    const ax=0.30+t*0.004*spd+i*0.9;
+    const ay=t*0.012*spd+i*1.4;
+
+    // Background dividers
+    if(i>0){
+      const dg=ctx.createLinearGradient(unitW*i,0,unitW*i,CH);
+      dg.addColorStop(0,'transparent'); dg.addColorStop(0.5,'rgba(122,95,42,0.18)'); dg.addColorStop(1,'transparent');
+      ctx.fillStyle=dg; ctx.fillRect(unitW*i-1,0,2,CH);
+    }
+
+    // Outer glow
+    const pulse=0.7+0.3*Math.sin(t*0.05+i*1.2);
+    const gR=scale5*1.7;
+    const glw=ctx.createRadialGradient(cx,cy,0,cx,cy,gR);
+    glw.addColorStop(0,`rgba(${cr},${cg},${cb},${0.10*pulse})`);
+    glw.addColorStop(0.6,`rgba(${cr},${cg},${cb},${0.03*pulse})`);
+    glw.addColorStop(1,'transparent');
+    ctx.fillStyle=glw; ctx.fillRect(cx-gR,cy-gR,gR*2,gR*2);
+
+    // 3D solid
+    const verts=geom.verts.map(v=>{
+      let p=[...v].map(x=>x*scale5); p=rotX(p,ax); p=rotY(p,ay); return p;
+    });
+    const fov=Math.max(CW,CH)*1.1;
+    const proj=verts.map(v=>project(v,fov,cx,cy));
+    const light=[0.4,-0.55,1]; const llen=Math.sqrt(0.16+0.3025+1);
+    const sorted=[...geom.faces].sort((a,b)=>faceZ(verts,a)-faceZ(verts,b));
+
+    sorted.forEach(face=>{
+      const n2=faceNormal(verts,face); const nlen=Math.sqrt(dot(n2,n2))||1;
+      const nN=n2.map(x=>x/nlen);
+      const d=dot(nN,light.map(x=>x/llen));
+      const spec=Math.pow(Math.max(0,d),8)*0.40;
+      const b2=Math.min(1,0.12+Math.max(0,d)*0.88+spec);
+      ctx.beginPath();
+      face.forEach((vi,j)=>{ const p=proj[vi]; j===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]); });
+      ctx.closePath();
+      ctx.fillStyle=`rgba(${Math.floor(cr*b2)},${Math.floor(cg*b2)},${Math.floor(cb*b2)},0.90)`;
+      ctx.fill();
+      const isFront=dot(nN,[0,0,1])>0;
+      ctx.strokeStyle=`rgba(${cr},${cg},${cb},${isFront?Math.max(0.3,d*0.55):0.10})`;
+      ctx.lineWidth=isFront?1.3:0.6; ctx.stroke();
+    });
+    // Front edge highlight
+    sorted.slice(Math.floor(sorted.length*0.5)).forEach(face=>{
+      ctx.beginPath();
+      face.forEach((vi,j)=>{ const p=proj[vi]; j===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]); });
+      ctx.closePath(); ctx.strokeStyle=`rgba(${cr},${cg},${cb},0.55)`; ctx.lineWidth=1.6; ctx.stroke();
+    });
+
+    // Label
+    ctx.font=`${Math.round(CH*0.085)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillStyle=`rgba(${cr},${cg},${cb},0.70)`;
+    ctx.fillText(label, cx, CH*0.94);
+  });
+
+  t5++; c5Raf=requestAnimationFrame(drawC5);
+}
+
+// ══════════════════════════════════════════
+// SCENE MANAGER
+// ══════════════════════════════════════════
+const scenes=document.querySelectorAll('.scene');
+const totalScenes=scenes.length;
+let current=0, isTransitioning=false;
+
+const dotsEl=document.getElementById('nav-dots');
+for(let i=0;i<totalScenes;i++){
+  const d=document.createElement('div');
+  d.className='nav-dot'+(i===0?' active':'');
+  d.addEventListener('click',()=>goTo(i)); dotsEl.appendChild(d);
+}
+function updateDots(){ document.querySelectorAll('.nav-dot').forEach((d,i)=>d.classList.toggle('active',i===current)); }
+function updateProgress(){ document.getElementById('progress').style.width=(current/(totalScenes-1)*100)+'%'; }
+
+function stopAll(){
+  Object.values(renderers).forEach(r=>{ if(r&&r.stop)r.stop(); });
+  for(const k in renderers) delete renderers[k];
+}
+
+function onEnterScene(idx){
+  if(idx===0){
+    ['s0-badge','s0-t1','s0-t2','s0-body'].forEach((id,i)=>{
+      setTimeout(()=>{ const el=document.getElementById(id); if(el)el.classList.add('show'); },200+i*280);
+    });
+    c0.style.opacity='1'; setTimeout(()=>{ t0=0; if(c0Raf)cancelAnimationFrame(c0Raf); drawC0(); },380);
+  }
+  if(idx===1){
+    buildGallery();
+    setTimeout(startGalleryRenderers,200);
+    const gData=window.__currentLang==='en'?galleryDataEn:galleryDataZh;
+    gData.forEach(({key},i)=>{
+      setTimeout(()=>{ const c=document.getElementById(`ccard-${key}`); if(c)c.classList.add('show'); },400+i*280);
+    });
+  }
+  if(idx===2){
+    document.getElementById('c2-salt').style.opacity='1';
+    setTimeout(startSaltLattice,380);
+    setTimeout(()=>document.getElementById('s2-panel').classList.add('show'),800);
+  }
+  if(idx===3){
+    document.getElementById('c3-fluor').style.opacity='1';
+    setTimeout(startFluorite,380);
+    setTimeout(()=>document.getElementById('s3-panel').classList.add('show'),700);
+  }
+  if(idx===4){
+    document.getElementById('c4-pyrite').style.opacity='1';
+    setTimeout(startPyrite,380);
+    setTimeout(()=>document.getElementById('s4-panel').classList.add('show'),700);
+  }
+  if(idx===5){
+    ['e-t','e-q','e-a'].forEach((id,i)=>{
+      setTimeout(()=>{ const el=document.getElementById(id); if(el)el.classList.add('show'); },300+i*500);
+    });
+    c5.style.opacity='1'; setTimeout(()=>{ t5=0; c5Active=true; if(c5Raf)cancelAnimationFrame(c5Raf); drawC5(); },380);
+  }
+}
+
+function onLeaveScene(idx){
+  if(idx===0){ if(c0Raf)cancelAnimationFrame(c0Raf); }
+  if(idx===1) stopGalleryRenderers();
+  if(idx===2){ if(renderers.salt)renderers.salt.stop(); delete renderers.salt; }
+  if(idx===3){ if(renderers.fluor)renderers.fluor.stop(); delete renderers.fluor; }
+  if(idx===4){ if(renderers.pyrite)renderers.pyrite.stop(); delete renderers.pyrite; }
+  if(idx===5){ c5Active=false; if(c5Raf)cancelAnimationFrame(c5Raf); }
+  if(idx===2) document.getElementById('s2-panel').classList.remove('show');
+  if(idx===3) document.getElementById('s3-panel').classList.remove('show');
+  if(idx===4) document.getElementById('s4-panel').classList.remove('show');
+}
+
+function goTo(idx){
+  if(isTransitioning||idx===current) return;
+  isTransitioning=true;
+  onLeaveScene(current);
+  scenes[current].classList.remove('active');
+  current=idx;
+  scenes[current].classList.add('active');
+  updateDots(); updateProgress();
+  setTimeout(()=>{ onEnterScene(current); isTransitioning=false; },600);
+}
+function next(){ if(current<totalScenes-1)goTo(current+1); }
+function prev(){ if(current>0)goTo(current-1); }
+
+document.getElementById('btn-next').addEventListener('click',next);
+document.getElementById('btn-prev').addEventListener('click',prev);
+document.querySelectorAll('.scene').forEach(s=>{
+  // click handled by document listener
+// Click anywhere to advance (document-level for reliability)
+document.addEventListener('click', (e) => {
+  if(e.target.closest('#nav')) return;
+  if(e.target.closest('a')) return;
+  if(e.target.closest('button')) return;
+  if(e.target.closest('#home-btn')) return;
+  if(e.target.closest('#ch-lang-bar')) return;
+  next();
+});
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key===' ')next();
+  if(e.key==='ArrowLeft')prev();
+});
+
+// ══════════════════════════════════════════
+// BACKGROUND
+// ══════════════════════════════════════════
+const bgC=document.getElementById('bg-canvas');
+const bgX=bgC.getContext('2d');
+let BW,BH,bgTick=0;
+function resizeBg(){ BW=bgC.width=window.innerWidth; BH=bgC.height=window.innerHeight; }
+resizeBg(); window.addEventListener('resize',resizeBg);
+const stars=Array.from({length:160},()=>({x:Math.random(),y:Math.random(),r:Math.random()*1.1+0.2,a:Math.random(),sp:Math.random()*0.004+0.001}));
+function drawBg(){
+  bgX.clearRect(0,0,BW,BH);
+  const g=bgX.createRadialGradient(BW/2,BH/2,0,BW/2,BH/2,Math.max(BW,BH)*0.75);
+  g.addColorStop(0,'#070c0f'); g.addColorStop(1,'#020406');
+  bgX.fillStyle=g; bgX.fillRect(0,0,BW,BH);
+  stars.forEach(s=>{
+    s.a+=s.sp;
+    const al=(Math.sin(s.a)+1)/2*0.6+0.07;
+    bgX.beginPath(); bgX.arc(s.x*BW,s.y*BH,s.r,0,Math.PI*2);
+    bgX.fillStyle=`rgba(180,220,200,${al})`; bgX.fill();
+  });
+  // crystal lattice hint in bg
+  bgX.save(); bgX.translate(BW/2,BH/2); bgX.rotate(bgTick*0.00015);
+  const gr=Math.min(BW,BH)*0.38;
+  for(let i=0;i<6;i++){
+    const a=(i/6)*Math.PI*2;
+    bgX.beginPath(); bgX.moveTo(0,0);
+    bgX.lineTo(Math.cos(a)*gr,Math.sin(a)*gr);
+    bgX.strokeStyle='rgba(80,160,120,0.04)'; bgX.lineWidth=1; bgX.stroke();
+    bgX.beginPath(); bgX.arc(Math.cos(a)*gr*0.7,Math.sin(a)*gr*0.7,4,0,Math.PI*2);
+    bgX.fillStyle='rgba(80,160,120,0.06)'; bgX.fill();
+  }
+  bgX.restore(); bgTick++;
+  requestAnimationFrame(drawBg);
+}
+drawBg();
+
+setTimeout(()=>{
+  document.getElementById('ornament').classList.add('visible');
+  document.getElementById('hint').classList.add('visible');
+},1500);
+updateProgress();
+onEnterScene(0);
+</script>
+
+<div id="ch-lang-bar">
+  <button class="ch-lb" id="ch-btn-zh" onclick="chLang('zh')">中文</button>
+  <div class="ch-lb-sep"></div>
+  <button class="ch-lb on" id="ch-btn-en" onclick="chLang('en')">EN</button>
+</div>
+<script id="bilingual-js">
+(function(){
+  var D={"ornament": "Chapter III · Crystal Minerals · Architects of the Microscopic World", "badges": ["Chapter III", "§ 2.2 · Three Minerals", "Salt · Hexahedron", "Fluorite · Octahedron", "Pyrite · Pyritohedron", "Epilogue"], "titles": ["Crystal Minerals", "Nature's Geometric Sculptors", "NaCl — The Ultimate Space Filler", "CaF₂ — Architecture of Refracted Light", "FeS₂ — Nature's Fool's Gold", "Nature is the Oldest Geometer"], "bodies": ["If Platonic solids are a philosopher's dream,<br>then crystals are nature's geometric proof, built atom by atom.", "Three minerals, each corresponding to a Platonic solid,<br>carved with billions of years of patience into the geometric will of the universe.", "Sodium chloride: Na⁺ and Cl⁻ alternate in a <strong>face-centered cubic</strong> structure,<br>each ion surrounded by six oppositely charged ions, forming perfect cubic symmetry.<br>This stacking maximizes space efficiency —<br>nature chose the geometrically most <strong>economical</strong> solution.", "Fluorite cleaves naturally into <strong>perfect octahedra</strong>.<br>Internal Ca²⁺ ions form a face-centered cubic lattice;<br>F⁻ fills all tetrahedral voids.<br>The superposition of two lattices creates exceptionally high <strong>optical symmetry</strong>.", "Pyrite can grow into <strong>pentagonal dodecahedra</strong>, each face an irregular pentagon.<br>Its metallic luster resembles gold — hence the name \"Fool's Gold\".<br>The ordered arrangement of Fe²⁺ and S₂²⁻ inside<br>is the result of symmetry and bond energy in <strong>negotiation</strong>."]};
+  var orig=null;
+  function save(){
+    if(orig)return;
+    var os=document.querySelector('.ornament-line span');
+    orig={
+      ornament:os?os.textContent:'',
+      badges:[].map.call(document.querySelectorAll('.chapter-badge'),function(e){return e.innerHTML;}),
+      titles:[].map.call(document.querySelectorAll('.scene-title'),function(e){return e.innerHTML;}),
+      bodies:[].map.call(document.querySelectorAll('.scene-body'),function(e){return e.innerHTML;}),
+    };
+  }
+  function applyEn(){
+    save();
+    applyPatchEn();
+    var os=document.querySelector('.ornament-line span');
+    if(os&&D.ornament)os.textContent=D.ornament;
+    [].forEach.call(document.querySelectorAll('.chapter-badge'),function(el,i){if(D.badges[i]!=null)el.innerHTML=D.badges[i];});
+    [].forEach.call(document.querySelectorAll('.scene-title'),function(el,i){if(D.titles[i]!=null)el.innerHTML=D.titles[i];});
+    [].forEach.call(document.querySelectorAll('.scene-body'),function(el,i){if(D.bodies[i]!=null)el.innerHTML=D.bodies[i];});
+  
+  
+
+    /* zwOrig save */
+    if(!window._zwOrig){
+      window._zwOrig={};
+      ['e-q','e-a','e-t'].forEach(function(id){var e=document.getElementById(id);if(e)window._zwOrig[id]=e.innerHTML;});
+    }
+    /* __direct_wires__ */
+    var _w=document.getElementById('e-t');if(_w)_w.innerHTML='Nature is the oldest geometer';
+    var _w=document.getElementById('e-a');if(_w)_w.innerHTML='— Chapter III · End';
+    var _w=document.getElementById('e-q');if(_w)_w.innerHTML='From the spiral arms of galaxies above,<br>to the atomic lattices of crystals below &mdash;<br>geometry is not the language we use to describe nature;<br><strong style="color:var(--gold-light);">geometry is the very skeleton of nature itself.</strong>';
+  }
+  function applyZh(){
+    if(!orig)return;
+    /* zwOrig restore */
+    if(window._zwOrig){['e-q','e-a','e-t'].forEach(function(id){var e=document.getElementById(id);if(e&&window._zwOrig[id]!==undefined)e.innerHTML=window._zwOrig[id];});}
+    applyPatchZh();
+    var os=document.querySelector('.ornament-line span');
+    if(os)os.textContent=orig.ornament;
+    [].forEach.call(document.querySelectorAll('.chapter-badge'),function(el,i){if(orig.badges[i]!=null)el.innerHTML=orig.badges[i];});
+    [].forEach.call(document.querySelectorAll('.scene-title'),function(el,i){if(orig.titles[i]!=null)el.innerHTML=orig.titles[i];});
+    [].forEach.call(document.querySelectorAll('.scene-body'),function(el,i){if(orig.bodies[i]!=null)el.innerHTML=orig.bodies[i];});
+  }
+  
+  // Extended EN patches for elements not covered by D.badges/titles/bodies
+  var enPatches=[["#s2-title", 0, "NaCl — The Ultimate Space Filler"], [".quote-author", 0, "— Chapter II · End"], [".big-quote", 0, "From the spiral arms of galaxies above,<br>\n    to the atomic lattices of crystals below —<br>\n    geometry is not the language we use to describe nature;<br>\n    <strong style=\"color:var(--gold-light);\">geometry is the very skeleton of nature itself.</strong>"], [".detail-text", 0, "Crystal system: <strong>Cubic</strong> | Symmetry elements: <strong>48</strong> |<br>\n      Space group: <strong>Fm3̄m</strong> | 4 NaCl pairs per unit cell"], [".detail-text", 1, "Mohs hardness: <strong>4</strong> | Refractive index: <strong>1.434</strong> |<br>\n      Natural fluorescence: emits <strong>blue-violet</strong> light under UV (\"fluorescence\" derives from fluorite)"], [".detail-text", 2, "Mohs hardness: <strong>6–6.5</strong> | Crystal system: <strong>Cubic</strong> |<br>\n      Face angle: pyritohedron face angles ≈ <strong>108°</strong>, matching a regular pentagon"], ["#e-q", 0, "From the spiral arms of galaxies above,<br>to the atomic lattices of crystals below —<br>geometry is not the language we use to describe nature;<br><strong style='color:var(--gold-light);'>geometry is the very skeleton of nature itself.</strong>"], ['.crystal-name', 0, 'Salt · Hexahedron'], ['.crystal-name', 1, 'Fluorite · Octahedron'], ['.crystal-name', 2, 'Pyrite · Pyritohedron']];
+  var patchOrig=null;
+  function savePatch(){
+    if(patchOrig)return;
+    patchOrig=enPatches.map(function(p){
+      var els=document.querySelectorAll(p[0]);
+      return els[p[1]]?els[p[1]].innerHTML:null;
+    });
+  }
+  function applyPatchEn(){
+    savePatch();
+    enPatches.forEach(function(p){
+      var els=document.querySelectorAll(p[0]);
+      if(els[p[1]]!=null)els[p[1]].innerHTML=p[2];
+    });
+  }
+  function applyPatchZh(){
+    if(!patchOrig)return;
+    enPatches.forEach(function(p,i){
+      var els=document.querySelectorAll(p[0]);
+      if(els[p[1]]!=null&&patchOrig[i]!=null)els[p[1]].innerHTML=patchOrig[i];
+    });
+  }
+  window.chLang=function(l){
+    window.__currentLang=l;
+    try{localStorage.setItem('mathsite_lang',l);}catch(e){}
+    document.getElementById('ch-btn-zh').classList.toggle('on',l==='zh');
+    document.getElementById('ch-btn-en').classList.toggle('on',l==='en');
+    if(l==='en')applyEn();else applyZh();
+  };
+  // Auto-switch based on ?lang=en in URL
+  window.addEventListener('DOMContentLoaded',function(){
+    // Read language from localStorage or ?lang URL param, default English
+    var _lp=(new URLSearchParams(location.search)).get('lang');
+    var _ls=null;try{_ls=localStorage.getItem('mathsite_lang');}catch(e){}
+    var _l=_lp||_ls||'en';
+    window.__currentLang=_l;
+    document.getElementById('ch-btn-zh').classList.toggle('on',_l==='zh');
+    document.getElementById('ch-btn-en').classList.toggle('on',_l==='en');
+    // Always run applyEn first to populate orig/patchOrig caches,
+    // then switch to Chinese if needed
+    applyEn();
+    if(_l==='zh')applyZh();
+  });
+})();
+
+/* Mobile touch swipe */
+(function(){
+  var ts=null,tx=null;
+  document.addEventListener('touchstart',function(e){ts=e.touches[0].clientX;tx=e.touches[0].clientY;},{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(ts===null)return;
+    var dx=e.changedTouches[0].clientX-ts, dy=e.changedTouches[0].clientY-tx;
+    if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>40){
+      if(dx<0&&typeof next==='function')next();
+      else if(dx>0&&typeof prev==='function')prev();
+    }
+    ts=null;tx=null;
+  },{passive:true});
+})();
+
+/* Mobile: add stack class to inline-flex children on narrow screens */
+(function(){
+  function applyMobileLayout(){
+    var isMobile = window.innerWidth <= 700;
+    document.querySelectorAll('.scene > div, .scene > section').forEach(function(el){
+      var s = el.getAttribute('style') || '';
+      if(s.includes('display:flex') || s.includes('display: flex')){
+        if(isMobile){ el.style.flexDirection='column'; el.style.alignItems='center'; }
+        else { el.style.flexDirection=''; el.style.alignItems=''; }
+      }
+    });
+  }
+  applyMobileLayout();
+  window.addEventListener('resize', applyMobileLayout);
+})();
+</script>
+</body>
+</html>

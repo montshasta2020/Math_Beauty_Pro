@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第十二章 · 终章：欧拉恒等式</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700&family=Cinzel:wght@400;700;900&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+  :root{
+    --gold:#c9a84c;--gold-light:#e8cc7a;--gold-dim:#7a5f2a;
+    --ink:#020305;--cream:#e8dfc8;
+    --e:#58d68d;    --i:#c060f8;
+    --pi:#e87040;   --one:#e8cc7a;  --zero:#a0b8d0;
+  }
+  body{background:var(--ink);font-family:'Noto Serif SC',serif;overflow:hidden;width:100vw;height:100vh;cursor:default;}
+  #bg-canvas{position:fixed;inset:0;z-index:0;}
+  #vignette{position:fixed;inset:0;z-index:5;pointer-events:none;
+    background:radial-gradient(ellipse at center,transparent 22%,rgba(0,0,0,0.5) 65%,rgba(0,0,0,0.95) 100%);}
+  .ornament-line{position:fixed;top:32px;left:50%;transform:translateX(-50%);z-index:20;
+    display:flex;align-items:center;gap:14px;opacity:0;transition:opacity 1.5s;}
+  .ornament-line.visible{opacity:1;}
+  .ornament-line span{font-family:'Cinzel',serif;font-size:10px;letter-spacing:5px;color:var(--gold-dim);text-transform:uppercase;}
+  .ornament-line::before,.ornament-line::after{content:'';width:90px;height:1px;}
+  .ornament-line::before{background:linear-gradient(to right,transparent,var(--gold-dim));}
+  .ornament-line::after{background:linear-gradient(to left,transparent,var(--gold-dim));}
+  #progress{position:fixed;bottom:0;left:0;height:2px;
+    background:linear-gradient(to right,var(--gold-dim),var(--gold),var(--gold-light));z-index:100;transition:width 0.5s linear;}
+  .scene{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;opacity:0;pointer-events:none;transition:opacity 1.6s ease;z-index:10;}
+  .scene.active{opacity:1;pointer-events:auto;}
+  .chapter-badge{font-family:'Cinzel',serif;font-size:10px;letter-spacing:5px;color:var(--gold-dim);
+    text-transform:uppercase;display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+  .chapter-badge::before,.chapter-badge::after{content:'';width:28px;height:1px;background:var(--gold-dim);}
+  .scene-title{font-family:'Cinzel',serif;font-size:clamp(24px,4vw,52px);color:var(--gold-light);
+    text-align:center;line-height:1.2;letter-spacing:2px;text-shadow:0 0 60px rgba(201,168,76,0.4);}
+  .scene-body{font-family:'Noto Serif SC',serif;font-size:clamp(13px,1.45vw,17px);color:var(--cream);
+    text-align:center;line-height:1.95;max-width:640px;margin-top:16px;padding:0 24px;font-weight:300;}
+  .scene-body strong{color:var(--gold-light);font-weight:400;}
+  .divider{width:200px;height:1px;background:linear-gradient(to right,transparent,var(--gold-dim),transparent);margin:22px auto;}
+  .fade-up{opacity:0;transform:translateY(18px);transition:all 0.9s ease;}
+  .fade-up.show{opacity:1;transform:translateY(0);}
+
+  /* THE GREAT FORMULA */
+  #great-formula{
+    font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(36px,7vw,88px);
+    text-align:center;letter-spacing:8px;
+    line-height:1;
+    text-shadow:0 0 80px rgba(201,168,76,0.6),0 0 160px rgba(201,168,76,0.2);
+    opacity:0;transition:opacity 2.5s ease 0.5s;
+    position:relative;
+  }
+  #great-formula.show{opacity:1;}
+  #great-formula .sym-e{color:var(--e);}
+  #great-formula .sym-i{color:var(--i);}
+  #great-formula .sym-pi{color:var(--pi);}
+  #great-formula .sym-1{color:var(--one);}
+  #great-formula .sym-0{color:var(--zero);}
+  #great-formula .sym-plus,.sym-eq{color:var(--gold-dim);}
+
+  /* FIVE CONSTANTS CARDS */
+  .const-grid{display:flex;align-items:stretch;justify-content:center;
+    gap:0;margin-top:24px;max-width:680px;width:100%;}
+  .const-card{flex:1;padding:clamp(10px,2vw,18px) clamp(8px,1.5vw,14px);
+    border:1px solid rgba(122,95,42,0.2);border-right:none;
+    text-align:center;opacity:0;transform:translateY(14px);transition:all 0.7s ease;}
+  .const-card:last-child{border-right:1px solid rgba(122,95,42,0.2);}
+  .const-card.show{opacity:1;transform:translateY(0);}
+  .const-sym{font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(28px,4vw,52px);margin-bottom:8px;display:block;
+    text-shadow:0 0 30px currentColor;}
+  .const-name{font-family:'Cinzel',serif;font-size:clamp(9px,0.9vw,11px);
+    letter-spacing:2px;color:var(--gold);margin-bottom:6px;}
+  .const-desc{font-size:clamp(10px,1vw,13px);color:var(--cream);
+    line-height:1.5;font-weight:300;opacity:0.8;}
+  .const-field{font-family:'Cinzel',serif;font-size:clamp(8px,0.8vw,10px);
+    letter-spacing:1.5px;margin-top:6px;opacity:0.5;}
+
+  /* DERIVATION STEPS */
+  .deriv-panel{max-width:560px;width:100%;margin-top:18px;}
+  .deriv-step{display:flex;align-items:center;justify-content:center;gap:18px;
+    padding:11px 24px;border-left:2px solid rgba(201,168,76,0.15);
+    margin-left:24px;margin-bottom:5px;
+    opacity:0;transform:translateX(-14px);transition:all 0.65s ease;}
+  .deriv-step.show{opacity:1;transform:translateX(0);}
+  .deriv-eq{font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(14px,1.7vw,21px);color:var(--cream);flex:1;text-align:center;}
+  .deriv-note{font-family:'Cinzel',serif;font-size:9px;letter-spacing:2px;
+    color:var(--gold-dim);min-width:110px;text-align:right;}
+
+  /* QUOTE BLOCK */
+  .philosopher-quote{font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(14px,1.8vw,22px);color:var(--cream);
+    text-align:center;max-width:560px;line-height:1.85;padding:0 24px;}
+  .attrib{font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;
+    color:var(--gold-dim);margin-top:14px;text-align:center;}
+
+  /* FINAL POEM */
+  .poem{font-family:'Noto Serif SC',serif;font-size:clamp(14px,1.7vw,21px);
+    color:var(--cream);text-align:center;line-height:2.2;font-weight:300;
+    max-width:560px;padding:0 24px;}
+  .poem strong{color:var(--gold-light);font-weight:400;}
+
+  /* NAV */
+  #nav{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
+    z-index:200;display:flex;gap:10px;align-items:center;}
+  .nav-btn{width:34px;height:34px;border:1px solid var(--gold-dim);background:transparent;
+    color:var(--gold);cursor:pointer;font-size:16px;display:flex;align-items:center;
+    justify-content:center;transition:all 0.3s;}
+  .nav-btn:hover{background:rgba(201,168,76,0.1);border-color:var(--gold);}
+  .nav-dots{display:flex;gap:6px;align-items:center;}
+  .nav-dot{width:6px;height:6px;border-radius:50%;background:var(--gold-dim);cursor:pointer;transition:all 0.3s;}
+  .nav-dot.active{background:var(--gold);width:20px;border-radius:3px;}
+  #hint{position:fixed;bottom:22px;right:28px;z-index:100;font-family:'Cinzel',serif;
+    font-size:10px;letter-spacing:2px;color:var(--gold-dim);display:flex;align-items:center;
+    gap:8px;opacity:0;transition:opacity 1s;}
+  #hint.visible{opacity:1;}
+  #hint-dot{width:5px;height:5px;border-radius:50%;background:var(--gold-dim);
+    animation:blink 1.6s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.15}}
+
+  #home-btn {
+    position: fixed; top: 26px; left: 36px; z-index: 9000;
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 3px;
+    color: var(--gold); text-decoration: none;
+    border: 1px solid var(--gold-dim); padding: 8px 16px;
+    background: rgba(6,5,7,0.7); cursor: pointer !important;
+    transition: background .3s, color .3s, border-color .3s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  #home-btn:hover { background: rgba(201,168,76,.15); border-color: var(--gold-light); color: var(--gold-light); }
+</style>
+
+<style id="bilingual-css">
+#ch-lang-bar{position:fixed;top:26px;right:36px;z-index:9000;display:flex;align-items:stretch;border:1px solid rgba(122,95,42,.5);overflow:hidden;}
+.ch-lb{font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;padding:8px 16px;background:transparent;border:none;outline:none;color:#7a5f2a;cursor:pointer;transition:background .3s,color .3s;}
+.ch-lb:hover{background:rgba(201,168,76,.1);}
+.ch-lb.on{background:rgba(201,168,76,.2);color:#e8cc7a;}
+.ch-lb-sep{width:1px;background:rgba(122,95,42,.4);flex-shrink:0;}
+</style>
+
+<style id="mobile-responsive">
+@media (max-width: 700px) {
+  /* Core layout - keep centered, handle overflow with scroll wrapper */
+  .scene {
+    padding: 55px 14px 90px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  /* Typography */
+  .scene-title { font-size: clamp(17px, 5.5vw, 28px) !important; letter-spacing: 1px; }
+  .scene-subtitle { font-size: clamp(11px, 3vw, 15px) !important; }
+  .scene-body { font-size: clamp(12px, 3.2vw, 15px) !important; padding: 0 8px; max-width: 96vw; line-height: 1.75 !important; }
+  .chapter-badge { font-size: 7px; letter-spacing: 3px; }
+  .ornament-line span { font-size: 7px; letter-spacing: 1px; max-width: 55vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* UI controls */
+  #home-btn { top: 10px; left: 10px; padding: 5px 10px; font-size: 9px; }
+  #ch-lang-bar { top: 10px; right: 10px; }
+  .ch-lb { padding: 5px 9px; font-size: 8px; letter-spacing: 1px; }
+  #hint { display: none; }
+  .ornament-line { top: 14px; }
+
+  /* Nav - larger touch targets */
+  #nav { bottom: 8px; }
+  .nav-btn { width: 44px; height: 44px; font-size: 22px; }
+
+  /* Force ALL flex row containers to stack */
+  .split-layout,
+  .split-text,
+  .info-row,
+  .sym-row,
+  .law-row,
+  .tl-row,
+  .card-row,
+  .geo-row {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  /* Info panels */
+  .split-info, [id$="-info"], [id$="-text"], [id$="-panel"] {
+    max-width: 94vw !important; width: 94vw !important;
+  }
+  .split-info p, [id$="-info"] p { font-size: clamp(11px, 2.8vw, 14px) !important; }
+
+  /* Only limit standalone full-width canvases, not gallery 3D canvases */
+  canvas#bg-canvas { max-width: 100vw !important; }
+
+  /* Grids → two columns, small screens one column */
+  .law-grid, .var-grid, .sym-grid, .const-grid, .card-grid,
+  [class*="grid"] { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+
+  /* Epilogue / poem */
+  .big-quote, #e-q, #fin-q, .poem { 
+    font-size: clamp(13px, 3.5vw, 18px) !important; 
+    padding: 0 16px; 
+    line-height: 1.9 !important;
+  }
+  .ending-quote { font-size: clamp(14px, 3.8vw, 19px) !important; }
+
+  /* Tables */
+  table { font-size: 10px; width: 100%; }
+  td, th { padding: 4px 6px !important; }
+
+  /* Axiom boxes */
+  .axiom-item { padding: 8px 10px !important; }
+  .axiom-body { font-size: 11px !important; }
+
+  /* Divider spacing */
+  .divider { margin: 12px auto !important; }
+}
+
+@media (max-width: 420px) {
+  .scene-title { font-size: clamp(15px, 5vw, 22px) !important; }
+
+  [class*="grid"] { grid-template-columns: 1fr !important; }
+}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div id="vignette"></div>
+<a id="home-btn" href="index.html">&#8962;&nbsp;HOME</a>
+<div class="ornament-line" id="ornament"><span>Chapter X · Euler's Identity · The Final Poem</span></div>
+<div id="progress"></div>
+<div id="nav">
+  <button class="nav-btn" id="btn-prev">&#8249;</button>
+  <div class="nav-dots" id="nav-dots"></div>
+  <button class="nav-btn" id="btn-next">&#8250;</button>
+</div>
+<div id="hint"><div id="hint-dot"></div>CLICK TO ADVANCE</div>
+
+<!-- ══ SCENE 0: Grand Opening ══ -->
+<div class="scene active" id="scene-0">
+  <div class="chapter-badge fade-up" id="s0-b">第十二章</div>
+  <div class="scene-title fade-up" id="s0-t">欧拉恒等式</div>
+  <div style="font-family:'IM Fell English',serif;font-style:italic;font-size:clamp(14px,1.9vw,23px);color:var(--gold-dim);text-align:center;margin-top:10px;" class="fade-up" id="s0-s">史上最美的七个符号</div>
+  <div class="divider"></div>
+  <div id="great-formula">
+    <span class="sym-e">e</span><sup style="font-size:0.55em;letter-spacing:3px;"><span class="sym-i">i</span><span class="sym-pi">π</span></sup>
+    <span class="sym-plus"> + </span>
+    <span class="sym-1">1</span>
+    <span class="sym-eq"> = </span>
+    <span class="sym-0">0</span>
+  </div>
+  <div class="scene-body fade-up" id="s0-body" style="margin-top:26px;max-width:480px;font-size:clamp(12px,1.35vw,16px);color:rgba(232,220,200,0.65);">
+    五个最重要的数学常数，<br>
+    在此刻相遇、握手，并达成永恒的平衡。
+  </div>
+  <canvas id="c0" style="margin-top:24px;opacity:0;transition:opacity 1.5s 0.6s;width:min(600px,92vw);height:min(280px,34vh);"></canvas>
+</div>
+
+<!-- ══ SCENE 1: The Five Constants ══ -->
+<div class="scene" id="scene-1">
+  <div class="chapter-badge">§ 10.1 · 五个常数</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">各自为政，此刻相遇</div>
+  <div class="const-grid" id="const-grid">
+    <div class="const-card" id="cc0">
+      <span class="const-sym" style="color:var(--e);">e</span>
+      <div class="const-name">自然常数</div>
+      <div class="const-desc">出现在银行利息、细菌繁殖、放射衰变中</div>
+      <div class="const-field" style="color:var(--e);">分析学</div>
+    </div>
+    <div class="const-card" id="cc1">
+      <span class="const-sym" style="color:var(--i);">i</span>
+      <div class="const-name">虚数单位 i</div>
+      <div class="const-desc">√−1，想象力打开的维度之门</div>
+      <div class="const-field" style="color:var(--i);">复数域</div>
+    </div>
+    <div class="const-card" id="cc2">
+      <span class="const-sym" style="color:var(--pi);">π</span>
+      <div class="const-name">圆周率</div>
+      <div class="const-desc">完美之圆，无限不循环的小数</div>
+      <div class="const-field" style="color:var(--pi);">几何学</div>
+    </div>
+    <div class="const-card" id="cc3">
+      <span class="const-sym" style="color:var(--one);">1</span>
+      <div class="const-name">乘法单位元</div>
+      <div class="const-desc">万物的起点，一切数字的基石</div>
+      <div class="const-field" style="color:var(--one);">算术</div>
+    </div>
+    <div class="const-card" id="cc4">
+      <span class="const-sym" style="color:var(--zero);">0</span>
+      <div class="const-name">加法单位元</div>
+      <div class="const-desc">虚无，平衡的支点，终点也是起点</div>
+      <div class="const-field" style="color:var(--zero);">代数</div>
+    </div>
+  </div>
+  <canvas id="c1-orb" style="width:min(560px,90vw);height:min(260px,32vh);margin-top:16px;opacity:0;transition:opacity 1s 0.4s;"></canvas>
+</div>
+
+<!-- ══ SCENE 2: The Proof Journey ══ -->
+<div class="scene" id="scene-2">
+  <div class="chapter-badge">§ 10.1 · 欧拉公式的推导</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">指数，遇见圆</div>
+  <div class="scene-body" style="margin-top:8px;max-width:520px;font-size:clamp(12px,1.3vw,16px);">
+    欧拉将 e 的泰勒展开、虚数 i 和三角函数联结，<br>走了这样一段旅程：
+  </div>
+  <div class="deriv-panel" id="deriv-panel">
+    <div class="deriv-step"><span class="deriv-eq">eˣ = 1 + x + x²/2! + x³/3! + ···</span><span class="deriv-note">泰勒展开</span></div>
+    <div class="deriv-step"><span class="deriv-eq">e<sup>iθ</sup> = 1 + iθ − θ²/2! − iθ³/3! + ···</span><span class="deriv-note">令 x = iθ</span></div>
+    <div class="deriv-step"><span class="deriv-eq">= (1 − θ²/2! + θ⁴/4! −···) + i(θ − θ³/3! + ···)</span><span class="deriv-note">实虚分离</span></div>
+    <div class="deriv-step"><span class="deriv-eq" style="color:var(--gold-light);">= cos θ + i sin θ</span><span class="deriv-note" style="color:var(--gold);">欧拉公式</span></div>
+    <div class="deriv-step"><span class="deriv-eq">令 θ = π：e<sup>iπ</sup> = cos π + i sin π = −1</span><span class="deriv-note">代入 π</span></div>
+    <div class="deriv-step"><span class="deriv-eq" style="color:var(--gold-light);font-size:clamp(16px,2vw,24px);">∴ e<sup>iπ</sup> + 1 = 0</span><span class="deriv-note" style="color:var(--gold);">∎ 证毕</span></div>
+  </div>
+</div>
+
+<!-- ══ SCENE 3: Complex Plane Rotation ══ -->
+<div class="scene" id="scene-3">
+  <div class="chapter-badge">§ 10.1 · 复平面上的旋转</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">e<sup style="font-size:0.6em">iπ</sup> 是一次旋转</div>
+  <div style="display:flex;align-items:center;justify-content:center;gap:clamp(16px,4vw,52px);margin-top:12px;flex-wrap:wrap;">
+    <canvas id="rotation-c" style="width:min(340px,46vw);height:min(340px,46vw);opacity:0;transition:opacity 1.2s 0.3s;flex-shrink:0;"></canvas>
+    <div style="max-width:270px;opacity:0;transition:opacity 0.8s 1s;" id="rot-info">
+      <div style="display:inline-block;font-family:'Cinzel',serif;font-size:9px;letter-spacing:2px;padding:2px 8px;border:1px solid rgba(192,96,248,0.3);color:var(--i);margin-bottom:10px;">e<sup>iθ</sup> = cos θ + i sin θ</div>
+      <p style="font-size:clamp(12px,1.25vw,15px);color:var(--cream);line-height:1.85;font-weight:300;" id="rot-p0">
+        在复平面上，<strong style="color:var(--i);">e<sup>iθ</sup></strong> 的含义是绕原点<strong style="color:var(--i);">旋转角度 θ</strong>。
+      </p>
+      <p style="font-size:clamp(12px,1.25vw,15px);color:var(--cream);line-height:1.85;font-weight:300;margin-top:10px;" id="rot-p1">
+        当 θ = π，从 <strong style="color:var(--one);">+1</strong> 出发，旋转 180°，精确落于 <strong style="color:var(--zero);">−1</strong>。<br>加上 1，归于 <strong style="color:var(--gold-light);">0</strong>。
+      </p>
+      <p style="margin-top:10px;font-size:clamp(11px,1.1vw,13px);color:var(--gold-dim);" id="rot-p2">
+        这不是巧合，而是旋转的几何必然——<br>欧拉公式的本质是复平面上的圆周运动。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCENE 4: Why Beautiful? ══ -->
+<div class="scene" id="scene-4">
+  <div class="chapter-badge">§ 10.2 · 为何绝美？</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">统一的震撼</div>
+  <div class="scene-body" style="margin-top:12px;max-width:560px;">
+    这五个常数来自数学的五个<strong>互不相关的领域</strong>——<br>
+    分析、代数、几何、算术、集合论。<br>
+    它们原本素昧平生，却在同一行等式里<strong>完美相遇</strong>。<br>
+    如同宇宙各处的文明，发现彼此早已说着同一种语言。
+  </div>
+  <canvas id="unify-c" style="width:min(580px,92vw);height:min(320px,40vh);margin-top:18px;opacity:0;transition:opacity 1.2s 0.3s;"></canvas>
+</div>
+
+<!-- ══ SCENE 5: Mathematicians' Reactions ══ -->
+<div class="scene" id="scene-5">
+  <div class="chapter-badge">§ 10.2 · 数学家的回响</div>
+  <div class="scene-title" style="font-size:clamp(20px,3vw,42px);">他们这样说</div>
+  <canvas id="quote-canvas" style="width:min(580px,90vw);height:min(340px,44vh);margin-top:14px;opacity:0;transition:opacity 1.2s 0.3s;"></canvas>
+</div>
+
+<!-- ══ SCENE 6: The Formula as a Poem ══ -->
+<div class="scene" id="scene-6">
+  <div class="chapter-badge">§ 10.3 · 代数的诗</div>
+  <div class="scene-title fade-up" id="p-t" style="font-size:clamp(20px,3vw,42px);">寥寥数语，道尽宇宙</div>
+  <div class="divider"></div>
+  <div class="poem fade-up" id="p-q">
+    <span style="color:var(--e);">e</span>，一切增长的韵律；<br>
+    <span style="color:var(--i);">i</span>，想象力打开的维度；<br>
+    <span style="color:var(--pi);">π</span>，完美之圆的永恒比例；<br>
+    <span style="color:var(--one);">1</span>，一切数字的起源；<br>
+    <span style="color:var(--zero);">0</span>，虚空——既是终点，也是起点。<br><br>
+    <strong>它们相加为零——</strong><br>
+    <strong>因为宇宙是自洽的。</strong>
+  </div>
+  <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;color:var(--gold-dim);
+    margin-top:18px;text-align:center;" class="fade-up" id="p-a">
+    e<sup>iπ</sup> + 1 = 0 &nbsp;·&nbsp; Leonhard Euler · 1748
+  </div>
+</div>
+
+<!-- ══ SCENE 7: Series Finale ══ -->
+<div class="scene" id="scene-7">
+  <div class="chapter-badge">终章 · 全系列完</div>
+  <div id="great-formula-2" style="font-family:'IM Fell English',serif;font-style:italic;
+    font-size:clamp(32px,6vw,76px);text-align:center;letter-spacing:6px;
+    text-shadow:0 0 80px rgba(201,168,76,0.5);opacity:0;transition:opacity 2s 0.3s;margin-bottom:8px;">
+    <span style="color:var(--e);">e</span><sup style="font-size:0.55em;letter-spacing:3px;"><span style="color:var(--i);">i</span><span style="color:var(--pi);">π</span></sup>
+    <span style="color:var(--gold-dim);"> + </span>
+    <span style="color:var(--one);">1</span>
+    <span style="color:var(--gold-dim);"> = </span>
+    <span style="color:var(--zero);">0</span>
+  </div>
+  <div class="divider"></div>
+  <div style="font-family:'Noto Serif SC',serif;font-size:clamp(13px,1.5vw,18px);color:var(--cream);
+    text-align:center;line-height:2;max-width:560px;padding:0 24px;font-weight:300;
+    opacity:0;transition:opacity 1s 0.8s;" id="fin-body">
+    From Euclid's axioms,<br>
+    to the curved surfaces of non-Euclidean geometry,<br>
+    from algebraic variables to the symmetry of group theory,<br>
+    from fractal iteration to the rhythm of constants —<br>
+    <strong style="color:var(--gold-light);">Mathematics is the language the universe uses to know itself.</strong>
+  </div>
+  <canvas id="c7-finale" style="width:min(580px,92vw);height:min(300px,38vh);margin-top:16px;opacity:0;transition:opacity 2s 1.2s;"></canvas>
+  <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:4px;color:var(--gold-dim);
+    margin-top:18px;text-align:center;opacity:0;transition:opacity 1s 2.5s;" id="fin-end">
+    — 全系列 · 完 —
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// BACKGROUND — slowly rotating constellation of 5 constants
+// ══════════════════════════════════════════
+const bgC=document.getElementById('bg-canvas'),bgX=bgC.getContext('2d');
+let BW,BH,bgTick=0;
+function resizeBg(){BW=bgC.width=window.innerWidth;BH=bgC.height=window.innerHeight;}
+resizeBg();window.addEventListener('resize',resizeBg);
+const stars=Array.from({length:240},()=>({x:Math.random(),y:Math.random(),r:Math.random()*1.3+0.2,a:Math.random(),sp:Math.random()*0.002+0.0005}));
+const CONST_COLS=['rgba(88,214,141,','rgba(192,96,248,','rgba(232,112,64,','rgba(232,204,122,','rgba(160,184,208,'];
+const CONST_SYMS=['e','i','π','1','0'];
+function drawBg(){
+  bgX.clearRect(0,0,BW,BH);
+  const g=bgX.createRadialGradient(BW/2,BH/2,0,BW/2,BH/2,Math.max(BW,BH)*0.75);
+  g.addColorStop(0,'#06040e');g.addColorStop(1,'#010105');
+  bgX.fillStyle=g;bgX.fillRect(0,0,BW,BH);
+  // Five constants orbiting at different radii
+  const cx=BW/2,cy=BH/2;
+  const t=bgTick;
+  CONST_SYMS.forEach((sym,i)=>{
+    const r=Math.min(BW,BH)*(0.25+i*0.06);
+    const a=(i/5)*Math.PI*2+t*(0.004-i*0.0004);
+    const px=cx+Math.cos(a)*r,py=cy+Math.sin(a)*r*0.55;
+    // Orbit ring
+    bgX.beginPath();bgX.ellipse(cx,cy,r,r*0.55,0,0,Math.PI*2);
+    bgX.strokeStyle=`${CONST_COLS[i]}0.03)`;bgX.lineWidth=1;bgX.stroke();
+    // Symbol
+    bgX.font=`italic ${clamp(16,BW*0.022,32)}px IM Fell English,serif`;
+    bgX.textAlign='center';
+    bgX.fillStyle=`${CONST_COLS[i]}${0.07+0.03*Math.sin(t*0.04+i)})`;
+    bgX.fillText(sym,px,py+clamp(6,BW*0.008,12));
+  });
+  stars.forEach(s=>{
+    s.a+=s.sp;const al=(Math.sin(s.a)+1)/2*0.45+0.04;
+    bgX.beginPath();bgX.arc(s.x*BW,s.y*BH,s.r,0,Math.PI*2);
+    bgX.fillStyle=`rgba(220,200,255,${al})`;bgX.fill();
+  });
+  bgTick++;requestAnimationFrame(drawBg);
+}
+function clamp(lo,v,hi){return Math.max(lo,Math.min(hi,v));}
+drawBg();
+
+// ══════════════════════════════════════════
+// SCENE 0: Complex Rose — e^(iθ) polar flowers
+// ══════════════════════════════════════════
+const c0=document.getElementById('c0');
+let t0=0,c0Raf;
+function resizeC0(){const r=c0.getBoundingClientRect();c0.width=r.width||600;c0.height=r.height||280;}
+function drawC0(){
+  resizeC0();
+  const CW=c0.width,CH=c0.height,ctx=c0.getContext('2d');
+  ctx.fillStyle='rgba(4,2,10,0.92)';ctx.fillRect(0,0,CW,CH);
+  const cx=CW/2,cy=CH/2,R=Math.min(CW,CH)*0.40;
+  const t=t0;
+
+  // Draw 5 rose curves, one per constant, each with n petals
+  const roses=[
+    {n:1,col:CONST_COLS[0],speed:0.007,phase:0},       // e — simple circle
+    {n:2,col:CONST_COLS[1],speed:0.011,phase:Math.PI/4},// i — 2-petal
+    {n:3,col:CONST_COLS[2],speed:0.009,phase:0},        // π — 3-petal rose
+    {n:4,col:CONST_COLS[3],speed:0.006,phase:Math.PI/8},// 1 — 4-petal
+    {n:5,col:CONST_COLS[4],speed:0.008,phase:Math.PI/5},// 0 — 5-petal
+  ];
+
+  const prog=Math.min(1,t/100);
+
+  roses.forEach(({n,col,speed,phase},ri)=>{
+    const delay=ri*18;
+    const p=Math.max(0,Math.min(1,(t-delay)/110));
+    if(p<=0) return;
+    const scale=0.55+ri*0.09;
+    const rotOff=t*speed+phase;
+
+    ctx.beginPath();
+    let first=true;
+    const steps=500;
+    for(let i=0;i<=steps*p;i++){
+      const theta=(i/steps)*Math.PI*2;
+      const r=R*scale*Math.abs(Math.cos(n*theta));
+      const px=cx+Math.cos(theta+rotOff)*r;
+      const py=cy+Math.sin(theta+rotOff)*r;
+      if(first){ctx.moveTo(px,py);first=false;}else ctx.lineTo(px,py);
+    }
+    ctx.strokeStyle=col+(p*0.55)+')';
+    ctx.lineWidth=1.1;ctx.stroke();
+
+    // Tip glow dots
+    if(p>0.5){
+      for(let k=0;k<n*(n===1?1:2);k++){
+        const theta=k/(n*2)*Math.PI*2+rotOff;
+        const r=R*scale;
+        const px=cx+Math.cos(theta)*r, py=cy+Math.sin(theta)*r;
+        const pulse=0.6+0.4*Math.sin(t*0.05+ri*1.3+k);
+        const gg=ctx.createRadialGradient(px,py,0,px,py,12);
+        gg.addColorStop(0,col+(pulse*(p-0.5)*2*0.5)+')');
+        gg.addColorStop(1,'transparent');
+        ctx.fillStyle=gg;ctx.fillRect(px-12,py-12,24,24);
+        ctx.beginPath();ctx.arc(px,py,3*pulse,0,Math.PI*2);
+        ctx.fillStyle=col+((p-0.5)*2*0.8)+')';ctx.fill();
+      }
+    }
+  });
+
+  // Central glow + formula label
+  const cpulse=0.6+0.4*Math.sin(t*0.035);
+  const cg=ctx.createRadialGradient(cx,cy,0,cx,cy,R*0.35);
+  cg.addColorStop(0,`rgba(201,168,76,${cpulse*0.18})`);cg.addColorStop(1,'transparent');
+  ctx.fillStyle=cg;ctx.fillRect(0,0,CW,CH);
+  ctx.beginPath();ctx.arc(cx,cy,4,0,Math.PI*2);
+  ctx.fillStyle=`rgba(232,204,122,${0.8+cpulse*0.2})`;ctx.fill();
+
+  // Formula at bottom
+  if(prog>0.5){
+    const fa=(prog-0.5)*2;
+    ctx.font=`italic ${Math.round(CW*0.026)}px IM Fell English,serif`;
+    ctx.textAlign='center';ctx.fillStyle=`rgba(201,168,76,${fa*0.5})`;
+    ctx.fillText('e^iπ + 1 = 0',cx,CH-14);
+  }
+
+  t0++;
+  c0Raf=requestAnimationFrame(drawC0);
+}
+
+// ══════════════════════════════════════════
+// SCENE 1: Five-Constants Mandala — pentagonal sacred geometry
+// ══════════════════════════════════════════
+let c1Active=false,c1RAF,c1Tick=0;
+function startOrbitals(){
+  const canvas=document.getElementById('c1-orb');if(!canvas)return;
+  const _r=canvas.getBoundingClientRect();
+  const W=_r.width||560,H=_r.height||260;
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  c1Active=true;c1Tick=0;
+  const cx=W/2,cy=H/2,R=Math.min(W,H)*0.38;
+  const n=5;
+
+  function frame(){
+    if(!c1Active)return;
+    ctx.fillStyle='rgba(4,2,10,0.88)';ctx.fillRect(0,0,W,H);
+    const t=c1Tick;
+    const rot=t*0.005;
+
+    // ── Concentric rings ──
+    [0.35,0.6,0.85,1.05].forEach((fr,i)=>{
+      ctx.beginPath();ctx.arc(cx,cy,R*fr,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(122,95,42,${0.06+i*0.015})`;ctx.lineWidth=0.6;ctx.stroke();
+    });
+
+    // ── Pentagram (connect every 2nd) ──
+    const verts=Array.from({length:n},(_,i)=>{
+      const a=i/n*Math.PI*2-Math.PI/2+rot;
+      return{x:cx+Math.cos(a)*R,y:cy+Math.sin(a)*R,a,i};
+    });
+    // Outer pentagon
+    ctx.beginPath();
+    verts.forEach((v,i)=>i===0?ctx.moveTo(v.x,v.y):ctx.lineTo(v.x,v.y));
+    ctx.closePath();
+    ctx.strokeStyle='rgba(122,95,42,0.2)';ctx.lineWidth=0.8;ctx.stroke();
+    // Pentagram star
+    const starOrder=[0,2,4,1,3,0];
+    ctx.beginPath();
+    starOrder.forEach((idx,i)=>{
+      const v=verts[idx];
+      i===0?ctx.moveTo(v.x,v.y):ctx.lineTo(v.x,v.y);
+    });
+    ctx.strokeStyle='rgba(201,168,76,0.18)';ctx.lineWidth=0.9;ctx.stroke();
+
+    // ── Spokes from center ──
+    verts.forEach((v,i)=>{
+      ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(v.x,v.y);
+      ctx.strokeStyle=CONST_COLS[i]+'0.10)';ctx.lineWidth=0.7;ctx.stroke();
+      // Inner ring connection (midpoints)
+      const next=verts[(i+1)%n];
+      ctx.beginPath();
+      ctx.moveTo(cx+(v.x-cx)*0.38,cy+(v.y-cy)*0.38);
+      ctx.lineTo(cx+(next.x-cx)*0.38,cy+(next.y-cy)*0.38);
+      ctx.strokeStyle=CONST_COLS[i]+'0.12)';ctx.lineWidth=0.5;ctx.stroke();
+    });
+
+    // ── Inner slowly counter-rotating pentagon ──
+    const innerVerts=Array.from({length:n},(_,i)=>{
+      const a=i/n*Math.PI*2-Math.PI/2-rot*0.7+Math.PI/n;
+      return{x:cx+Math.cos(a)*R*0.38,y:cy+Math.sin(a)*R*0.38};
+    });
+    ctx.beginPath();
+    innerVerts.forEach((v,i)=>i===0?ctx.moveTo(v.x,v.y):ctx.lineTo(v.x,v.y));
+    ctx.closePath();ctx.strokeStyle='rgba(201,168,76,0.14)';ctx.lineWidth=0.7;ctx.stroke();
+
+    // ── Constant nodes at pentagon vertices ──
+    verts.forEach((v,i)=>{
+      const pulse=0.65+0.35*Math.sin(t*0.04+i*1.2566);
+      const sz=Math.round(W*0.038);
+      // Glow halo
+      const gg=ctx.createRadialGradient(v.x,v.y,0,v.x,v.y,sz*1.8);
+      gg.addColorStop(0,CONST_COLS[i]+(pulse*0.35)+')');
+      gg.addColorStop(1,'transparent');
+      ctx.fillStyle=gg;ctx.fillRect(v.x-sz*2,v.y-sz*2,sz*4,sz*4);
+      // Symbol
+      ctx.font=`italic ${sz}px IM Fell English,serif`;
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle=CONST_COLS[i]+(0.85+pulse*0.15)+')';
+      ctx.fillText(CONST_SYMS[i],v.x,v.y);
+      // Field label
+      const fields=['分析学','复数域','几何学','算术','代数'];
+      const lx=v.x+(v.x-cx)*0.28,ly=v.y+(v.y-cy)*0.28;
+      ctx.font=`${Math.round(W*0.016)}px Cinzel,serif`;
+      ctx.textBaseline='middle';
+      ctx.fillStyle=CONST_COLS[i]+'0.45)';ctx.fillText(fields[i],lx,ly);
+    });
+
+    // ── Center: pulsing = 0 ──
+    const cp=0.6+0.4*Math.sin(t*0.038);
+    const cg2=ctx.createRadialGradient(cx,cy,0,cx,cy,R*0.22);
+    cg2.addColorStop(0,`rgba(201,168,76,${cp*0.22})`);cg2.addColorStop(1,'transparent');
+    ctx.fillStyle=cg2;ctx.fillRect(0,0,W,H);
+    ctx.font=`italic ${Math.round(W*0.036)}px IM Fell English,serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle=`rgba(201,168,76,${cp*0.85})`;ctx.fillText('= 0',cx,cy);
+
+    c1Tick++;c1RAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopOrbitals(){c1Active=false;cancelAnimationFrame(c1RAF);}
+
+// ══════════════════════════════════════════
+// SCENE 3: Full complex plane rotation to π
+// ══════════════════════════════════════════
+let rotActive=false,rotRAF,rotTick=0;
+function startRotation(){
+  const canvas=document.getElementById('rotation-c');if(!canvas)return;
+  const _rr=canvas.getBoundingClientRect();const S=Math.min(_rr.width||340,_rr.height||340);
+  canvas.width=S;canvas.height=S;
+  const ctx=canvas.getContext('2d');
+  rotActive=true;
+  const cx=S/2,cy=S/2,r=S*0.38;
+  function frame(){
+    if(!rotActive)return;
+    ctx.clearRect(0,0,S,S);
+    const t=rotTick;
+    // Axes
+    ctx.strokeStyle='rgba(122,95,42,0.3)';ctx.lineWidth=0.8;
+    ctx.beginPath();ctx.moveTo(10,cy);ctx.lineTo(S-10,cy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx,10);ctx.lineTo(cx,S-10);ctx.stroke();
+    // Axis labels
+    ctx.font='10px IM Fell English,serif';ctx.fillStyle='rgba(122,95,42,0.5)';ctx.textAlign='center';
+    ctx.fillText('Re',S-14,cy+14);ctx.fillText('Im',cx+14,14);
+    ctx.fillText('+1',cx+r+4,cy+14);ctx.fillText('−1',cx-r-4,cy+14);
+    ctx.fillText('+i',cx+14,cy-r-4);
+    // Unit circle
+    ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
+    ctx.strokeStyle='rgba(192,96,248,0.2)';ctx.lineWidth=1;ctx.stroke();
+    // Sweep angle (one full rotation cycle = 600 ticks, pause at π)
+    const period=600;
+    const phase=(t%period)/period;
+    let theta;
+    if(phase<0.4) theta=phase/0.4*Math.PI; // sweep to π
+    else if(phase<0.65) theta=Math.PI; // pause at π
+    else if(phase<0.9) theta=Math.PI+(phase-0.65)/0.25*Math.PI; // continue around
+    else theta=Math.PI*2*(phase-0.9)/0.1; // quickly reset
+    // Draw swept arc
+    ctx.beginPath();ctx.moveTo(cx+r,cy);ctx.arc(cx,cy,r,0,-theta,true);
+    ctx.strokeStyle='rgba(192,96,248,0.4)';ctx.lineWidth=2;ctx.stroke();
+    // Radius vector
+    const px=cx+Math.cos(-theta)*r,py=cy+Math.sin(-theta)*r;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(px,py);
+    ctx.strokeStyle='rgba(88,214,141,0.8)';ctx.lineWidth=1.5;ctx.stroke();
+    // Moving point
+    const pg=ctx.createRadialGradient(px,py,0,px,py,10);
+    pg.addColorStop(0,'rgba(192,96,248,0.9)');pg.addColorStop(1,'transparent');
+    ctx.fillStyle=pg;ctx.fillRect(px-10,py-10,20,20);
+    ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);
+    ctx.fillStyle='rgba(192,96,248,1)';ctx.fill();
+    // Projections
+    ctx.setLineDash([3,5]);ctx.lineWidth=0.8;
+    ctx.beginPath();ctx.moveTo(px,cy);ctx.lineTo(px,py);
+    ctx.strokeStyle='rgba(88,214,141,0.25)';ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx,py);ctx.lineTo(px,py);
+    ctx.strokeStyle='rgba(232,204,122,0.25)';ctx.stroke();
+    ctx.setLineDash([]);
+    // cos/sin labels
+    if(theta>0.2&&theta<Math.PI*1.8){
+      ctx.font='9px Cinzel,serif';ctx.fillStyle='rgba(88,214,141,0.5)';ctx.textAlign='center';
+      ctx.fillText('sin θ',cx-18,py+4);
+      ctx.fillStyle='rgba(232,204,122,0.5)';ctx.fillText('cos θ',px+20,cy+12);
+    }
+    // Highlight at θ = π
+    if(Math.abs(theta-Math.PI)<0.08){
+      ctx.beginPath();ctx.arc(cx-r,cy,8,0,Math.PI*2);
+      ctx.strokeStyle='rgba(232,204,122,0.8)';ctx.lineWidth=1.5;ctx.stroke();
+      ctx.fillStyle='rgba(232,204,122,0.9)';ctx.font='italic 13px IM Fell English,serif';ctx.textAlign='center';
+      ctx.fillText('−1',cx-r,cy-14);
+      ctx.fillStyle='rgba(232,204,122,0.7)';ctx.font='10px Cinzel,serif';
+      ctx.fillText('e^iπ = −1',cx,S-8);
+    }
+    // Origin dot
+    ctx.beginPath();ctx.arc(cx,cy,3,0,Math.PI*2);ctx.fillStyle='rgba(201,168,76,0.5)';ctx.fill();
+    // Start dot +1
+    ctx.beginPath();ctx.arc(cx+r,cy,3,0,Math.PI*2);ctx.fillStyle='rgba(232,204,122,0.6)';ctx.fill();
+    rotTick++;rotRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopRotation(){rotActive=false;cancelAnimationFrame(rotRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 4: Radiant Convergence — particle streams from 5 domains
+// ══════════════════════════════════════════
+let unifyActive=false,unifyRAF,unifyTick=0;
+const DOMAIN_NAMES_ZH=['分析学','复数域','几何学','算术','代数'];
+const DOMAIN_NAMES_EN=['Analysis','Complex','Geometry','Arithmetic','Algebra'];
+function startUnify(){
+  const canvas=document.getElementById('unify-c');if(!canvas)return;
+  const _ur=canvas.getBoundingClientRect();const W=_ur.width||580,H=_ur.height||320;
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  unifyActive=true;unifyTick=0;
+  const cx=W/2,cy=H/2;
+  const n=5;
+
+  // Particle system — 5 streams
+  const streams=CONST_SYMS.map((sym,i)=>{
+    const a=i/n*Math.PI*2-Math.PI/2;
+    const srcR=Math.min(W,H)*0.44;
+    return{
+      sym,col:CONST_COLS[i],
+      srcX:cx+Math.cos(a)*srcR, srcY:cy+Math.sin(a)*srcR,
+      angle:a,
+      particles:Array.from({length:28},(_,j)=>({
+        t:Math.random(), speed:0.004+Math.random()*0.003, life:Math.random()
+      }))
+    };
+  });
+
+  function frame(){
+    if(!unifyActive)return;
+    ctx.fillStyle='rgba(4,2,10,0.82)';ctx.fillRect(0,0,W,H);
+    const t=unifyTick;
+
+    // ── Draw orbit rings ──
+    [0.44,0.3,0.15].forEach(fr=>{
+      ctx.beginPath();ctx.arc(cx,cy,Math.min(W,H)*fr,0,Math.PI*2);
+      ctx.strokeStyle='rgba(122,95,42,0.05)';ctx.lineWidth=0.5;ctx.stroke();
+    });
+
+    // ── Draw streams and particles ──
+    streams.forEach((st,si)=>{
+      const srcX=st.srcX,srcY=st.srcY;
+
+      // Source glow
+      const pulse=0.5+0.5*Math.sin(t*0.05+si*1.2566);
+      const sg=ctx.createRadialGradient(srcX,srcY,0,srcX,srcY,30);
+      sg.addColorStop(0,st.col+(pulse*0.3)+')');
+      sg.addColorStop(1,'transparent');
+      ctx.fillStyle=sg;ctx.fillRect(srcX-30,srcY-30,60,60);
+
+      // Symbol at source
+      ctx.font=`italic ${Math.round(W*0.042)}px IM Fell English,serif`;
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle=st.col+(0.85+pulse*0.15)+')';
+      ctx.fillText(st.sym,srcX,srcY);
+
+      // Domain label
+      const fields=window.__currentLang==='en'?DOMAIN_NAMES_EN:DOMAIN_NAMES_ZH;
+      const lx=srcX+(srcX-cx)*0.18,ly=srcY+(srcY-cy)*0.18;
+      ctx.font=`${Math.round(W*0.017)}px Cinzel,serif`;
+      ctx.fillStyle=st.col+'0.4)';ctx.fillText(fields[si],lx,ly);
+
+      // ── Particles flowing toward center ──
+      st.particles.forEach(p=>{
+        p.t+=p.speed;
+        if(p.t>1){p.t=Math.random()*0.1;p.life=1;}
+        const prog=Math.pow(p.t,0.7); // ease in
+        const px=srcX+(cx-srcX)*prog;
+        const py=srcY+(cy-srcY)*prog;
+        // Slight sinusoidal wobble perpendicular to path
+        const perpX=-(srcY-cy)/Math.hypot(srcX-cx,srcY-cy);
+        const perpY= (srcX-cx)/Math.hypot(srcX-cx,srcY-cy);
+        const wobble=Math.sin(p.t*Math.PI*4+si)*6*(1-prog);
+        const fx=px+perpX*wobble,fy=py+perpY*wobble;
+        const alpha=(1-prog)*0.7*(1-Math.abs(p.t-0.5)*1.5+0.5);
+        ctx.beginPath();ctx.arc(fx,fy,2.2,0,Math.PI*2);
+        ctx.fillStyle=st.col+Math.max(0,alpha).toFixed(2)+')';ctx.fill();
+      });
+
+      // Spoke line
+      ctx.beginPath();ctx.moveTo(srcX,srcY);ctx.lineTo(cx,cy);
+      ctx.strokeStyle=st.col+'0.06)';ctx.lineWidth=0.7;ctx.stroke();
+    });
+
+    // ── Central gathering glow ──
+    const cp=0.6+0.4*Math.sin(t*0.038);
+    const rings=[
+      {r:Math.min(W,H)*0.08,a:cp*0.22},
+      {r:Math.min(W,H)*0.04,a:cp*0.35},
+    ];
+    rings.forEach(({r,a})=>{
+      const cg=ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+      cg.addColorStop(0,`rgba(201,168,76,${a})`);cg.addColorStop(1,'transparent');
+      ctx.fillStyle=cg;ctx.fillRect(cx-r,cy-r,r*2,r*2);
+    });
+
+    // Formula at center
+    ctx.font=`italic ${Math.round(W*0.048)}px IM Fell English,serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle=`rgba(201,168,76,${0.8+cp*0.2})`;
+    ctx.fillText('e^iπ + 1 = 0',cx,cy);
+
+    unifyTick++;unifyRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopUnify(){unifyActive=false;cancelAnimationFrame(unifyRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 5: Mathematician quotes (animated)
+// ══════════════════════════════════════════
+let quotesActive=false,quotesRAF,quotesTick=0;
+const QUOTES_EN=[
+  {text:'"It is absolutely paradoxical; we cannot understand it, and we don\'t know what it means, but we have proved it, and therefore we know it must be the truth."', attr:'— Benjamin Peirce (Mathematician)'},
+  {text:'"The most remarkable formula in mathematics, for it brings together five of the most important constants."', attr:'— Richard Feynman (Nobel Prize in Physics)'},
+  {text:'"The beauty of this equation makes one shudder; any who truly grasp it cannot help but feel a thrill."', attr:'— Anonymous Mathematician'},
+];
+const QUOTES_ZH=[
+  {text:'"它如诗如画，我首次看到它时，几乎落下泪来。"', attr:'— Benjamin Peirce (数学家)'},
+  {text:'"这是数学中最奇妙的公式，因为它将最重要的五个常数联系在一起。"', attr:'— Richard Feynman (诺贝尔物理学奖)'},
+  {text:'"这个公式的美，令人叹为观止；任何理解它的人，都会感到一阵战栗。"', attr:'— 匿名数学家'},
+];
+function getQuotes(){return window.__currentLang==='en'?QUOTES_EN:QUOTES_ZH;}
+function startQuotes(){
+  const canvas=document.getElementById('quote-canvas');if(!canvas)return;
+  const _qr=canvas.getBoundingClientRect();const W=_qr.width||580,H=_qr.height||340;
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  quotesActive=true;
+  let qIdx=0,qProg=0;
+  function wrapText(ctx,text,x,y,maxW,lineH){
+    const words=text.split('');let line='',lines=[];
+    // For Chinese text, wrap by character count
+    const maxChars=Math.floor(maxW/16);
+    for(let i=0;i<text.length;i++){
+      line+=text[i];
+      if(line.length>=maxChars||i===text.length-1){lines.push(line);line='';}
+    }
+    lines.forEach((l,i)=>ctx.fillText(l,x,y+i*lineH));
+    return lines.length*lineH;
+  }
+  function frame(){
+    if(!quotesActive)return;
+    ctx.clearRect(0,0,W,H);
+    qProg+=0.006;
+    if(qProg>=1){qProg=0;qIdx=(qIdx+1)%getQuotes().length;}
+    const q=getQuotes()[qIdx];
+    const alpha=qProg<0.15?qProg/0.15:qProg>0.85?(1-qProg)/0.15:1;
+    // Decorative border
+    ctx.strokeStyle=`rgba(122,95,42,${alpha*0.3})`;ctx.lineWidth=0.7;
+    ctx.strokeRect(20,20,W-40,H-40);
+    // Corner ornaments
+    [[20,20],[W-20,20],[W-20,H-20],[20,H-20]].forEach(([x,y],ci)=>{
+      const dx=ci%2===0?1:-1,dy=ci<2?1:-1;
+      ctx.beginPath();ctx.moveTo(x+dx*10,y);ctx.lineTo(x,y);ctx.lineTo(x,y+dy*10);
+      ctx.strokeStyle=`rgba(201,168,76,${alpha*0.4})`;ctx.lineWidth=1;ctx.stroke();
+    });
+    // Ornamental top line
+    const midX=W/2;
+    ctx.fillStyle=`rgba(201,168,76,${alpha*0.3})`;
+    ctx.fillText('❧',midX,52);
+    // Quote text
+    ctx.font=`italic ${clamp(13,W*0.028,16)}px IM Fell English,serif`;
+    ctx.fillStyle=`rgba(232,220,200,${alpha*0.85})`;ctx.textAlign='center';
+    // Split by lines roughly
+    const lines=q.text.match(/.{1,26}/g)||[q.text];
+    lines.forEach((l,i)=>ctx.fillText(l,midX,90+i*26));
+    // Attribution
+    ctx.font=`${clamp(9,W*0.019,12)}px Cinzel,serif`;
+    ctx.fillStyle=`rgba(122,95,42,${alpha*0.6})`;ctx.letterSpacing='2px';
+    ctx.fillText(q.attr,midX,H-50);
+    // Quote number indicator
+    getQuotes().forEach((_,i)=>{
+      const dx=midX+(i-1)*16;
+      ctx.beginPath();ctx.arc(dx,H-30,3,0,Math.PI*2);
+      ctx.fillStyle=i===qIdx?`rgba(201,168,76,${alpha*0.7})`:`rgba(122,95,42,${alpha*0.3})`;ctx.fill();
+    });
+    quotesTick++;quotesRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopQuotes(){quotesActive=false;cancelAnimationFrame(quotesRAF);}
+
+// ══════════════════════════════════════════
+// SCENE 7: Grand Finale — Fourier Epicycles + 5-constant constellation
+// ══════════════════════════════════════════
+let finaleActive=false,finaleRAF,finaleTick=0;
+function startFinale(){
+  const canvas=document.getElementById('c7-finale');if(!canvas)return;
+  const _fr=canvas.getBoundingClientRect();
+  const W=_fr.width||580,H=_fr.height||300;
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  finaleActive=true;finaleTick=0;
+  const cx=W/2,cy=H/2;
+  const R=Math.min(W,H)*0.36;
+
+  // Fourier epicycle chain — approximate a circle with harmonics
+  // Each constant contributes one harmonic: frequencies 1,2,3,4,5
+  const harmonics=CONST_SYMS.map((sym,i)=>({
+    sym,col:CONST_COLS[i],
+    freq:i+1,
+    amp:R/(i+1)*0.85,
+    phase:i*Math.PI*0.4,
+  }));
+
+  // Trail buffer
+  const trail=[];
+  const TRAIL_MAX=800;
+
+  function frame(){
+    if(!finaleActive)return;
+    ctx.fillStyle='rgba(4,2,10,0.88)';ctx.fillRect(0,0,W,H);
+    const t=finaleTick;
+    const theta=t*0.018; // rotation speed
+
+    // ── Draw epicycles ──
+    let ox=cx,oy=cy;
+    harmonics.forEach((h,i)=>{
+      const angle=h.freq*theta+h.phase;
+      const nx=ox+Math.cos(angle)*h.amp;
+      const ny=oy+Math.sin(angle)*h.amp;
+
+      // Orbit circle (faint)
+      ctx.beginPath();ctx.arc(ox,oy,h.amp,0,Math.PI*2);
+      ctx.strokeStyle=h.col+'0.10)';ctx.lineWidth=0.6;ctx.stroke();
+
+      // Radius arm
+      ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(nx,ny);
+      ctx.strokeStyle=h.col+'0.45)';ctx.lineWidth=1.0;ctx.stroke();
+
+      // Symbol at end of arm
+      ctx.font=`italic ${Math.round(R*0.16)}px IM Fell English,serif`;
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      const pulse=0.65+0.35*Math.sin(t*0.04+i*1.25);
+      ctx.fillStyle=h.col+(0.8+pulse*0.2)+')';
+      ctx.fillText(h.sym,nx,ny);
+
+      // Glow at joint
+      const gg=ctx.createRadialGradient(nx,ny,0,nx,ny,h.amp*0.15);
+      gg.addColorStop(0,h.col+(pulse*0.4)+')');gg.addColorStop(1,'transparent');
+      ctx.fillStyle=gg;const grs=h.amp*0.15;
+      ctx.fillRect(nx-grs,ny-grs,grs*2,grs*2);
+
+      ox=nx;oy=ny;
+    });
+
+    // Trail tip
+    trail.push({x:ox,y:oy});
+    if(trail.length>TRAIL_MAX) trail.shift();
+
+    // Draw trail
+    if(trail.length>2){
+      for(let i=1;i<trail.length;i++){
+        const a=(i/trail.length);
+        ctx.beginPath();ctx.moveTo(trail[i-1].x,trail[i-1].y);ctx.lineTo(trail[i].x,trail[i].y);
+        // Color cycles through constants
+        const ci=Math.floor((i/trail.length)*5);
+        ctx.strokeStyle=CONST_COLS[Math.min(4,ci)]+(a*0.7).toFixed(2)+')';
+        ctx.lineWidth=1.2*a;ctx.stroke();
+      }
+      // Current point glow
+      const lp=trail[trail.length-1];
+      const lg=ctx.createRadialGradient(lp.x,lp.y,0,lp.x,lp.y,8);
+      lg.addColorStop(0,'rgba(232,204,122,0.9)');lg.addColorStop(1,'transparent');
+      ctx.fillStyle=lg;ctx.fillRect(lp.x-8,lp.y-8,16,16);
+      ctx.beginPath();ctx.arc(lp.x,lp.y,3,0,Math.PI*2);
+      ctx.fillStyle='rgba(232,204,122,1)';ctx.fill();
+    }
+
+    // Center origin dot
+    ctx.beginPath();ctx.arc(cx,cy,3,0,Math.PI*2);
+    ctx.fillStyle='rgba(201,168,76,0.5)';ctx.fill();
+
+    finaleTick++;finaleRAF=requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+// ══════════════════════════════════════════
+// SCENE MANAGER
+// ══════════════════════════════════════════
+const scenes=document.querySelectorAll('.scene');
+const totalScenes=scenes.length;
+let current=0,isTransitioning=false;
+const dotsEl=document.getElementById('nav-dots');
+for(let i=0;i<totalScenes;i++){
+  const d=document.createElement('div');d.className='nav-dot'+(i===0?' active':'');
+  d.addEventListener('click',()=>goTo(i));dotsEl.appendChild(d);
+}
+function updateDots(){document.querySelectorAll('.nav-dot').forEach((d,i)=>d.classList.toggle('active',i===current));}
+function updateProgress(){document.getElementById('progress').style.width=(current/(totalScenes-1)*100)+'%';}
+
+function onEnterScene(idx){
+  if(idx===0){
+    ['s0-b','s0-t','s0-s'].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add('show');},200+i*300));
+    setTimeout(()=>{const f=document.getElementById('great-formula');if(f)f.classList.add('show');},600);
+    setTimeout(()=>{const b=document.getElementById('s0-body');if(b)b.classList.add('show');},1400);
+    c0.style.opacity='1';setTimeout(()=>{t0=0;if(c0Raf)cancelAnimationFrame(c0Raf);drawC0();},400);
+  }
+  if(idx===1){
+    ['cc0','cc1','cc2','cc3','cc4'].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add('show');},300+i*220));
+    const _c1el=document.getElementById('c1-orb');if(_c1el){_c1el.style.opacity='1';setTimeout(startOrbitals,350);}
+  }
+  if(idx===2){
+    document.querySelectorAll('#deriv-panel .deriv-step').forEach((el,i)=>setTimeout(()=>el.classList.add('show'),300+i*450));
+  }
+  if(idx===3){
+    document.getElementById('rotation-c').style.opacity='1';
+    const ri=document.getElementById('rot-info');if(ri)ri.style.opacity='1';
+    setTimeout(startRotation,300);
+  }
+  if(idx===4){
+    const _uc=document.getElementById('unify-c');if(_uc){_uc.style.opacity='1';}setTimeout(startUnify,350);
+  }
+  if(idx===5){
+    const _qc=document.getElementById('quote-canvas');if(_qc){_qc.style.opacity='1';}setTimeout(startQuotes,350);
+  }
+  if(idx===6){
+    ['p-t','p-q','p-a'].forEach((id,i)=>setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.add('show');},300+i*600));
+  }
+  if(idx===7){
+    const gf2=document.getElementById('great-formula-2');if(gf2)gf2.style.opacity='1';
+    const fb=document.getElementById('fin-body');if(fb)fb.style.opacity='1';
+    const fe=document.getElementById('fin-end');if(fe)fe.style.opacity='1';
+    const _fc=document.getElementById('c7-finale');if(_fc){_fc.style.opacity='1';}setTimeout(startFinale,500);
+  }
+}
+function onLeaveScene(idx){
+  if(idx===1){stopOrbitals();['cc0','cc1','cc2','cc3','cc4'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('show');});}
+  if(idx===2){document.querySelectorAll('#deriv-panel .deriv-step').forEach(el=>el.classList.remove('show'));}
+  if(idx===3)stopRotation();
+  if(idx===4)stopUnify();
+  if(idx===5)stopQuotes();
+  if(idx===6){['p-t','p-q','p-a'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('show');});}
+  if(idx===7)stopFinale();
+}
+function goTo(idx){
+  if(isTransitioning||idx===current)return;
+  isTransitioning=true;onLeaveScene(current);
+  scenes[current].classList.remove('active');current=idx;scenes[current].classList.add('active');
+  updateDots();updateProgress();
+  setTimeout(()=>{onEnterScene(current);isTransitioning=false;},700);
+}
+function next(){if(current<totalScenes-1)goTo(current+1);}
+function prev(){if(current>0)goTo(current-1);}
+document.getElementById('btn-next').addEventListener('click',next);
+document.getElementById('btn-prev').addEventListener('click',prev);
+// Click anywhere to advance (document-level for reliability)
+document.addEventListener('click', (e) => {
+  if(e.target.closest('#nav')) return;
+  if(e.target.closest('a')) return;
+  if(e.target.closest('button')) return;
+  if(e.target.closest('#home-btn')) return;
+  if(e.target.closest('#ch-lang-bar')) return;
+  next();
+});
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')next();if(e.key==='ArrowLeft')prev();});
+setTimeout(()=>{document.getElementById('ornament').classList.add('visible');document.getElementById('hint').classList.add('visible');},1500);
+updateProgress();onEnterScene(0);
+</script>
+
+<div id="ch-lang-bar">
+  <button class="ch-lb" id="ch-btn-zh" onclick="chLang('zh')">中文</button>
+  <div class="ch-lb-sep"></div>
+  <button class="ch-lb on" id="ch-btn-en" onclick="chLang('en')">EN</button>
+</div>
+<script id="bilingual-js">
+(function(){
+  var D={"ornament": "Chapter XII · Euler's Identity · The Final Poem", "badges": ["Chapter XII", "§ 10.1 · Five Constants", "§ 10.1 · The Derivation", "§ 10.1 · Rotation in the Complex Plane", "§ 10.2 · Why Is It Beautiful?", "§ 10.2 · Mathematicians' Responses", "§ 10.3 · Algebra as Poetry", "Epilogue · Complete Series"], "titles": ["Euler's Identity", "Each from a Different Field — Meeting Here", "The Exponential Meets the Circle", "e<sup style=\"font-size:0.6em;\">iπ</sup> Is a Rotation", "The Shock of Unification", "What Mathematicians Said", "A Few Symbols, the Entire Universe", "The Universe Writes in Mathematics"], "bodies": ["Five of the most important mathematical constants,<br>meeting here, shaking hands, achieving eternal balance.", "These five constants come from five <strong>completely unrelated fields</strong> —<br>analysis, algebra, geometry, arithmetic, set theory.<br>They were strangers, yet meet perfectly in one equation.", "Euler connected the Taylor expansion of e, imaginary number i, and trigonometric functions:<br>eˣ expansion → substitute iθ → separate real/imaginary → <strong>cos θ + i sin θ</strong> → set θ = π.", "In the complex plane, e<sup>iθ</sup> means rotating by angle θ.<br>When θ = π, starting from <strong>+1</strong>, rotate 180°, land at <strong>−1</strong>.<br>Add 1: return to <strong>0</strong>.", "Five constants from five separate domains —<br>yet in the same equation, they <strong>meet perfectly</strong>.<br>Like civilizations discovering they spoke the same language all along.", "Mathematicians across centuries have described this as the most beautiful equation —<br>connecting five fundamental constants in a single, inevitable truth.", "e: the limit of growth. i: the dimension of imagination. π: the circle's ratio.<br>1: the origin of all numbers. 0: the void and balance point.<br><br><strong>They add up to zero — because the universe is self-consistent.</strong>", "From Euclid's axioms to curved spacetime,<br>from algebraic variables to group-theoretic symmetry,<br>from fractal iteration to the rhythm of constants —<br><strong>Mathematics is the language the universe uses to understand itself.</strong>"]};
+  var orig=null;
+  function save(){
+    if(orig)return;
+    var os=document.querySelector('.ornament-line span');
+    orig={
+      ornament:os?os.textContent:'',
+      badges:[].map.call(document.querySelectorAll('.chapter-badge'),function(e){return e.innerHTML;}),
+      titles:[].map.call(document.querySelectorAll('.scene-title'),function(e){return e.innerHTML;}),
+      bodies:[].map.call(document.querySelectorAll('.scene-body'),function(e){return e.innerHTML;}),
+    };
+  }
+  function applyEn(){
+    save();
+    applyPatchEn();
+    if(typeof stopQuotes==='function'&&typeof startQuotes==='function'){stopQuotes();if(document.getElementById('quote-canvas')&&document.getElementById('quote-canvas').style.opacity==='1')startQuotes();}
+    var os=document.querySelector('.ornament-line span');
+    if(os&&D.ornament)os.textContent=D.ornament;
+    [].forEach.call(document.querySelectorAll('.chapter-badge'),function(el,i){if(D.badges[i]!=null)el.innerHTML=D.badges[i];});
+    [].forEach.call(document.querySelectorAll('.scene-title'),function(el,i){if(D.titles[i]!=null)el.innerHTML=D.titles[i];});
+    [].forEach.call(document.querySelectorAll('.scene-body'),function(el,i){if(D.bodies[i]!=null)el.innerHTML=D.bodies[i];});
+  
+  
+
+    /* zwOrig save */
+    if(!window._zwOrig){
+      window._zwOrig={};
+      ['rot-p0','rot-p1','rot-p2','p-q','p-a','e-t'].forEach(function(id){var e=document.getElementById(id);if(e)window._zwOrig[id]=e.innerHTML;});
+    }
+    /* __direct_wires__ */
+    var _w=document.getElementById('e-t');if(_w)_w.innerHTML='A Few Symbols, the Entire Universe';
+    var _w=document.getElementById('p-q');if(_w)_w.innerHTML='<span style=\"color:var(--e);">e</span>, the rhythm of all growth;<br><span style=\"color:var(--i);">i</span>, the dimension opened by imagination;<br><span style=\"color:var(--pi);">π</span>, the eternal ratio of the perfect circle;<br><span style=\"color:var(--one);">1</span>, the origin of every number;<br><span style=\"color:var(--zero);">0</span>, the void &mdash; both end and beginning.<br><br><strong>Together they sum to zero &mdash;</strong><br><strong>because the universe is self-consistent.</strong>';
+    var _w=document.getElementById('p-a');if(_w)_w.innerHTML='e<sup>iπ</sup> + 1 = 0 &nbsp;·&nbsp; Leonhard Euler · 1748';
+    var _w=document.getElementById('rot-p0');if(_w)_w.innerHTML='On the complex plane, e<sup>i&theta;</sup> means rotation by angle &theta; around the origin.';
+    var _w=document.getElementById('rot-p1');if(_w)_w.innerHTML='When &theta;=&pi;: starting from +1, rotate 180&deg;, land exactly on &minus;1. Add 1, arrive at 0.';
+    var _w=document.getElementById('rot-p2');if(_w)_w.innerHTML='This is not coincidence &mdash; it is the geometric inevitability of rotation. Euler&#39;s formula is circular motion in the complex plane.';
+  }
+  function applyZh(){
+    if(!orig)return;
+    if(typeof stopQuotes==='function'&&typeof startQuotes==='function'){stopQuotes();if(document.getElementById('quote-canvas')&&document.getElementById('quote-canvas').style.opacity==='1')startQuotes();}
+    /* zwOrig restore */
+    if(window._zwOrig){['rot-p0','rot-p1','rot-p2','p-q','p-a','e-t'].forEach(function(id){var e=document.getElementById(id);if(e&&window._zwOrig[id]!==undefined)e.innerHTML=window._zwOrig[id];});}
+    applyPatchZh();
+    var os=document.querySelector('.ornament-line span');
+    if(os)os.textContent=orig.ornament;
+    [].forEach.call(document.querySelectorAll('.chapter-badge'),function(el,i){if(orig.badges[i]!=null)el.innerHTML=orig.badges[i];});
+    [].forEach.call(document.querySelectorAll('.scene-title'),function(el,i){if(orig.titles[i]!=null)el.innerHTML=orig.titles[i];});
+    [].forEach.call(document.querySelectorAll('.scene-body'),function(el,i){if(orig.bodies[i]!=null)el.innerHTML=orig.bodies[i];});
+  }
+  
+  // Extended EN patches for elements not covered by D.badges/titles/bodies
+  var enPatches=[["#s0-s", 0, "The Poetic Summit of Mathematics"], [".const-name", 0, "Natural Constant"], [".const-desc", 0, "The limit of continuous growth — the breathing rhythm of life"], [".const-field", 0, "Analysis"], [".const-name", 1, "Imaginary Unit"], [".const-desc", 1, "√−1 — the dimensional door opened by imagination"], [".const-field", 1, "Complex Field"], [".const-name", 2, "Pi"], [".const-desc", 2, "The perfect circle — a non-repeating infinite decimal"], [".const-field", 2, "Geometry"], [".const-name", 3, "Multiplicative Identity"], [".const-desc", 3, "The origin of all things — the foundation of every number"], [".const-field", 3, "Arithmetic"], [".const-name", 4, "Additive Identity"], [".const-desc", 4, "The void — the fulcrum of balance; both end and beginning"], [".const-field", 4, "Algebra"], [".deriv-note", 0, "Taylor expansion"], [".deriv-note", 1, "Substitute iθ for x"], [".deriv-note", 2, "Separate real and imaginary"], [".deriv-note", 3, "Euler's Formula"], [".deriv-note", 4, "Let θ = π"], [".deriv-note", 5, "Q.E.D."], ["#rot-info p", 0, "On the complex plane, e<sup>iθ</sup> means rotation by angle θ around the origin."], ["#rot-info p", 1, "When θ = π: starting from +1, rotate 180° and land exactly on −1. Add 1, arrive at 0."], ["#rot-info p", 2, "This is no coincidence — it is the geometric inevitability of rotation. Euler&rsquo;s formula is, at its heart, circular motion in the complex plane."], ['#cc0 .con-label', 0, 'Natural constant'], ['#cc0 .con-body', 0, 'The limit of continuous growth, the rhythm of life'], ['#cc0 .con-field', 0, 'Analysis'], ['#cc1 .con-label', 0, 'Imaginary unit'], ['#cc1 .con-body', 0, '√−1, the door imagination opens to higher dimensions'], ['#cc1 .con-field', 0, 'Complex numbers'], ['#cc2 .con-label', 0, 'Pi'], ['#cc2 .con-body', 0, 'The perfect circle, infinite non-repeating decimal'], ['#cc2 .con-field', 0, 'Geometry'], ['#cc3 .con-label', 0, 'One'], ['#cc3 .con-body', 0, 'The origin of all numbers, the identity element'], ['#cc3 .con-field', 0, 'Arithmetic'], ['#cc4 .con-label', 0, 'Zero'], ['#cc4 .con-body', 0, 'The void and equilibrium point, additive identity'], ['#cc4 .con-field', 0, 'Set theory']];
+  var patchOrig=null;
+  function savePatch(){
+    if(patchOrig)return;
+    patchOrig=enPatches.map(function(p){
+      var els=document.querySelectorAll(p[0]);
+      return els[p[1]]?els[p[1]].innerHTML:null;
+    });
+  }
+  function applyPatchEn(){
+    savePatch();
+    enPatches.forEach(function(p){
+      var els=document.querySelectorAll(p[0]);
+      if(els[p[1]]!=null)els[p[1]].innerHTML=p[2];
+    });
+  }
+  function applyPatchZh(){
+    if(!patchOrig)return;
+    enPatches.forEach(function(p,i){
+      var els=document.querySelectorAll(p[0]);
+      if(els[p[1]]!=null&&patchOrig[i]!=null)els[p[1]].innerHTML=patchOrig[i];
+    });
+  }
+  window.chLang=function(l){
+    window.__currentLang=l;
+    try{localStorage.setItem('mathsite_lang',l);}catch(e){}
+    document.getElementById('ch-btn-zh').classList.toggle('on',l==='zh');
+    document.getElementById('ch-btn-en').classList.toggle('on',l==='en');
+    if(l==='en')applyEn();else applyZh();
+  };
+  // Auto-switch based on ?lang=en in URL
+  window.addEventListener('DOMContentLoaded',function(){
+    // Read language from localStorage or ?lang URL param, default English
+    var _lp=(new URLSearchParams(location.search)).get('lang');
+    var _ls=null;try{_ls=localStorage.getItem('mathsite_lang');}catch(e){}
+    var _l=_lp||_ls||'en';
+    window.__currentLang=_l;
+    document.getElementById('ch-btn-zh').classList.toggle('on',_l==='zh');
+    document.getElementById('ch-btn-en').classList.toggle('on',_l==='en');
+    // Always run applyEn first to populate orig/patchOrig caches,
+    // then switch to Chinese if needed
+    applyEn();
+    if(_l==='zh')applyZh();
+  });
+})();
+
+/* Mobile touch swipe */
+(function(){
+  var ts=null,tx=null;
+  document.addEventListener('touchstart',function(e){ts=e.touches[0].clientX;tx=e.touches[0].clientY;},{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(ts===null)return;
+    var dx=e.changedTouches[0].clientX-ts, dy=e.changedTouches[0].clientY-tx;
+    if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>40){
+      if(dx<0&&typeof next==='function')next();
+      else if(dx>0&&typeof prev==='function')prev();
+    }
+    ts=null;tx=null;
+  },{passive:true});
+})();
+
+/* Mobile: add stack class to inline-flex children on narrow screens */
+(function(){
+  function applyMobileLayout(){
+    var isMobile = window.innerWidth <= 700;
+    document.querySelectorAll('.scene > div, .scene > section').forEach(function(el){
+      var s = el.getAttribute('style') || '';
+      if(s.includes('display:flex') || s.includes('display: flex')){
+        if(isMobile){ el.style.flexDirection='column'; el.style.alignItems='center'; }
+        else { el.style.flexDirection=''; el.style.alignItems=''; }
+      }
+    });
+  }
+  applyMobileLayout();
+  window.addEventListener('resize', applyMobileLayout);
+})();
+</script>
+</body>
+</html>
